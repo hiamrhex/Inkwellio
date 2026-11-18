@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        # actions/checkout v7.0.1, 2026-07-20
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          # Full history so the secret scan can inspect every commit.
+          fetch-depth: 0
+
+      - name: Set up pnpm
+        # pnpm/action-setup v6.1.1, 2026-11-03; version comes from packageManager.
+        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115
+
+      - name: Set up Node.js
+        # actions/setup-node v7.1.0, 2026-10-08
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Check
+        run: pnpm check
+
+      - name: Audit production dependencies
+        # Dev-only tooling is excluded: its advisories cannot reach production,
+        # and eslint-config-next currently pins an unpatched transitive copy.
+        run: pnpm audit --prod --audit-level=high
+
+      - name: Scan for secrets
+        # gitleaks/gitleaks-action v3.0.0, 2026-05-30
+        uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # No PR comments: the job only needs read access to the repo.
+          GITLEAKS_ENABLE_COMMENTS: "false"
