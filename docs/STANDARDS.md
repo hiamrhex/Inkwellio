@@ -15,7 +15,7 @@ Rule for this file: a standard with no verification method is decoration, so it 
 | Neon storage / egress | 1 GB storage; 5 GB public network transfer per project/month | same | `[V]` |
 | Neon recovery | 6 h instant restore, capped at 1 GB change history; 1 manual snapshot | same | `[V]` |
 | Neon branches | 10 per project (test databases) | same | `[V]` |
-| Vercel Hobby | 1M invocations, 100 GB fast data transfer, 4 CPU-hrs, 1 h runtime logs, 100 deploys/day | vercel.com/docs/plans/hobby | `[V]` |
+| Vercel Hobby | 1M invocations, 100 GB fast data transfer, 4 CPU-hrs, 1 h runtime logs, 100 deploys/day, **300 s max function duration**, **single function region** | vercel.com/docs/plans/hobby; vercel.com/docs/functions/configuring-functions/region | `[V]` |
 | Vercel Hobby ToS | "personal or non-commercial use"; may remove projects with or without notice | vercel.com/legal/terms §4 | `[V]` |
 | Vercel WAF rate limiting on Hobby | 1 rule, keys = IP and JA4 only, fixed window, 10 s–10 min | vercel.com/docs/.../rate-limiting | `[V]` |
 | Vercel Cron on Hobby | once per day only, timing ±59 min, 100 jobs | vercel.com/docs/schedules/cron-jobs/usage-and-pricing | `[V]` |

@@ -28,6 +28,11 @@ startup.
 
 - `strict` is on. `next typegen` runs before `tsc` so route types exist.
 - Zod 4 is pinned. Validation schemas live beside the module that owns them.
+- Validation includes size limits, and the database mirrors them with CHECK
+  constraints because scripts and migrations bypass Zod (amendment A8).
+- Every surface that renders a user string has a named encoding: React text,
+  Next metadata attributes, XML escaping for feeds, JSON-LD escaping
+  (amendment A8).
 - Some duplication with database-inferred types is expected; the Zod schema
   remains authoritative for inputs.
 - Validation failures return one predictable error shape in later work.

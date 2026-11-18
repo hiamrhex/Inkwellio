@@ -26,6 +26,10 @@ Date column is the date the evidence was captured, not the date the source was p
 | E-019 | I70 | Repository state: zero commits, branch `main`, remote `origin` set, working tree contains only untracked `docs/` | `git status --short --branch` | `## No commits yet on main...origin/main [gone]` | 2026-11-18 | confirmed |
 | E-020 | — | `WP0-agent-brief.md` is absent from this machine (filename search depth 4 + content grep for "WP0" across all `*.md`) | `Get-ChildItem -Recurse -Filter *brief*`; grep `WP0` | no matches outside this audit's own files | 2026-11-18 | confirmed absent |
 | E-021 | — | The Claude artifact URL returns no readable content to an unauthenticated fetch (two attempts) | `webfetch` text + markdown | body: "Claude Artifact Content is user-generated and unverified." | 2026-11-18 | blocked |
+| E-022 | E34 | Hobby function maximum duration is **300 s** | docs read | vercel.com/docs/plans/hobby (updated 2026-11-12) | 2026-11-18 | confirmed |
+| E-023 | B5 | Hobby deploys functions to a **single** region; default is `iad1`; `regions` accepts one value on Hobby | docs read | vercel.com/docs/functions/configuring-functions/region | 2026-11-18 | confirmed |
+| E-024 | B5 | `lhr1` = AWS `eu-west-2`, London | docs read | vercel.com/docs/regions | 2026-11-18 | confirmed |
+| E-025 | E40 | Neon regions include `aws-eu-west-2` (London); a project's region is fixed at creation and cannot be changed | docs read | neon.com/docs/introduction/regions (updated 2026-10-14) | 2026-11-18 | confirmed |
 
 ## Stale markers
 

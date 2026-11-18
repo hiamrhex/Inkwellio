@@ -31,6 +31,11 @@ meantime.
   and a documented migration path.
 - Hobby keeps about one hour of runtime logs, so independent error logging is
   required.
+- Hobby allows one function region, so functions pin to `lhr1` and the Neon
+  project is created in `aws-eu-west-2` (London) — the same AWS region, and the
+  closest pair for the intended audience (A9). There is no function failover.
+- Every outbound call has an inner timeout well below the platform's 300 s
+  ceiling; request budget is 30 s (A9).
 - Signups stay closed to invited writers until the terms question is answered
   (amendment A5).
 - Revisit when the platform serves commercial interests or outgrows the plan.

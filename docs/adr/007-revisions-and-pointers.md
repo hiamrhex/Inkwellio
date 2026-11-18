@@ -14,8 +14,11 @@ revision rows.
 
 Keep `post_revisions` append-only. A post holds `draft_revision_id` and
 `published_revision_id`; only the pointers move. Autosave writes a separate,
-mutable `draft_state` row (one per post) carrying `base_revision_id`. An
-explicit save or publish appends a revision.
+mutable `draft_state` row (one per post) carrying `base_revision_id` and a
+monotonic `version`. An explicit save or publish appends a revision.
+
+Every write to a draft is compare-and-set on `version`, not on
+`base_revision_id` (amendment A7).
 
 ## Options considered
 
@@ -29,10 +32,14 @@ explicit save or publish appends a revision.
 
 - Autosave volume is proportional to edits, not keystrokes, and never mutates
   published content (amendment A2).
-- `base_revision_id` enables concurrent-edit detection in WP3.
+- `version` is the concurrency token: a write that does not match it returns a
+  conflict instead of overwriting another tab's text (A7). `base_revision_id`
+  records which revision the draft grew from; two autosaves can share a base,
+  so the base alone cannot detect a second writer.
 - Publish and save each need one transaction so pointers and revisions stay
   consistent.
-- Revisions are never updated or deleted; post deletion is soft. Storage grows
-  with editorial events, so archival policy is a later decision.
+- Revisions are never updated, and they are deleted only by account erasure
+  (amendment A6). Post deletion is soft; storage grows with editorial events,
+  so archival policy is a later decision.
 - The pointer design itself remains proposed until WP3 proves the transaction
   and constraint behaviour.
