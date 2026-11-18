@@ -39,9 +39,18 @@ reshaping the repo.
 4. No circular dependencies.
 5. TODO for WP2: only `modules/identity/` may import Better Auth.
 
-Run `pnpm check:boundaries`. CI also runs it, and
-`apps/web/tests/boundaries.test.ts` proves the app rule can fail by running the
-same rule against a deliberately bad fixture.
+Run `pnpm check:boundaries`. CI also runs it.
+
+The rule text exists once, in `tools/seam-rules.cjs`. Both the shipped config
+and `apps/web/tests/boundaries.test.ts` call `createSeamRules`, so the test
+cannot drift into proving a copy. The test runs one clean fixture and one
+failing fixture per rule, fails if a shipped rule has no fixture, and fails if
+any fixture import does not resolve — a typo cannot make a rule look enforced.
+
+`react/no-danger` is an ESLint error and
+`apps/web/tests/raw-html.test.ts` proves the shipped config rejects
+`dangerouslySetInnerHTML`. Raw HTML injection is the one XSS class that
+bypasses React's escaping.
 
 ## Environment
 
@@ -127,4 +136,4 @@ See `docs/adr/`: 001 modular monolith, 002 Postgres, 003 Neon WebSocket driver,
 004 Drizzle, 005 Better Auth, 006 one publication per user, 007 append-only
 revisions and two pointers, 008 Markdown, 009 TypeScript and Zod, 010
 three-layer rate limiting, 011 `/@name` URLs, 012 curated topics and admin,
-013 Vercel Hobby.
+013 Vercel Hobby, 014 export and erasure.
