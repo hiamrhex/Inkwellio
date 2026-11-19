@@ -136,14 +136,46 @@ Dev-only advisories are intentionally excluded from the audit gate: the
 current high finding is a `picomatch` ReDoS reachable only through
 `eslint-config-next`, and no patched release exists.
 
-## Deployment and data (later work)
+## Data layer
 
-WP1 will add PostgreSQL. Integration tests will use a local Docker Postgres
-container, not a shared or hosted database. Neon's free plan is the production
-target, with the WebSocket driver for transactional writes. Public page
-caching moves into WP1/WP4 because Neon compute suspension is the binding
-availability risk (amendment A1). No platform-only APIs are introduced; hosting
-stays portable while the Vercel Hobby terms question is open (amendment A5).
+PostgreSQL 17 is the only store. One drizzle-kit glob collects
+`apps/web/src/modules/*/schema.ts` plus `apps/web/src/kernel/schema.ts`; the
+generated SQL in `apps/web/drizzle/` is committed and read by hand before it is
+applied (ADR-004). `kernel/db.ts` is the only place a pool exists: created on
+first use, 10 s connect timeout, 30 s statement timeout, five connections, so a
+build or a static-only process never needs a database (E-035).
+
+Eleven tables: `users`, `publications`, `publication_slug_history`, `posts`,
+`post_revisions`, `draft_state`, `post_slug_history`, `topics`, `post_topics`,
+`audit_events`, `rate_limit_counters`. The invariants that must survive a bug in
+application code are in the database, not in a service function:
+
+- `draft_state` is one row per post with a monotonic `version` (compare-and-set,
+  A7); `post_revisions` is append-only and grows only on an explicit save or
+  publish (A2). Composite foreign keys make a pointer able to name only a
+  revision of its own post, and stop a published revision from being deleted.
+- `posts` has three states and the pointers are constrained to match them: the
+  published pointer is non-null exactly when the post is published, the deletion
+  timestamp exactly when it is deleted.
+- Erasure cascades from `users` through everything the account owns. `audit_events`
+  deliberately has no foreign key, so the record survives and loses only the
+  actor ids in the erasure transaction (A10).
+- Slugs are lowercase by CHECK (ADR-015); feed order is `(published_at, id)`
+  behind a partial index so a keyset cursor cannot skip or repeat a row.
+
+The acceptance suite lives in `apps/web/tests/db/postgres.test.ts`. It applies
+the migration to an empty schema and then attacks the constraints — 50 parallel
+creations, 200 autosaves, a duplicated expected version, illegal lifecycle
+states, and an erase-everything walk over every `uuid` column. It needs a
+database, so it skips when `DATABASE_URL` is unset locally and **fails** when CI
+is set without one; CI runs it against a `postgres:17` service on every push
+(E-036 through E-039). Local Docker is still the intended runner once disk allows.
+
+Neon's free plan is the production target, with the WebSocket driver for
+transactional writes (ADR-003, unproven until the project exists). Public page
+caching moves into WP4 because Neon compute suspension is the binding
+availability risk (A1). No platform-only APIs are introduced; hosting stays
+portable while the Vercel Hobby terms question is open (A5).
 
 ## Local Windows constraint
 
