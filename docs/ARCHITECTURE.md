@@ -106,8 +106,9 @@ TypeScript is pinned to the newest 5.x, not 7.x: Next 16 documents TypeScript
 
 `.github/workflows/ci.yml` runs on pushes to `main` and on pull requests with
 `contents: read`, installs with `--frozen-lockfile`, runs `pnpm check`, audits
-production dependencies (`pnpm audit --prod --audit-level=high`), and scans for
-secrets with gitleaks. Third-party actions are pinned to full commit SHAs.
+production dependencies (`pnpm audit --prod --audit-level=high`), and scans
+every commit in history with gitleaks (pinned binary, checksum verified).
+Third-party actions are pinned to full commit SHAs.
 
 Dev-only advisories are intentionally excluded from the audit gate: the
 current high finding is a `picomatch` ReDoS reachable only through
