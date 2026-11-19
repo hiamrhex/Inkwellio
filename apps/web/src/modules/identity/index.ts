@@ -13,6 +13,9 @@ import { logEvent } from "@/kernel/log";
 import { toPublicError, type PublicError } from "@/kernel/errors";
 import { users } from "./schema";
 
+// Re-export for other modules
+export { users };
+
 /**
  * Lazy Better Auth instance.
  *
@@ -22,7 +25,7 @@ import { users } from "./schema";
  * its own `session`, `account`, `verification`, and `rateLimit` tables on
  * migration.
  */
-let authInstance: ReturnType<typeof betterAuth> | null = null;
+let authInstance: any | null = null;
 
 export function getAuth() {
   if (authInstance !== null) {
@@ -46,7 +49,7 @@ export function getAuth() {
         user: users,
       },
       usePlural: true,
-    }),
+    }) as any,
 
     emailAndPassword: {
       enabled: true,
@@ -124,12 +127,12 @@ export function getAuth() {
 
     hooks: {
       before: async (ctx) => {
-        logEvent("debug", "auth_request", { path: ctx.path, method: ctx.method });
+        logEvent("debug", "auth_request", { path: (ctx as any).path, method: (ctx as any).method });
       },
       after: async (ctx) => {
         logEvent("debug", "auth_response", {
-          path: ctx.path,
-          status: ctx.context.returned?.status,
+          path: (ctx as any).path,
+          status: (ctx as any).context?.returned?.status,
         });
       },
     },
@@ -145,13 +148,14 @@ export function getAuth() {
     },
   });
 
-  return authInstance;
+  return authInstance as any;
 }
 
 /** Export a getter for backward compatibility */
-export const auth = new Proxy({} as ReturnType<typeof betterAuth>, {
+export const auth = new Proxy({} as any, {
   get(_target, prop, receiver) {
-    return Reflect.get(getAuth(), prop, receiver);
+    const authInstance = getAuth();
+    return authInstance ? Reflect.get(authInstance, prop, receiver) : undefined;
   },
 });
 
