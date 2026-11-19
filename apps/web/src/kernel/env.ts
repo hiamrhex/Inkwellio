@@ -7,6 +7,15 @@ import { z } from "zod";
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]),
   LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
+  /**
+   * Optional at parse time because `next build` imports every module without a
+   * database. `kernel/db.ts` refuses to open a socket until this is set, so a
+   * running server still fails loudly rather than lazily pretending.
+   */
+  DATABASE_URL: z
+    .string()
+    .regex(/^postgres(ql)?:\/\/\S+$/, "must be a postgres:// or postgresql:// URL")
+    .optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

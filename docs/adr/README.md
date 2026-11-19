@@ -1,6 +1,6 @@
 # Decision records
 
-Fourteen records as of 19 November 2026. Each one is only worth keeping if it can be wrong, so this
+Fifteen records as of 19 November 2026. Each one is only worth keeping if it can be wrong, so this
 index carries the two facts that make that possible: what would overturn the decision, and when it is
 revisited. A decision with no revisit date is this file's defect, not the reader's.
 
@@ -26,6 +26,7 @@ those is a failure; a stale record silently treated as current is.
 | [012](012-curated-topics.md) | Curated topics, admin-managed | Seeded topics cannot cover the content and writers need free tags | 2027-02-19 |
 | [013](013-vercel-hobby.md) | Vercel Hobby, conditional | Mr Tobi answers that this is commercial use (U-6), or the single region and 300 s limit bite in production | 2026-11-26 |
 | [014](014-export-and-erasure.md) | Export and erasure in v1 | A real account's export exceeds the 25 MB cap, or erasure cannot finish inside the request budget | 2027-02-19 |
+| [015](015-slug-case-and-encoding.md) | Lowercase slugs enforced by CHECK, not `citext` | Real content needs non-ASCII or uppercase identifiers, or the mixed-case redirect shows in the p95 | 2027-02-19 |
 
 ## Template for a new record
 

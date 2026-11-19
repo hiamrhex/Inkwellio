@@ -17,6 +17,23 @@ jobs:
     name: Check
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    services:
+      # The WP1 suite proves CHECK constraints, composite FKs, cascade
+      # behaviour and concurrent uniqueness. A mock cannot, so CI runs the real
+      # engine on every push (PLAN gate 2).
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: inkwellio
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
     steps:
       - name: Checkout
         # actions/checkout v7.0.1, 2026-07-20
@@ -40,6 +57,8 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Check
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/inkwellio
         run: pnpm check
 
       - name: Audit production dependencies

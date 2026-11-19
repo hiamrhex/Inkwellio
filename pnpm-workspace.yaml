@@ -7,12 +7,16 @@ packages:
 catalog:
   "@tailwindcss/turbopack": "4.3.4"
   "@types/node": "24.19.2"
+  "@types/pg": "8.23.1"
   "@types/react": "19.3.0"
   "@types/react-dom": "19.3.0"
   "dependency-cruiser": "18.7.2"
+  "drizzle-kit": "0.31.11"
+  "drizzle-orm": "0.45.4"
   "eslint": "9.39.5"
   "eslint-config-next": "16.4.5"
   "next": "16.4.5"
+  "pg": "8.23.1"
   "react": "19.3.1"
   "react-dom": "19.3.1"
   "tailwindcss": "4.3.4"
@@ -34,7 +38,12 @@ nodeLinker: hoisted
 # root node_modules as symlinks.
 hoistWorkspacePackages: false
 
-# Postinstall scripts are denied unless explicitly allowed.
+# Postinstall scripts are denied unless explicitly allowed. esbuild's install
+# script is denied deliberately: drizzle-kit's bundled esbuild works from the
+# platform package alone, which is proven by the U-1 run under
+# --ignore-scripts (E-028), and a denied script is one fewer arbitrary
+# executable in the build.
 allowBuilds:
+  esbuild: false
   sharp: false
   unrs-resolver: false
