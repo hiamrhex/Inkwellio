@@ -25,11 +25,11 @@ export { users };
  * its own `session`, `account`, `verification`, and `rateLimit` tables on
  * migration.
  */
-let authInstance: any | null = null;
+let authInstance: unknown | null = null;
 
 export function getAuth() {
   if (authInstance !== null) {
-    return authInstance;
+    return authInstance as ReturnType<typeof betterAuth>;
   }
 
   // In test environment, provide minimal config without requiring secrets
@@ -49,7 +49,7 @@ export function getAuth() {
         user: users,
       },
       usePlural: true,
-    }) as any,
+    }),
 
     emailAndPassword: {
       enabled: true,
@@ -127,12 +127,12 @@ export function getAuth() {
 
     hooks: {
       before: async (ctx) => {
-        logEvent("debug", "auth_request", { path: (ctx as any).path, method: (ctx as any).method });
+        logEvent("debug", "auth_request", { path: (ctx as unknown as { path: string }).path, method: (ctx as unknown as { method: string }).method });
       },
       after: async (ctx) => {
         logEvent("debug", "auth_response", {
-          path: (ctx as any).path,
-          status: (ctx as any).context?.returned?.status,
+          path: (ctx as unknown as { path: string }).path,
+          status: (ctx as unknown as { context?: { returned?: { status?: string } } }).context?.returned?.status,
         });
       },
     },
@@ -148,11 +148,11 @@ export function getAuth() {
     },
   });
 
-  return authInstance as any;
+  return authInstance as ReturnType<typeof betterAuth>;
 }
 
 /** Export a getter for backward compatibility */
-export const auth = new Proxy({} as any, {
+export const auth = new Proxy({} as Record<string, unknown>, {
   get(_target, prop, receiver) {
     const authInstance = getAuth();
     return authInstance ? Reflect.get(authInstance, prop, receiver) : undefined;
