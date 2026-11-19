@@ -37,7 +37,7 @@ Rule for this file: a standard with no verification method is decoration, so it 
 | Better Auth: 10 s/100 req default, `/sign-in/email` 3 per 10 s, **`auth.api` calls are not rate limited**, storage `database` supported, `consume` must be atomic | §9's controls are real but need configuration | `[V]` better-auth.com/docs/concepts/rate-limit |
 | Better Auth defaults to `x-forwarded-for`, with `ipAddressHeaders` / `trustedProxies` as the supported fixes | combined with Vercel overwriting XFF, the default is **acceptable here**; pin `x-vercel-forwarded-for` to survive a future proxy | `[V]` both pages |
 | Next 16 async `params`/`searchParams`/`cookies`/`headers`; parallel routes need `default.js` | affects every route signature in WP3–WP6 | `[V]` nextjs.org/blog/next-16 |
-| `drizzle-kit` collecting per-module schema files | blocks WP1 if wrong | `[U]` |
+| `drizzle-kit` collects per-module schema files; a cross-module FK resolves through the other module's `index.ts`; an empty glob is a hard error | the per-module schema layout is viable, so WP1 is unblocked | `[V]` E-028, E-029 |
 
 ## 3. Checks this system must pass, by layer
 

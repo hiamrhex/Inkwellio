@@ -32,6 +32,8 @@ Date column is the date the evidence was captured, not the date the source was p
 | E-025 | E40 | Neon regions include `aws-eu-west-2` (London); a project's region is fixed at creation and cannot be changed | docs read | neon.com/docs/introduction/regions (updated 2026-10-14) | 2026-11-18 | confirmed |
 | E-026 | C21 | Secret scanning runs **automatically and free on public repositories**, over full history and issues/PRs | docs read | docs.github.com/en/code-security/secret-scanning/introduction/about-secret-scanning | 2026-11-19 | confirmed |
 | E-027 | I27 | A **public** repository can enable private vulnerability reporting; reports are private, and the report form can require a CWE | docs read | docs.github.com/en/code-security/security-advisories/working-with-repository-security-advisories/configuring-private-vulnerability-reporting-for-a-repository | 2026-11-19 | confirmed |
+| E-028 | B5 | `drizzle-kit` 0.31.11 collects **every** module's `schema.ts` from one glob (`./src/modules/*/schema.ts`). Run 1: 3 tables from 2 directories, with `CHECK`, `UNIQUE`, `ON DELETE cascade` and a btree index all emitted. Run 2: a module schema importing another module's table through that module's `index.ts` via the `@/*` tsconfig alias resolved, and the FK was emitted. `generate` needs no database, so CI can prove this without Postgres | `pnpm exec drizzle-kit generate` in a scratch project (`%TEMP%\opencode\u1`); outputs `migrations/0000_stale_maddog.sql`, `migrations2/0000_slim_gateway.sql` | run 1: `alpha_one` 3 cols, `alpha_two` 1 fk, `beta_one` 1 index; run 2: `alpha_one` 3 cols, `beta_one` 4 cols / 1 index / 1 fk | 2026-11-19 | **confirmed** |
+| E-029 | B5 | A `drizzle-kit` schema glob that matches nothing is a **hard error** (exit 1, "No schema files found for path config"), not a silent empty migration | same project, glob changed to `./src/modules/*/nope.ts` | `Error  No schema files found …`; exit=1; no output directory created | 2026-11-19 | **confirmed** |
 
 ## Stale markers
 
@@ -40,7 +42,9 @@ before launch (WP9), because every one of them is a ceiling this design is engin
 
 ## Unverified (kept here as well as in AUDIT §5)
 
-- U-1 `drizzle-kit` glob over per-module schema files.
+- ~~U-1 `drizzle-kit` glob over per-module schema files.~~ Closed 19 Nov 2026: E-028, E-029 (the glob
+  collects every module, cross-module FKs resolve through `index.ts`, and an empty glob is a hard
+  error).
 - U-2 Better Auth × Next 16 `proxy.ts` compatibility; enumeration/timing behaviour; cookie-cache revocation.
 - U-3 **SMTP egress from Vercel Functions** — no evidence yet that port 587/465 is allowed or unthrottled.
 - U-4 Neon "Managed Better Auth" (60k MAU listed on the free plan) — contents and lock-in unknown.

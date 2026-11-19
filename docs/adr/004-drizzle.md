@@ -26,8 +26,15 @@ Use Drizzle for schema definition, queries, and migrations.
 
 - Queries remain close to SQL, which matters for partial indexes and
   full-text search.
-- Per-module schema files must be collected by `drizzle-kit`; this is
-  unverified and must be proven in WP1.
+- Per-module schema files are collected by one glob, proven on 19 November 2026
+  (E-028, E-029): `schema: ['./src/modules/*/schema.ts']` picked up every module
+  directory, a module schema imported another module's table through its
+  `index.ts` with the `@/` alias and the foreign key was emitted, and a glob
+  that matches nothing is a hard error (exit 1) rather than a silent empty
+  migration. `drizzle-kit generate` needs no database, so CI can prove the
+  collection without Postgres.
+- Pinned versions: `drizzle-kit` 0.31.11 (published 2026-09-21) and
+  `drizzle-orm` 0.45.4 (published 2026-10-08), both outside the 14-day window.
 - Migrations are reviewed by hand; no automatic production migration step is
   approved yet.
 - Type inference from schema reduces duplicate type declarations, but Zod

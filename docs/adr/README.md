@@ -15,7 +15,7 @@ those is a failure; a stale record silently treated as current is.
 | [001](001-modular-monolith.md) | Modular monolith, vertical slices | Two modules need one transaction that the seam rules forbid, or a module must deploy separately for a real constraint | 2027-02-19 |
 | [002](002-postgres.md) | PostgreSQL | Content plus audit outgrows Neon's 1 GB, or a constraint we rely on cannot be expressed | 2027-02-19 |
 | [003](003-neon-websocket.md) | Neon WebSocket driver for writes | Pooled connection setup plus cold start pushes a write past the 30 s budget, or the driver drops connections under the load baseline | 2027-02-19 |
-| [004](004-drizzle.md) | Drizzle ORM + drizzle-kit | `drizzle-kit` cannot collect per-module schema files (U-1), or a required CHECK or constraint cannot be expressed in a migration | 2026-11-26 |
+| [004](004-drizzle.md) | Drizzle ORM + drizzle-kit | A required CHECK or constraint cannot be expressed in a migration, or the glob/layout proves unrunnable under the real config | 2026-11-26 |
 | [005](005-better-auth.md) | Better Auth | Enumeration or timing cannot be equalised in configuration (U-2), or it does not run under Next 16 `proxy.ts` | 2026-12-10 |
 | [006](006-one-publication.md) | One publication per user | A writer needs a second publication, which turns a unique constraint into a migration with live content | 2027-02-19 |
 | [007](007-revisions-and-pointers.md) | Append-only revisions, one moving published pointer | `version` contention blocks two writers on one post, or revision storage grows past the schema's assumptions | 2027-01-19 |
