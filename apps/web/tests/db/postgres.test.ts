@@ -193,7 +193,8 @@ describe.skipIf(!DATABASE_URL)("WP1 schema on a real Postgres", () => {
 
     it("keeps the feed index partial and ordered by (published_at, id)", async () => {
       const result = await pool.query<{ indpred: string | null; indexdef: string }>(
-        "SELECT indpred::text, pg_get_indexdef(oid) AS indexdef FROM pg_index WHERE indexrelid = 'posts_feed_idx'::regclass",
+        `SELECT indpred::text, pg_get_indexdef(indexrelid) AS indexdef
+         FROM pg_index WHERE indexrelid = 'posts_feed_idx'::regclass`,
       );
       expect(result.rows[0]!.indpred).not.toBeNull();
       expect(result.rows[0]!.indexdef).toContain("(published_at, id)");
