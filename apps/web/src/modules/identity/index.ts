@@ -10,7 +10,13 @@ import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 import { getDb } from "@/kernel/db";
 import { env } from "@/kernel/env";
 import { logEvent } from "@/kernel/log";
-import { toPublicError, type PublicError } from "@/kernel/errors";
+import {
+  ConflictError,
+  NotFoundError,
+  ValidationError,
+  toPublicError,
+  type PublicError,
+} from "@/kernel/errors";
 import { users } from "./schema";
 
 // Re-export for other modules
@@ -190,7 +196,7 @@ export type Resource =
   | { type: "user"; id: string }
   | { type: "publication"; id: string; ownerId: string }
   | { type: "post"; id: string; publicationId: string }
-  | { type: "account"; action: "export" | "delete" };
+  | { type: "account"; action: "export" | "delete"; userId: string };
 
 export type Actor =
   | { type: "anonymous" }
@@ -224,7 +230,7 @@ export function authorize(actor: Actor, action: Action, resource: Resource): boo
       // Post authorization goes through publication ownership
       return false; // Must check publication ownership separately
     case "account":
-      return resource.action === "export" || resource.action === "delete";
+      return resource.userId === actor.id && (resource.action === "export" || resource.action === "delete");
   }
 
   return false;
@@ -301,20 +307,30 @@ export function safeRedirect(target: string, requestOrigin: string): string {
 export function mapAuthError(error: unknown, requestId: string): PublicError {
   if (error instanceof Error) {
     const message = error.message;
-    if (message.includes("user already exists") || message.includes("email already in use")) {
-      return toPublicError(new Error(message), requestId); // CONFLICT
+    const code =
+      (error as unknown as { code?: string }).code ??
+      (error as unknown as { cause?: { code?: string } }).cause?.code;
+
+    if (
+      code === "23505" ||
+      message.includes("23505") ||
+      message.includes("unique constraint") ||
+      message.includes("user already exists") ||
+      message.includes("email already in use")
+    ) {
+      return toPublicError(new ConflictError("That already exists"), requestId);
     }
     if (message.includes("invalid credentials") || message.includes("wrong password")) {
-      return toPublicError(new Error(message), requestId); // VALIDATION_ERROR (generic)
+      return toPublicError(new ValidationError("Invalid input"), requestId);
     }
     if (message.includes("email not verified")) {
-      return toPublicError(new Error(message), requestId); // VALIDATION_ERROR
+      return toPublicError(new ValidationError("Invalid input"), requestId);
     }
     if (message.includes("rate limit") || message.includes("too many requests")) {
-      return toPublicError(new Error(message), requestId); // UNAVAILABLE
+      return toPublicError(Object.assign(new Error(message), { code: "57014" }), requestId);
     }
     if (message.includes("session not found") || message.includes("unauthorized")) {
-      return toPublicError(new Error(message), requestId); // NOT_FOUND
+      return toPublicError(new NotFoundError("Not found"), requestId);
     }
   }
   return toPublicError(error, requestId); // INTERNAL fallback
