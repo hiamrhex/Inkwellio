@@ -51,9 +51,9 @@ Rule for this file: a standard with no verification method is decoration, so it 
 | 14 | Authentication | Generic errors, equal timing, per-IP **and** per-account limits, spoofed-header test | credential stuffing is the default attack on a login form | brute-force script that rotates `x-forwarded-for` | planned |
 | 15 | Authorization | Full matrix: every route × {anon, A, B, admin}; deny by default | top real-world risk | matrix harness + route inventory that fails on unprotected route | planned |
 | 16 | Injection / XSS | Payload suite through the real render path; no `dangerouslySetInnerHTML` | user markdown is the main input | suite + lint ban | **shipped** (A8) |
-| 19 | Headers and redirects | HSTS, nosniff, frame denial, referrer and permissions policy; every redirect same-origin | the browser is the last boundary that always exists | header assertion + twelve-payload redirect table | planned (A13) |
+| 19 | Headers and redirects | HSTS, nosniff, frame denial, referrer and permissions policy; every redirect same-origin | the browser is the last boundary that always exists | header assertion + twelve-payload redirect table | **shipped** (A13) |
 | 22 | Abuse & cost | Limits on signup, login, OTP send (per email + per IP), publish; WAF rule | Gmail 500/day is a hard external ceiling | 429 tests + header assertions | planned |
-| 24 | Security logging | Audit events are database rows written in the action's transaction; no tokens, no plaintext email | one hour of log retention is not a record | aggregation test, redaction scan, `x-request-id` on every 5xx | planned (A10) |
+| 24 | Security logging | Audit events are database rows written in the action's transaction; no tokens, no plaintext email | one hour of log retention is not a record | aggregation test, redaction scan, `x-request-id` on every 5xx | **shipped** (A10) |
 | 29 | Backup/restore | One restore performed and timed | N4 is unmeetable without a path | drill record with timestamps | planned |
 | 34 | Timeouts | Every outbound call bounded, inner < platform limit | a slow DB should not become a 300 s hang | inject latency, assert clean error | planned |
 | 38/39 | Degradation | Written fail-open/closed matrix; public reads serve cached, writes fail closed | quota exhaustion is a realistic outage | drill: revoke DB credentials in a preview | planned |

@@ -6,11 +6,13 @@ describe("parseEnv", () => {
     expect(parseEnv({ NODE_ENV: "test" })).toEqual({
       NODE_ENV: "test",
       LOG_LEVEL: "info",
+      BETTER_AUTH_SECRET: "test-secret-minimum-32-characters-long",
+      BETTER_AUTH_URL: "http://localhost:3000",
     });
   });
 
   it("throws when a required variable is missing", () => {
-    expect(() => parseEnv({})).toThrow(/NODE_ENV/);
+    expect(() => parseEnv({ NODE_ENV: "production" })).toThrow(/BETTER_AUTH_SECRET/);
   });
 
   it("throws when a variable has an invalid value", () => {

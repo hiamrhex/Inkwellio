@@ -13,6 +13,21 @@ export default defineConfig([
       "react/no-danger": "error",
     },
   },
+  {
+    // Application code never writes to a console: in the browser it is a
+    // disclosure channel, and on the server it is unstructured. `kernel/log.ts`
+    // is the single writer, and it is exempt below.
+    files: ["apps/web/src/**/*.{ts,tsx}"],
+    rules: {
+      "no-console": "error",
+    },
+  },
+  {
+    files: ["apps/web/src/kernel/log.ts"],
+    rules: {
+      "no-console": "off",
+    },
+  },
   globalIgnores([
     "**/node_modules/**",
     "**/.next/**",

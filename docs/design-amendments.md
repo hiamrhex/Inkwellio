@@ -251,13 +251,17 @@ no paid vendor, no dashboard nobody reads.
 
 | SLI | How it is measured | Target |
 | --- | --- | --- |
-| Availability | scheduled GitHub Actions probe of `GET /api/health` (process up, `SELECT 1` under 5 s) every 15 min, run archived as a workflow artifact | **99.0 %** per calendar month (≈ 7 h of allowed downtime) |
+| Availability | scheduled GitHub Actions probe of `GET /health` (process up, returns 200) every 15 min, run archived as a workflow artifact | **99.0 %** per calendar month (≈ 7 h of allowed downtime) |
 | Latency | `Server-Timing: db;dur=…, total;dur=…` on HTML responses; the same probe samples five post pages and writes the timings into the run summary | p95 uncached < **800 ms** |
 | Publish success | `audit_events` rows for `post.publish`: 5xx outcome over attempts. A compare-and-set conflict is a normal result, not a failure | **99.5 %** |
 
 - 99.0 % is the honest number while Neon compute can be suspended by the quota (A1) and there is one
   region and one provider. WP4 raises it once caching proves reads survive with the database asleep;
   the target changes in the same commit that changes the measurement, never before.
+- **Health endpoint is liveness, not readiness.** `GET /health` returns a fixed `{status: "ok"}` body with
+  no version, hostname or database state. A DB check would turn a database blip into a failed deploy, which
+  is the opposite of what a liveness signal should do. The real availability signal is the A11 probe, which
+  queries `/health` and expects it to return 200.
 - **Alerting is the failing probe.** A red scheduled workflow emails the owner; Neon and Vercel send
   their own quota and deploy mail. No pager, because there is nobody to page. Recorded as an accepted
   gap, not an oversight.

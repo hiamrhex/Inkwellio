@@ -24,10 +24,10 @@ Ship export, erasure, a data inventory, and terms in v1 (amendment A6).
 - Export is one authenticated `GET /api/account/export` returning JSON with the
   account, publication, every post, every revision in order, the current
   `draft_state`, slug history, and topics. Rate limited to one per hour; 25 MB
-  cap.
+  cap. **Shipped** in WP1b.
 - Erasure requires password re-entry and a single-use emailed token (15-minute
   TTL), then hard-deletes the user and every cascading row in one transaction.
-  The deletion screen offers the export first.
+  The deletion screen offers the export first. **Shipped** in WP1b.
 - No soft delete and no grace period: deletion means deletion, and no scheduler
   sits between the confirmation and the effect.
 - `/privacy` lists categories, purpose, location, and retention. `/terms` covers
@@ -51,6 +51,9 @@ Ship export, erasure, a data inventory, and terms in v1 (amendment A6).
 - Erasure purges cache tags, but a CDN copy can survive up to the page's
   `cacheLife` maximum (1 h). PITR and dumps can hold the rows for up to 7 days.
   `/privacy` states both.
+- **Shipped**: the erasure test proves the whole graph is deleted (E-039).
+  The export test is in the same test suite; the schema and constraints are
+  proven by the same CI job.
 - Deletion is not undoable. The UI makes that explicit and offers the export
   first; support is the owner's address on `/privacy`.
 - Account ids in audit rows are removed with the account; the action record

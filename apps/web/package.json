@@ -12,6 +12,8 @@
     "db:migrate": "drizzle-kit migrate"
   },
   "dependencies": {
+    "@better-auth/drizzle-adapter": "1.7.15",
+    "better-auth": "catalog:",
     "drizzle-orm": "catalog:",
     "next": "catalog:",
     "pg": "catalog:",
