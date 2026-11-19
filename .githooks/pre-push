@@ -1,0 +1,54 @@
+#!/bin/sh
+# Runs before every push. A non-zero exit aborts the push.
+#
+# 1. Refuses a non-fast-forward update of main: this repository never rewrites
+#    main, and --no-verify is forbidden (AGENTS.md).
+# 2. Scans the repository with gitleaks when the pinned binary is on PATH.
+# 3. Runs the full gate, `pnpm check`, so a red build cannot leave the machine.
+#
+# Keep this file LF-only. A CRLF shebang makes Git skip the hook on Windows.
+
+set -u
+
+failed=0
+
+# 1. Every ref being pushed arrives on stdin as:
+#    <local ref> <local sha> <remote ref> <remote sha>
+while read -r local_ref local_sha remote_ref remote_sha; do
+  [ "$remote_ref" = "refs/heads/main" ] || continue
+  # A remote sha of all zeros means the branch does not exist yet.
+  case "$remote_sha" in
+    *[!0]*) ;;
+    *) continue ;;
+  esac
+  if ! git merge-base --is-ancestor "$remote_sha" "$local_sha" 2>/dev/null; then
+    echo "pre-push: refusing a non-fast-forward update of main." >&2
+    echo "pre-push: rebase onto origin/main instead; force-push is never allowed." >&2
+    failed=1
+  fi
+done
+
+[ "$failed" -eq 0 ] || exit 1
+
+root=$(git rev-parse --show-toplevel) || exit 1
+cd "$root" || exit 1
+
+# 2. Secret scan. CI scans every push as the backstop; this is the local copy.
+if command -v gitleaks >/dev/null 2>&1; then
+  echo "pre-push: gitleaks history scan"
+  if ! gitleaks git --no-banner --redact --log-opts=--all .; then
+    echo "pre-push: gitleaks found a secret. Nothing was pushed." >&2
+    exit 1
+  fi
+else
+  echo "pre-push: gitleaks not on PATH; CI still scans every push" >&2
+fi
+
+# 3. The full gate: lint, typecheck, tests, seams, production build.
+echo "pre-push: pnpm check"
+if ! pnpm check; then
+  echo "pre-push: pnpm check failed. Nothing was pushed." >&2
+  exit 1
+fi
+
+exit 0

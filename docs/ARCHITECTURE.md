@@ -104,6 +104,26 @@ TypeScript is pinned to the newest 5.x, not 7.x: Next 16 documents TypeScript
 | `pnpm build` | production Next.js build |
 | `pnpm check` | lint, typecheck, test, boundaries, build |
 
+## Hooks
+
+`.githooks/` is committed and activated by `core.hooksPath`, which
+`tools/install-hooks.mjs` sets from the root `prepare` script (pnpm runs
+`prepare` on every `pnpm install`; E-030) with `pnpm hooks:install` as the
+manual fallback. Hooks without the executable bit are ignored, so the two
+scripts are committed as mode `100755` (E-031).
+
+- `post-commit` pushes when a second unpushed commit exists. It runs after the
+  commit and cannot fail it.
+- `pre-push` refuses a non-fast-forward update of `main`, runs gitleaks when the
+  pinned binary is on PATH, then `pnpm check`. A non-zero exit aborts the push.
+
+`.gitattributes` pins `.githooks/*` to LF: a CRLF shebang silently stops a hook
+from running on Windows, and the failure is invisible. E-032 records the
+installed mode, the attribute values, and `git hook run post-commit` returning
+0, which is Git resolving the hook through `core.hooksPath`.
+
+Hooks are local and can be bypassed; CI re-runs the same gates and cannot be.
+
 ## CI
 
 `.github/workflows/ci.yml` runs on pushes to `main` and on pull requests with

@@ -1,0 +1,8 @@
+# Git hooks live here and are installed with `core.hooksPath` (see
+# tools/install-hooks.mjs). `prepare` runs them automatically on `pnpm install`.
+#
+# Hooks run on Windows through Git's bundled sh, which reads the shebang. A CRLF
+# line ending changes the shebang to `#!/bin/sh\r` and Git silently refuses to
+# run the hook, so these two lines are load-bearing.
+.githooks/* text eol=lf
+*.sh text eol=lf

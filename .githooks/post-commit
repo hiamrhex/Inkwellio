@@ -1,0 +1,25 @@
+#!/bin/sh
+# Runs after every commit. Must never change the commit's outcome, so it always
+# exits 0.
+#
+# Owner rule (AGENTS.md): never leave more than two unpushed commits. When a
+# second one exists, push. Never force: a rejected push is reported and the
+# commits stay local.
+#
+# Keep this file LF-only. A CRLF shebang makes Git skip the hook on Windows.
+
+set -u
+
+count=$(git rev-list --count '@{u}..HEAD' 2>/dev/null) || exit 0
+case "$count" in
+  ''|*[!0-9]*) exit 0 ;;
+esac
+
+[ "$count" -ge 2 ] || exit 0
+
+branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo '?')
+echo "post-commit: $count unpushed commits on $branch — pushing (never forced)"
+if ! git push; then
+  echo "post-commit: push failed. Commits are kept locally; fix the cause and push." >&2
+fi
+exit 0

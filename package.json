@@ -16,6 +16,8 @@
     "typecheck": "pnpm --recursive --if-present run typecheck",
     "test": "vitest run",
     "check:boundaries": "depcruise apps/web/src packages --config .dependency-cruiser.cjs",
+    "hooks:install": "node tools/install-hooks.mjs",
+    "prepare": "node tools/install-hooks.mjs",
     "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm check:boundaries && pnpm build"
   },
   "devDependencies": {
