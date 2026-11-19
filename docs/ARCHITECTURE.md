@@ -4,7 +4,9 @@ Status: WP0 (repo and rails). No database, auth, or feature code exists yet.
 
 Source of truth: [Blog Platform Architecture and System Design](https://claude.ai/artifact/REChTt6t3FroWDZ3gW8fc9).
 Owner-approved changes are recorded in [design-amendments.md](./design-amendments.md).
-Delivery order and risks are in [PLAN.md](./PLAN.md) and [AUDIT.md](./AUDIT.md).
+Delivery order and risks are in [PLAN.md](./PLAN.md) and [AUDIT.md](./AUDIT.md). The received design
+audit is [design-audit-2026-11-18.md](./design-audit-2026-11-18.md); its findings are triaged at the
+top of [design-amendments.md](./design-amendments.md).
 
 ## Shape
 
@@ -135,6 +137,7 @@ revisit this once Developer Mode is enabled.
 
 See `docs/adr/`: 001 modular monolith, 002 Postgres, 003 Neon WebSocket driver,
 004 Drizzle, 005 Better Auth, 006 one publication per user, 007 append-only
-revisions and two pointers, 008 Markdown, 009 TypeScript and Zod, 010
-three-layer rate limiting, 011 `/@name` URLs, 012 curated topics and admin,
-013 Vercel Hobby, 014 export and erasure.
+revisions with a moving published pointer, 008 Markdown, 009 TypeScript and Zod,
+010 three-layer rate limiting, 011 `/@name` URLs, 012 curated topics and admin,
+013 Vercel Hobby, 014 export and erasure. `docs/adr/README.md` carries each
+record's falsifier and revisit date, plus the template for the next one.

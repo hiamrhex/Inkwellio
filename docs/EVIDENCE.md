@@ -30,6 +30,8 @@ Date column is the date the evidence was captured, not the date the source was p
 | E-023 | B5 | Hobby deploys functions to a **single** region; default is `iad1`; `regions` accepts one value on Hobby | docs read | vercel.com/docs/functions/configuring-functions/region | 2026-11-18 | confirmed |
 | E-024 | B5 | `lhr1` = AWS `eu-west-2`, London | docs read | vercel.com/docs/regions | 2026-11-18 | confirmed |
 | E-025 | E40 | Neon regions include `aws-eu-west-2` (London); a project's region is fixed at creation and cannot be changed | docs read | neon.com/docs/introduction/regions (updated 2026-10-14) | 2026-11-18 | confirmed |
+| E-026 | C21 | Secret scanning runs **automatically and free on public repositories**, over full history and issues/PRs | docs read | docs.github.com/en/code-security/secret-scanning/introduction/about-secret-scanning | 2026-11-19 | confirmed |
+| E-027 | I27 | A **public** repository can enable private vulnerability reporting; reports are private, and the report form can require a CWE | docs read | docs.github.com/en/code-security/security-advisories/working-with-repository-security-advisories/configuring-private-vulnerability-reporting-for-a-repository | 2026-11-19 | confirmed |
 
 ## Stale markers
 
@@ -45,3 +47,8 @@ before launch (WP9), because every one of them is a ceiling this design is engin
 - U-5 Neon CU-hour consumption under real caching — arithmetic only, no measurement.
 - U-6 Enforcement of Hobby "personal use" for a public multi-user service.
 - U-7 Standards versions in STANDARDS §5 are `[S]` (skill reference list), not re-opened.
+- U-8 The plan requirement for branch protection rules, required status checks and push protection on a
+  **user-owned public** repository was not read this session. Enable them and record what the settings
+  page offers at that moment (A12).
+- U-9 MFA availability on the Vercel and Neon free plans was not re-read this session. Both are required
+  at WP9 regardless; the plan check happens when the setting is opened (A12).

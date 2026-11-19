@@ -44,20 +44,22 @@ Rule for this file: a standard with no verification method is decoration, so it 
 | # | Layer | Check | Why here | Verified by | Status |
 | --- | --- | --- | --- | --- | --- |
 | 5 | Boundaries | Bad import fails CI; no module imports another's internals | N7 is otherwise unfalsifiable | one deliberately wrong import + red CI | planned |
-| 6 | Data model | Unique publication per owner; slug unique per publication; published ⇒ pointer non-null; pointer ∈ own revisions | illegal states become unrepresentable | constraint tests on real Postgres (Docker) | planned |
+| 6 | Data model | Unique publication per owner; slug unique per publication; published ⇒ pointer non-null; pointer ∈ own revisions; `audit_events` exists and is written in-transaction | illegal states become unrepresentable | constraint tests on real Postgres (Docker) | planned |
 | 8 | Concurrency | Two parallel saves cannot both win; 50 parallel publication creations yield one row | draft loss is the product's worst failure | parallel-request test | planned |
 | 11 | SPOF | Every provider listed with mitigation or written acceptance | solo/free tier concentrates risk | register in FAILURE_MODES | planned |
 | 12 | Config | Env validated at boot, fail fast; no secrets in bundle | standard serverless footgun | boot with missing/invalid env must refuse to start | planned |
 | 14 | Authentication | Generic errors, equal timing, per-IP **and** per-account limits, spoofed-header test | credential stuffing is the default attack on a login form | brute-force script that rotates `x-forwarded-for` | planned |
 | 15 | Authorization | Full matrix: every route × {anon, A, B, admin}; deny by default | top real-world risk | matrix harness + route inventory that fails on unprotected route | planned |
-| 16 | Injection / XSS | Payload suite through the real render path; no `dangerouslySetInnerHTML` | user markdown is the main input | suite + lint ban | planned |
+| 16 | Injection / XSS | Payload suite through the real render path; no `dangerouslySetInnerHTML` | user markdown is the main input | suite + lint ban | **shipped** (A8) |
+| 19 | Headers and redirects | HSTS, nosniff, frame denial, referrer and permissions policy; every redirect same-origin | the browser is the last boundary that always exists | header assertion + twelve-payload redirect table | planned (A13) |
 | 22 | Abuse & cost | Limits on signup, login, OTP send (per email + per IP), publish; WAF rule | Gmail 500/day is a hard external ceiling | 429 tests + header assertions | planned |
-| 24 | Security logging | Auth events logged; no secrets/PII in logs or error tracker | 1 h log retention means the log must be right first time | send a token in a query string, inspect output | planned |
+| 24 | Security logging | Audit events are database rows written in the action's transaction; no tokens, no plaintext email | one hour of log retention is not a record | aggregation test, redaction scan, `x-request-id` on every 5xx | planned (A10) |
 | 29 | Backup/restore | One restore performed and timed | N4 is unmeetable without a path | drill record with timestamps | planned |
 | 34 | Timeouts | Every outbound call bounded, inner < platform limit | a slow DB should not become a 300 s hang | inject latency, assert clean error | planned |
 | 38/39 | Degradation | Written fail-open/closed matrix; public reads serve cached, writes fail closed | quota exhaustion is a realistic outage | drill: revoke DB credentials in a preview | planned |
 | 46 | CI gates | lint, types, tests, build, audit, secret scan, boundary, authz matrix, XSS, Lighthouse, migration check | the only thing that stops regressions at bus factor 1 | red-CI proof per gate | planned |
-| 53 | Observability | Request IDs, structured logs, one error sink | Hobby keeps 1 h | follow one error end to end | planned |
+| 53 | Observability | One request id from proxy → audit row → response; structured stdout for the hour the platform keeps | incident tracing with 1 h retention | follow one error end to end | planned (A10) |
+| 33/42 | Service levels | Three SLIs measured without a paid vendor; one recorded load baseline before any writer is invited | a target that is not measured is decoration | probe history, `Server-Timing`, baseline record | planned (A11) |
 | 62/63 | Tests | Tests on the real engine (Postgres container), regression test per fixed bug | in-memory SQLite would hide constraint behaviour | CI job using `postgres:17` service | planned |
 | 65 | Accessibility | WCAG 2.2 AA on key pages | `[S]` WCAG 2.2; readers are the audience | axe + keyboard-only pass | planned |
 | 71 | Compliance | Privacy policy, export, delete-account | NDPA + GDPR-minimum for an EU-reachable site | deletion test that greps every table for residue | planned |
