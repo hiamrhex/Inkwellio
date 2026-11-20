@@ -49,13 +49,16 @@ export function getAuth() {
     basePath: "/api/auth",
     secret,
 
-    database: drizzleAdapter(getDb(), {
-      provider: "pg",
-      schema: {
-        user: users,
+    database: drizzleAdapter(
+      process.env.DATABASE_URL ? getDb() : ({} as ReturnType<typeof getDb>),
+      {
+        provider: "pg",
+        schema: {
+          user: users,
+        },
+        usePlural: true,
       },
-      usePlural: true,
-    }),
+    ),
 
     emailAndPassword: {
       enabled: true,
@@ -78,7 +81,7 @@ export function getAuth() {
     },
 
     session: {
-      modelName: "sessions",
+      modelName: "session",
       expiresIn: 60 * 60 * 24 * 7, // 7 days
       updateAge: 60 * 60 * 24, // 1 day
       storeSessionInDatabase: true,
@@ -88,7 +91,7 @@ export function getAuth() {
     },
 
     account: {
-      modelName: "accounts",
+      modelName: "account",
       encryptOAuthTokens: true,
       storeStateStrategy: "database",
     },
