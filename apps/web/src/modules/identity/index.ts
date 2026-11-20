@@ -21,6 +21,7 @@ import { users } from "./schema";
 
 // Re-export for other modules
 export { users };
+export * from "./limiter";
 
 /**
  * Lazy Better Auth instance.
@@ -103,8 +104,14 @@ export function getAuth() {
 
     rateLimit: {
       enabled: true,
-      window: 10,
+      window: 60,
       max: 100,
+      customRules: {
+        "/sign-in/email": {
+          window: 600,
+          max: 5,
+        },
+      },
       storage: "database",
       modelName: "rate_limit",
     },

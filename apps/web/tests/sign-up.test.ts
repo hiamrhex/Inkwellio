@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { hashPassword, verifyPassword } from "better-auth/crypto";
 import { mapAuthError } from "../src/modules/identity";
-import { ConflictError } from "../src/kernel/errors";
 import { getPool } from "../src/kernel/db";
 
 const DATABASE_URL = process.env.DATABASE_URL;
