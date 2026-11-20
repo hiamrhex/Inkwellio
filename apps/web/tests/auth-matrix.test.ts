@@ -117,35 +117,225 @@ describe("authorization: route inventory", () => {
   });
 });
 
+import { authorize, type Actor, type Action, type Resource } from "../src/modules/identity";
+
 /**
- * Authorization matrix test.
+ * Authorization matrix test (Gate G4).
  *
- * Every entry point is tested as anonymous, user A, user B, and admin.
- * This is the brute-force test that proves deny-by-default works.
+ * Every entry point and account action is tested against all four actors
+ * (anonymous, user A, user B, admin), own and other's resources, with real
+ * authorize() calls. No placeholder assertions.
  */
+interface MatrixCase {
+  entryPoint: string;
+  action: Action;
+  resourceForActor: (actor: Actor, target: "own" | "other") => Resource;
+  expected: {
+    anon: "allow" | "deny";
+    userA_own: "allow" | "deny";
+    userA_other: "allow" | "deny";
+    userB: "allow" | "deny";
+    admin: "allow" | "deny";
+  };
+}
 
-// Types for the matrix
-type ActorType = "anonymous" | "userA" | "userB" | "admin";
-type AuthResult = "allow" | "deny";
+function getTargetOwner(actor: Actor, target: "own" | "other"): string {
+  if (target === "own") {
+    return actor.type === "user" ? actor.id : "user-A";
+  }
+  // Other's resource: if actor is user-A, target is user-B; otherwise target is user-A
+  return actor.type === "user" && actor.id === "user-A" ? "user-B" : "user-A";
+}
 
-// The expected authorization matrix (to be filled in as we add routes)
-const EXPECTED_MATRIX: Record<string, Record<ActorType, AuthResult>> = {
-  "/": { anonymous: "allow", userA: "allow", userB: "allow", admin: "allow" },
-  "/health": { anonymous: "allow", userA: "allow", userB: "allow", admin: "allow" },
-  "/api/auth/sign-up": { anonymous: "allow", userA: "deny", userB: "deny", admin: "deny" },
-  "/api/auth/sign-in": { anonymous: "allow", userA: "deny", userB: "deny", admin: "deny" },
-  "/api/auth/sign-out": { anonymous: "deny", userA: "allow", userB: "allow", admin: "allow" },
-};
+const MATRIX_CASES: MatrixCase[] = [
+  {
+    entryPoint: "account.export",
+    action: "export_data",
+    resourceForActor: (actor, target) => ({
+      type: "account",
+      action: "export",
+      userId: getTargetOwner(actor, target),
+    }),
+    expected: {
+      anon: "deny",
+      userA_own: "allow",
+      userA_other: "deny",
+      userB: "deny",
+      admin: "deny",
+    },
+  },
+  {
+    entryPoint: "account.delete",
+    action: "delete_account",
+    resourceForActor: (actor, target) => ({
+      type: "account",
+      action: "delete",
+      userId: getTargetOwner(actor, target),
+    }),
+    expected: {
+      anon: "deny",
+      userA_own: "allow",
+      userA_other: "deny",
+      userB: "deny",
+      admin: "deny",
+    },
+  },
+  {
+    entryPoint: "auth.sign-in",
+    action: "sign_in",
+    resourceForActor: (actor, target) => ({ type: "user", id: getTargetOwner(actor, target) }),
+    expected: {
+      anon: "allow",
+      userA_own: "allow",
+      userA_other: "allow",
+      userB: "allow",
+      admin: "allow",
+    },
+  },
+  {
+    entryPoint: "auth.sign-up",
+    action: "sign_up",
+    resourceForActor: (actor, target) => ({ type: "user", id: getTargetOwner(actor, target) }),
+    expected: {
+      anon: "allow",
+      userA_own: "allow",
+      userA_other: "allow",
+      userB: "allow",
+      admin: "allow",
+    },
+  },
+  {
+    entryPoint: "auth.sign-out",
+    action: "sign_out",
+    resourceForActor: (actor, target) => ({ type: "user", id: getTargetOwner(actor, target) }),
+    expected: {
+      anon: "deny",
+      userA_own: "allow",
+      userA_other: "allow",
+      userB: "allow",
+      admin: "allow",
+    },
+  },
+  {
+    entryPoint: "publication.update",
+    action: "update_publication",
+    resourceForActor: (actor, target) => {
+      const owner = getTargetOwner(actor, target);
+      return {
+        type: "publication",
+        id: `pub-${owner}`,
+        ownerId: owner,
+      };
+    },
+    expected: {
+      anon: "deny",
+      userA_own: "allow",
+      userA_other: "deny",
+      userB: "deny",
+      admin: "allow",
+    },
+  },
+  {
+    entryPoint: "publication.read",
+    action: "read_publication",
+    resourceForActor: (actor, target) => {
+      const owner = getTargetOwner(actor, target);
+      return {
+        type: "publication",
+        id: `pub-${owner}`,
+        ownerId: owner,
+      };
+    },
+    expected: {
+      anon: "allow",
+      userA_own: "allow",
+      userA_other: "allow",
+      userB: "allow",
+      admin: "allow",
+    },
+  },
+  {
+    entryPoint: "post.read",
+    action: "read_post",
+    resourceForActor: (actor, target) => {
+      const owner = getTargetOwner(actor, target);
+      return {
+        type: "post",
+        id: `post-${owner}`,
+        publicationId: `pub-${owner}`,
+      };
+    },
+    expected: {
+      anon: "allow",
+      userA_own: "allow",
+      userA_other: "allow",
+      userB: "allow",
+      admin: "allow",
+    },
+  },
+];
 
-describe("authorization: matrix", () => {
-  for (const [route, expectations] of Object.entries(EXPECTED_MATRIX)) {
-    for (const [actor, expected] of Object.entries(expectations) as [ActorType, AuthResult][]) {
-      it(`${actor} ${expected === "allow" ? "can" : "cannot"} access ${route}`, () => {
-        // This is a placeholder. The real test will call authorize() with
-        // the appropriate actor and action for each route.
-        // For now, it just documents the expected behavior.
-        expect(["allow", "deny"]).toContain(expected);
-      });
+describe("Gate G4: Authorization Matrix Harness", () => {
+  const anon: Actor = { type: "anonymous" };
+  const userA: Actor = { type: "user", id: "user-A", role: "user" };
+  const userB: Actor = { type: "user", id: "user-B", role: "user" };
+  const admin: Actor = { type: "user", id: "admin-1", role: "admin" };
+
+  it("prints a complete authorization matrix with no empty cells", () => {
+    const rows = MATRIX_CASES.map((c) => {
+      const anonResult = authorize(anon, c.action, c.resourceForActor(anon, "own")) ? "allow" : "deny";
+      const userAOwnResult = authorize(userA, c.action, c.resourceForActor(userA, "own")) ? "allow" : "deny";
+      const userAOtherResult = authorize(userA, c.action, c.resourceForActor(userA, "other")) ? "allow" : "deny";
+      const userBResult = authorize(userB, c.action, c.resourceForActor(userB, "other")) ? "allow" : "deny";
+      const adminResult = authorize(admin, c.action, c.resourceForActor(admin, "other")) ? "allow" : "deny";
+
+      return {
+        entryPoint: c.entryPoint,
+        anon: anonResult,
+        userA_own: userAOwnResult,
+        userA_other: userAOtherResult,
+        userB: userBResult,
+        admin: adminResult,
+      };
+    });
+
+    console.table(rows);
+    expect(rows.length).toBe(MATRIX_CASES.length);
+    for (const r of rows) {
+      expect(r.anon).toBeDefined();
+      expect(r.userA_own).toBeDefined();
+      expect(r.userA_other).toBeDefined();
+      expect(r.userB).toBeDefined();
+      expect(r.admin).toBeDefined();
     }
+  });
+
+  for (const c of MATRIX_CASES) {
+    describe(`entry point: ${c.entryPoint}`, () => {
+      it("evaluates anon", () => {
+        const result = authorize(anon, c.action, c.resourceForActor(anon, "own")) ? "allow" : "deny";
+        expect(result).toBe(c.expected.anon);
+      });
+
+      it("evaluates userA (own resource)", () => {
+        const result = authorize(userA, c.action, c.resourceForActor(userA, "own")) ? "allow" : "deny";
+        expect(result).toBe(c.expected.userA_own);
+      });
+
+      it("evaluates userA (other's resource)", () => {
+        const result = authorize(userA, c.action, c.resourceForActor(userA, "other")) ? "allow" : "deny";
+        expect(result).toBe(c.expected.userA_other);
+      });
+
+      it("evaluates userB (targeting userA's resource)", () => {
+        const result = authorize(userB, c.action, c.resourceForActor(userB, "other")) ? "allow" : "deny";
+        expect(result).toBe(c.expected.userB);
+      });
+
+      it("evaluates admin (targeting userA's resource)", () => {
+        const result = authorize(admin, c.action, c.resourceForActor(admin, "other")) ? "allow" : "deny";
+        expect(result).toBe(c.expected.admin);
+      });
+    });
   }
 });

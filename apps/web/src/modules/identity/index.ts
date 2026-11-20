@@ -206,19 +206,31 @@ export type Actor =
   | { type: "user"; id: string; role: "user" | "admin" };
 
 export function authorize(actor: Actor, action: Action, resource: Resource): boolean {
-  // Anonymous can only sign up, sign in, verify email, reset password
-  if (actor.type === "anonymous") {
-    return [
-      "sign_up",
-      "sign_in",
-      "verify_email",
-      "reset_password",
-      "read_publication",
-      "read_post",
-    ].includes(action);
+  // Public actions permitted to anyone (anonymous or authenticated)
+  if (["sign_up", "sign_in", "verify_email", "reset_password", "read_publication", "read_post"].includes(action)) {
+    return true;
   }
 
-  // Admin can do everything
+  // Anonymous cannot perform any other action
+  if (actor.type === "anonymous") {
+    return false;
+  }
+
+  // Sign out is permitted to any authenticated user
+  if (action === "sign_out") {
+    return true;
+  }
+
+  // Account export and deletion are strictly self-service for the account owner
+  if (resource.type === "account") {
+    return (
+      actor.type === "user" &&
+      resource.userId === actor.id &&
+      (resource.action === "export" || resource.action === "delete")
+    );
+  }
+
+  // Admin can do everything else
   if (actor.role === "admin") {
     return true;
   }
@@ -230,10 +242,8 @@ export function authorize(actor: Actor, action: Action, resource: Resource): boo
     case "publication":
       return resource.ownerId === actor.id;
     case "post":
-      // Post authorization goes through publication ownership
-      return false; // Must check publication ownership separately
-    case "account":
-      return resource.userId === actor.id && (resource.action === "export" || resource.action === "delete");
+      // Post modification goes through publication ownership
+      return false;
   }
 
   return false;
