@@ -10,11 +10,18 @@ import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 import { getDb } from "@/kernel/db";
 import { env } from "@/kernel/env";
 import { logEvent } from "@/kernel/log";
-import { toPublicError, type PublicError } from "@/kernel/errors";
+import {
+  ConflictError,
+  NotFoundError,
+  ValidationError,
+  toPublicError,
+  type PublicError,
+} from "@/kernel/errors";
 import { users } from "./schema";
 
 // Re-export for other modules
 export { users };
+export * from "./limiter";
 
 /**
  * Lazy Better Auth instance.
@@ -43,13 +50,16 @@ export function getAuth() {
     basePath: "/api/auth",
     secret,
 
-    database: drizzleAdapter(getDb(), {
-      provider: "pg",
-      schema: {
-        user: users,
+    database: drizzleAdapter(
+      process.env.DATABASE_URL ? getDb() : ({} as ReturnType<typeof getDb>),
+      {
+        provider: "pg",
+        schema: {
+          user: users,
+        },
+        usePlural: true,
       },
-      usePlural: true,
-    }),
+    ),
 
     emailAndPassword: {
       enabled: true,
@@ -72,7 +82,7 @@ export function getAuth() {
     },
 
     session: {
-      modelName: "sessions",
+      modelName: "session",
       expiresIn: 60 * 60 * 24 * 7, // 7 days
       updateAge: 60 * 60 * 24, // 1 day
       storeSessionInDatabase: true,
@@ -82,7 +92,7 @@ export function getAuth() {
     },
 
     account: {
-      modelName: "accounts",
+      modelName: "account",
       encryptOAuthTokens: true,
       storeStateStrategy: "database",
     },
@@ -94,8 +104,14 @@ export function getAuth() {
 
     rateLimit: {
       enabled: true,
-      window: 10,
+      window: 60,
       max: 100,
+      customRules: {
+        "/sign-in/email": {
+          window: 600,
+          max: 5,
+        },
+      },
       storage: "database",
       modelName: "rate_limit",
     },
@@ -190,26 +206,38 @@ export type Resource =
   | { type: "user"; id: string }
   | { type: "publication"; id: string; ownerId: string }
   | { type: "post"; id: string; publicationId: string }
-  | { type: "account"; action: "export" | "delete" };
+  | { type: "account"; action: "export" | "delete"; userId: string };
 
 export type Actor =
   | { type: "anonymous" }
   | { type: "user"; id: string; role: "user" | "admin" };
 
 export function authorize(actor: Actor, action: Action, resource: Resource): boolean {
-  // Anonymous can only sign up, sign in, verify email, reset password
-  if (actor.type === "anonymous") {
-    return [
-      "sign_up",
-      "sign_in",
-      "verify_email",
-      "reset_password",
-      "read_publication",
-      "read_post",
-    ].includes(action);
+  // Public actions permitted to anyone (anonymous or authenticated)
+  if (["sign_up", "sign_in", "verify_email", "reset_password", "read_publication", "read_post"].includes(action)) {
+    return true;
   }
 
-  // Admin can do everything
+  // Anonymous cannot perform any other action
+  if (actor.type === "anonymous") {
+    return false;
+  }
+
+  // Sign out is permitted to any authenticated user
+  if (action === "sign_out") {
+    return true;
+  }
+
+  // Account export and deletion are strictly self-service for the account owner
+  if (resource.type === "account") {
+    return (
+      actor.type === "user" &&
+      resource.userId === actor.id &&
+      (resource.action === "export" || resource.action === "delete")
+    );
+  }
+
+  // Admin can do everything else
   if (actor.role === "admin") {
     return true;
   }
@@ -221,10 +249,8 @@ export function authorize(actor: Actor, action: Action, resource: Resource): boo
     case "publication":
       return resource.ownerId === actor.id;
     case "post":
-      // Post authorization goes through publication ownership
-      return false; // Must check publication ownership separately
-    case "account":
-      return resource.action === "export" || resource.action === "delete";
+      // Post modification goes through publication ownership
+      return false;
   }
 
   return false;
@@ -299,23 +325,66 @@ export function safeRedirect(target: string, requestOrigin: string): string {
  * client; only the public code and a fixed message do.
  */
 export function mapAuthError(error: unknown, requestId: string): PublicError {
-  if (error instanceof Error) {
-    const message = error.message;
-    if (message.includes("user already exists") || message.includes("email already in use")) {
-      return toPublicError(new Error(message), requestId); // CONFLICT
-    }
-    if (message.includes("invalid credentials") || message.includes("wrong password")) {
-      return toPublicError(new Error(message), requestId); // VALIDATION_ERROR (generic)
-    }
-    if (message.includes("email not verified")) {
-      return toPublicError(new Error(message), requestId); // VALIDATION_ERROR
-    }
-    if (message.includes("rate limit") || message.includes("too many requests")) {
-      return toPublicError(new Error(message), requestId); // UNAVAILABLE
-    }
-    if (message.includes("session not found") || message.includes("unauthorized")) {
-      return toPublicError(new Error(message), requestId); // NOT_FOUND
-    }
+  const message =
+    error instanceof Error
+      ? error.message
+      : typeof error === "object" && error !== null && "message" in error
+        ? String((error as { message: unknown }).message)
+        : "";
+
+  const code =
+    typeof error === "object" && error !== null
+      ? ((error as { code?: string }).code ??
+         (error as { cause?: { code?: string } }).cause?.code)
+      : undefined;
+
+  const lowerMsg = message.toLowerCase();
+  const upperCode = code?.toUpperCase() ?? "";
+
+  // Duplicate / conflict
+  if (
+    code === "23505" ||
+    lowerMsg.includes("23505") ||
+    lowerMsg.includes("unique constraint") ||
+    lowerMsg.includes("user already exists") ||
+    lowerMsg.includes("email already in use")
+  ) {
+    return toPublicError(new ConflictError("That already exists"), requestId);
   }
+
+  // Authentication failure / account enumeration protection (G6)
+  // Maps all credential / unknown user / bad password / unverified failures to identical 400 VALIDATION_ERROR
+  if (
+    upperCode === "USER_NOT_FOUND" ||
+    upperCode === "INVALID_EMAIL_OR_PASSWORD" ||
+    upperCode === "INVALID_CREDENTIALS" ||
+    lowerMsg.includes("user_not_found") ||
+    lowerMsg.includes("invalid_email_or_password") ||
+    lowerMsg.includes("user not found") ||
+    lowerMsg.includes("user does not exist") ||
+    lowerMsg.includes("account not found") ||
+    lowerMsg.includes("invalid credentials") ||
+    lowerMsg.includes("wrong password") ||
+    lowerMsg.includes("invalid email or password") ||
+    lowerMsg.includes("email not verified")
+  ) {
+    return toPublicError(new ValidationError("Invalid input"), requestId);
+  }
+
+  // Rate limiting
+  if (
+    upperCode === "RATE_LIMITED" ||
+    upperCode === "TOO_MANY_REQUESTS" ||
+    lowerMsg.includes("rate limit") ||
+    lowerMsg.includes("too many requests")
+  ) {
+    return toPublicError(Object.assign(new Error(message), { code: "57014" }), requestId);
+  }
+
+  // Session / resource not found
+  if (lowerMsg.includes("session not found") || lowerMsg.includes("unauthorized")) {
+    return toPublicError(new NotFoundError("Not found"), requestId);
+  }
+
   return toPublicError(error, requestId); // INTERNAL fallback
 }
