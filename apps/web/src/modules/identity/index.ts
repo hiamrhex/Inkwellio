@@ -325,33 +325,66 @@ export function safeRedirect(target: string, requestOrigin: string): string {
  * client; only the public code and a fixed message do.
  */
 export function mapAuthError(error: unknown, requestId: string): PublicError {
-  if (error instanceof Error) {
-    const message = error.message;
-    const code =
-      (error as unknown as { code?: string }).code ??
-      (error as unknown as { cause?: { code?: string } }).cause?.code;
+  const message =
+    error instanceof Error
+      ? error.message
+      : typeof error === "object" && error !== null && "message" in error
+        ? String((error as { message: unknown }).message)
+        : "";
 
-    if (
-      code === "23505" ||
-      message.includes("23505") ||
-      message.includes("unique constraint") ||
-      message.includes("user already exists") ||
-      message.includes("email already in use")
-    ) {
-      return toPublicError(new ConflictError("That already exists"), requestId);
-    }
-    if (message.includes("invalid credentials") || message.includes("wrong password")) {
-      return toPublicError(new ValidationError("Invalid input"), requestId);
-    }
-    if (message.includes("email not verified")) {
-      return toPublicError(new ValidationError("Invalid input"), requestId);
-    }
-    if (message.includes("rate limit") || message.includes("too many requests")) {
-      return toPublicError(Object.assign(new Error(message), { code: "57014" }), requestId);
-    }
-    if (message.includes("session not found") || message.includes("unauthorized")) {
-      return toPublicError(new NotFoundError("Not found"), requestId);
-    }
+  const code =
+    typeof error === "object" && error !== null
+      ? ((error as { code?: string }).code ??
+         (error as { cause?: { code?: string } }).cause?.code)
+      : undefined;
+
+  const lowerMsg = message.toLowerCase();
+  const upperCode = code?.toUpperCase() ?? "";
+
+  // Duplicate / conflict
+  if (
+    code === "23505" ||
+    lowerMsg.includes("23505") ||
+    lowerMsg.includes("unique constraint") ||
+    lowerMsg.includes("user already exists") ||
+    lowerMsg.includes("email already in use")
+  ) {
+    return toPublicError(new ConflictError("That already exists"), requestId);
   }
+
+  // Authentication failure / account enumeration protection (G6)
+  // Maps all credential / unknown user / bad password / unverified failures to identical 400 VALIDATION_ERROR
+  if (
+    upperCode === "USER_NOT_FOUND" ||
+    upperCode === "INVALID_EMAIL_OR_PASSWORD" ||
+    upperCode === "INVALID_CREDENTIALS" ||
+    lowerMsg.includes("user_not_found") ||
+    lowerMsg.includes("invalid_email_or_password") ||
+    lowerMsg.includes("user not found") ||
+    lowerMsg.includes("user does not exist") ||
+    lowerMsg.includes("account not found") ||
+    lowerMsg.includes("invalid credentials") ||
+    lowerMsg.includes("wrong password") ||
+    lowerMsg.includes("invalid email or password") ||
+    lowerMsg.includes("email not verified")
+  ) {
+    return toPublicError(new ValidationError("Invalid input"), requestId);
+  }
+
+  // Rate limiting
+  if (
+    upperCode === "RATE_LIMITED" ||
+    upperCode === "TOO_MANY_REQUESTS" ||
+    lowerMsg.includes("rate limit") ||
+    lowerMsg.includes("too many requests")
+  ) {
+    return toPublicError(Object.assign(new Error(message), { code: "57014" }), requestId);
+  }
+
+  // Session / resource not found
+  if (lowerMsg.includes("session not found") || lowerMsg.includes("unauthorized")) {
+    return toPublicError(new NotFoundError("Not found"), requestId);
+  }
+
   return toPublicError(error, requestId); // INTERNAL fallback
 }
