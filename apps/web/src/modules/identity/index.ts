@@ -22,6 +22,7 @@ import { users } from "./schema";
 // Re-export for other modules
 export { users };
 export * from "./limiter";
+export * from "./audit";
 
 /**
  * Lazy Better Auth instance.
