@@ -9,6 +9,11 @@ export default defineConfig({
     environment: "node",
     include: ["apps/web/tests/**/*.test.ts"],
     restoreMocks: true,
+    // Every test file shares one Postgres database, and the WP1 suite resets
+    // the `public` schema. Running files in parallel lets one file drop tables
+    // while another is writing (CI: audit.test.ts saw 2 rows where 1 was
+    // expected). Serial execution makes the database deterministic.
+    fileParallelism: false,
   },
   resolve: {
     alias: {

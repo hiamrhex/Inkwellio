@@ -1,4 +1,7 @@
-import { describe, expect, it, beforeEach } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import {
   recordAuditEvent,
   getAuditEvents,
@@ -6,10 +9,51 @@ import {
   hashIp,
   hashEmail,
 } from "../src/modules/identity/audit";
+import { getPool } from "../src/kernel/db";
+
+const DATABASE_URL = process.env.DATABASE_URL;
+const DRIZZLE_DIR = fileURLToPath(new URL("../drizzle/", import.meta.url));
+
+/**
+ * The database is shared by every test file, and only the WP1 suite creates the
+ * schema. Under `fileParallelism: false` this file may run first, so create the
+ * schema itself rather than silently falling back to the in-memory store (which
+ * would make this gate prove nothing).
+ */
+async function ensureSchema(): Promise<void> {
+  if (!DATABASE_URL) return;
+  const pool = getPool();
+  const existing = await pool.query<{ table: string | null }>(
+    "SELECT to_regclass('public.audit_events') AS table",
+  );
+  if (existing.rows[0]?.table) return;
+
+  await pool.query("DROP SCHEMA IF EXISTS public CASCADE");
+  await pool.query("CREATE SCHEMA public");
+  type Journal = { entries: Array<{ tag: string }> };
+  const journal = JSON.parse(
+    readFileSync(join(DRIZZLE_DIR, "meta", "_journal.json"), "utf8"),
+  ) as Journal;
+  for (const entry of journal.entries) {
+    const migration = readFileSync(join(DRIZZLE_DIR, `${entry.tag}.sql`), "utf8");
+    for (const statement of migration.split("--> statement-breakpoint")) {
+      const trimmed = statement.trim();
+      if (trimmed.length > 0) await pool.query(trimmed);
+    }
+  }
+}
+
+/** Remove only this file's rows, so rows owned by other suites cannot leak in. */
+async function clearSignInEvents(): Promise<void> {
+  if (!DATABASE_URL) return;
+  await getPool().query("DELETE FROM audit_events WHERE action = $1", ["auth.sign_in"]);
+}
 
 describe("Gate G7: Transactional Audit Writer", () => {
-  beforeEach(() => {
+  beforeAll(ensureSchema);
+  beforeEach(async () => {
     clearMemoryAuditEvents();
+    await clearSignInEvents();
   });
 
   it("five failed sign-ins produce exactly one aggregated audit_events row (A10: action, ip_hash, 10-minute window, attempts = 5)", async () => {
@@ -29,8 +73,12 @@ describe("Gate G7: Transactional Audit Writer", () => {
       });
     }
 
-    const events = await getAuditEvents();
-    // Exactly one aggregated row
+    // Scope to this file's bucket: `audit_events` is shared with the WP1 suite,
+    // which writes its own rows (and resets the schema).
+    const events = (await getAuditEvents()).filter(
+      (event) => event.action === "auth.sign_in" && event.ipHash === hashIp(ip),
+    );
+    // Exactly one aggregated row for this bucket
     expect(events.length).toBe(1);
 
     const aggregated = events[0]!;
