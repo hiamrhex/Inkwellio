@@ -38,14 +38,14 @@ function gitOutput(args) {
   }
 }
 
-/** A per-worktree lock path, or null when this is not a Git checkout. */
+/** Shared repository lock path across all worktrees, or null when not a Git checkout. */
 function lockPath() {
   const top = gitOutput(["rev-parse", "--show-toplevel"]);
-  const dir = gitOutput(["rev-parse", "--absolute-git-dir"]);
-  if (top === null || dir === null) {
+  const common = gitOutput(["rev-parse", "--git-common-dir"]);
+  if (top === null || common === null) {
     return null;
   }
-  return join(resolve(top, dir), "inkwellio-gate.lock");
+  return join(resolve(top, common), "inkwellio-gate.lock");
 }
 
 function sleep(ms) {
