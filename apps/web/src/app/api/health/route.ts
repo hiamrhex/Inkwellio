@@ -1,3 +1,5 @@
+﻿import { getPool } from "@/kernel/db";
+
 /**
  * Checks database health via SELECT 1 with a strict 5-second timeout (A11, B3).
  */
@@ -6,9 +8,6 @@ export async function checkDatabaseHealth(timeoutMs = 5000): Promise<boolean> {
     return false;
   }
   try {
-    // Dynamic import to avoid Turbopack static junction packaging on Windows
-    const importDb = new Function("specifier", "return import(specifier)");
-    const { getPool } = await importDb("@/kernel/db");
     const pool = getPool();
     let timer: NodeJS.Timeout | undefined;
     const timeoutPromise = new Promise<never>((_, reject) => {
