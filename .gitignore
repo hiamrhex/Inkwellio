@@ -34,3 +34,7 @@ Thumbs.db
 
 # Vercel
 .vercel
+
+# Git worktrees & local agent logs
+.worktrees/
+.logs/
