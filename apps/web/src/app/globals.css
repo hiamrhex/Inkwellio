@@ -10,17 +10,29 @@
   /* Ink (dark) defaults — overridden by [data-theme="light"] */
   --bg-canvas:   #000000;
   --bg-surface1: #0c0c0d;
-  --bg-surface2: #141415;
-  --bg-surface3: #1c1c1e;
+  --bg-surface2: #141416;
+  --bg-surface3: #1c1c1f;
 
   --text-primary: #fafafa;      /* 20.12:1 on canvas  — AAA */
   --text-muted:   #a1a1a6;      /*  8.16:1 on canvas  — AA  */
   --text-faint:   #7c7c82;      /*  5.06:1 on canvas  — AA  */
 
-  --accent:       #0a84ff;      /*  5.76:1 on canvas  — AA  */
-  --accent-text:  #000000;
+  /* Strict monochrome primary buttons */
+  --btn-primary-bg:   #ffffff;
+  --btn-primary-text: #000000;
 
-  --border-hairline: rgba(255,255,255,0.10);
+  /* Functional status marks (<= 6px dots & focus ring only) */
+  --status-live:      #30d158;  /* Pitch Green */
+  --status-amber:     #ffd60a;  /* Draft Amber */
+  --focus-ring:       #0a84ff;  /* Focus ring only */
+  --accent:           #0a84ff;  /* Backward compat */
+  --accent-text:      #000000;
+
+  --border-hairline:  rgba(255,255,255,0.08);
+
+  /* Elevation shadows */
+  --shadow-card:      0 1px 2px rgba(0,0,0,0.4), 0 4px 16px rgba(0,0,0,0.25);
+  --shadow-nav:       0 4px 24px rgba(0,0,0,0.45);
 
   /* Flip section (rhythm inversion in dark mode = white surface) */
   --flip-bg:           #ffffff;
@@ -34,6 +46,7 @@
   --headline-tracking: -0.035em;
   --body-size: 1.0625rem;                         /* 17px */
   --body-line-height: 1.65;
+  --font-editorial: var(--font-newsreader, 'Newsreader', Charter, Georgia, serif);
 
   /* Motion */
   --duration-ambient: 8s;
@@ -41,21 +54,33 @@
   --easing-out: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* ── Light (Paper) theme ─────────────────────────────────────── */
+/* ── Light (Paper) theme: Archival off-white + pure white elevated cards ── */
 [data-theme="light"] {
-  --bg-canvas:   #ffffff;
-  --bg-surface1: #f5f5f7;
-  --bg-surface2: #ececef;
-  --bg-surface3: #e3e3e7;
+  --bg-canvas:   #fafafa;       /* Archival off-white paper canvas */
+  --bg-surface1: #ffffff;       /* Pure white elevated card */
+  --bg-surface2: #ffffff;       /* Pure white floating card */
+  --bg-surface3: #f4f4f6;       /* Recessed well / badge */
 
-  --text-primary: #0a0a0b;      /* 19.79:1 on canvas — AAA */
-  --text-muted:   #55555a;      /*  7.41:1 on canvas — AA  */
-  --text-faint:   #707075;      /*  4.93:1 on canvas — AA  */
+  --text-primary: #0a0a0b;      /* 18.94:1 on #fafafa — AAA */
+  --text-muted:   #55555a;      /*  7.43:1 on #fafafa — AA  */
+  --text-faint:   #707075;      /*  4.89:1 on #fafafa — AA  */
 
-  --accent:       #0066cc;      /*  5.57:1 on canvas — AA  */
-  --accent-text:  #ffffff;
+  /* Strict monochrome primary buttons */
+  --btn-primary-bg:   #0a0a0b;
+  --btn-primary-text: #ffffff;
 
-  --border-hairline: rgba(0,0,0,0.08);
+  /* Functional status marks (<= 6px dots & focus ring only) */
+  --status-live:      #1a7f37;
+  --status-amber:     #b45309;
+  --focus-ring:       #0066cc;
+  --accent:           #0066cc;
+  --accent-text:      #ffffff;
+
+  --border-hairline:  rgba(0,0,0,0.08);
+
+  /* Elevation shadows */
+  --shadow-card:      0 1px 3px rgba(0,0,0,0.04), 0 6px 24px -4px rgba(0,0,0,0.06);
+  --shadow-nav:       0 4px 20px rgba(0,0,0,0.06);
 
   --flip-bg:           #000000;
   --flip-text-primary: #fafafa;
@@ -66,16 +91,23 @@
 /* ── OS preference fallback (no data-theme set yet) ─────────── */
 @media (prefers-color-scheme: light) {
   :root:not([data-theme]) {
-    --bg-canvas:   #ffffff;
-    --bg-surface1: #f5f5f7;
-    --bg-surface2: #ececef;
-    --bg-surface3: #e3e3e7;
+    --bg-canvas:   #fafafa;
+    --bg-surface1: #ffffff;
+    --bg-surface2: #ffffff;
+    --bg-surface3: #f4f4f6;
     --text-primary: #0a0a0b;
     --text-muted:   #55555a;
     --text-faint:   #707075;
-    --accent:       #0066cc;
-    --accent-text:  #ffffff;
-    --border-hairline: rgba(0,0,0,0.08);
+    --btn-primary-bg:   #0a0a0b;
+    --btn-primary-text: #ffffff;
+    --status-live:      #1a7f37;
+    --status-amber:     #b45309;
+    --focus-ring:       #0066cc;
+    --accent:           #0066cc;
+    --accent-text:      #ffffff;
+    --border-hairline:  rgba(0,0,0,0.08);
+    --shadow-card:      0 1px 3px rgba(0,0,0,0.04), 0 6px 24px -4px rgba(0,0,0,0.06);
+    --shadow-nav:       0 4px 20px rgba(0,0,0,0.06);
     --flip-bg:           #000000;
     --flip-text-primary: #fafafa;
     --flip-text-muted:   #a1a1a6;
@@ -89,6 +121,13 @@
   --color-foreground: var(--text-primary);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-serif: var(--font-editorial);
+}
+
+/* ── Focus visible accessibility ────────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -140,23 +179,27 @@ body {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   Navigation
+   Navigation — Floating dynamic glass pill
    ═══════════════════════════════════════════════════════════════ */
 .site-nav {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
+  top: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(calc(100% - 2rem), 960px);
   z-index: 100;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 clamp(1.25rem, 4vw, 3rem);
-  height: 56px;
-  background: color-mix(in srgb, var(--bg-canvas) 80%, transparent);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border-bottom: 1px solid var(--border-hairline);
+  padding: 0 1.25rem;
+  height: 52px;
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--bg-surface1) 82%, transparent);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid var(--border-hairline);
+  box-shadow: var(--shadow-nav);
+  transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
 .nav-logo {
@@ -494,7 +537,7 @@ body {
   gap: 0.75rem;
 }
 
-/* White pill CTA */
+/* Strict monochrome pill CTA */
 .btn-primary {
   display: inline-flex;
   align-items: center;
@@ -502,19 +545,52 @@ body {
   height: 44px;
   padding: 0 1.5rem;
   border-radius: 9999px;
-  background: var(--text-primary);
-  color: var(--bg-canvas);
+  background: var(--btn-primary-bg);
+  color: var(--btn-primary-text);
   font-size: 0.875rem;
   font-weight: 500;
   text-decoration: none;
   border: none;
   cursor: pointer;
-  transition: opacity var(--duration-hover) ease;
+  transition: opacity var(--duration-hover) ease, transform 0.15s ease;
   min-width: 44px;
 }
 
 .btn-primary:hover {
   opacity: 0.88;
+  transform: translateY(-1px);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+/* Functional status marks (<= 6px dots) */
+.status-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.status-dot-live {
+  background: var(--status-live);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--status-live) 60%, transparent);
+}
+
+.status-dot-amber {
+  background: var(--status-amber);
+}
+
+/* Long-form editorial reading measure */
+.editorial-reading {
+  font-family: var(--font-editorial);
+  font-size: 1.1875rem;
+  line-height: 1.72;
+  max-width: 65ch;
+  color: var(--text-primary);
+  letter-spacing: 0.005em;
 }
 
 /* Ghost pill CTA */

@@ -60,8 +60,8 @@ describe("tokens", () => {
     expect(tokens.dark.bgCanvas).toBe("#000000");
   });
 
-  it("U3: light.bgCanvas is pure white #ffffff", () => {
-    expect(tokens.light.bgCanvas).toBe("#ffffff");
+  it("U3: light.bgCanvas is archival off-white #fafafa", () => {
+    expect(tokens.light.bgCanvas).toBe("#fafafa");
   });
 
   it("U4: dark textPrimary on bgCanvas >= 7:1", () => {

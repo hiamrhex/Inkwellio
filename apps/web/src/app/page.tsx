@@ -46,7 +46,7 @@ export default function Home() {
         {/* Left: copy */}
         <div className="hero-copy">
           <p className="hero-eyebrow">
-            <span>&#9679;</span>
+            <span className="status-dot status-dot-live" aria-hidden="true" />
             <span>Public preview &middot; opening soon</span>
           </p>
 
@@ -103,6 +103,9 @@ export default function Home() {
           >
             <div
               style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.375rem",
                 fontSize: "0.625rem",
                 textTransform: "uppercase",
                 letterSpacing: "0.06em",
@@ -110,7 +113,8 @@ export default function Home() {
                 marginBottom: "0.25rem",
               }}
             >
-              Published
+              <span className="status-dot status-dot-live" />
+              <span>Published</span>
             </div>
             <div style={{ color: "var(--text-primary)", fontWeight: 500 }}>
               Your article is live
@@ -123,6 +127,9 @@ export default function Home() {
           >
             <div
               style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.375rem",
                 fontSize: "0.625rem",
                 textTransform: "uppercase",
                 letterSpacing: "0.06em",
@@ -130,7 +137,8 @@ export default function Home() {
                 marginBottom: "0.25rem",
               }}
             >
-              Draft saved
+              <span className="status-dot status-dot-amber" />
+              <span>Draft saved</span>
             </div>
             <div style={{ color: "var(--text-primary)", fontWeight: 500 }}>
               2 min ago
