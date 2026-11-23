@@ -58,6 +58,12 @@ describe("Gate G1: sign-up invariants", () => {
     }
   });
 
+  it("fails instead of skipping live DB tests when REQUIRE_DB is set", () => {
+    if (process.env.REQUIRE_DB === "1") {
+      expect(DATABASE_URL, "DATABASE_URL must be provided when REQUIRE_DB=1").toBeTruthy();
+    }
+  });
+
   describe.skipIf(!DATABASE_URL)("with live Postgres (CI gate)", () => {
     it("live DB rejects uppercase email via check constraint (users_email_lowercase_check)", async () => {
       const pool = getPool();

@@ -1,7 +1,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { ESLint } from "eslint";
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 
 const repoRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -11,7 +11,7 @@ const repoRoot = path.resolve(
 // A virtual path, so the shipped config resolves it without a file on disk.
 const fixturePath = "apps/web/src/kernel/raw-html-fixture.tsx";
 
-const eslint = new ESLint({ cwd: repoRoot });
+let eslint: ESLint;
 
 async function ruleIdsFor(code: string): Promise<Array<string | null>> {
   const [result] = await eslint.lintText(code, { filePath: fixturePath });
@@ -19,6 +19,12 @@ async function ruleIdsFor(code: string): Promise<Array<string | null>> {
 }
 
 describe("raw HTML ban", () => {
+  beforeAll(async () => {
+    eslint = new ESLint({ cwd: repoRoot });
+    // Warm up the ESLint config and TypeScript parser once in beforeAll
+    await ruleIdsFor('export const Warm = () => <div>{"warm"}</div>;\n');
+  }, 120_000);
+
   it(
     "rejects dangerouslySetInnerHTML through the shipped config",
     { timeout: 30_000 },
