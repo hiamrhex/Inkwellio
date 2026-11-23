@@ -97,6 +97,8 @@ export default defineConfig({
     ],
     reporters: ["default", perFileTestCountReporter],
     restoreMocks: true,
+    globalSetup: ["./apps/web/tests/global-setup.ts"],
+    fileParallelism: false,
   },
   resolve: {
     alias: {
