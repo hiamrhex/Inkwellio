@@ -17,10 +17,10 @@ import {
   toPublicError,
   type PublicError,
 } from "@/kernel/errors";
-import { users } from "./schema";
+import { users, sessions, accounts, verifications, rateLimits } from "./schema";
 
 // Re-export for other modules
-export { users };
+export { users, sessions, accounts, verifications, rateLimits };
 export * from "./limiter";
 export * from "./audit";
 
@@ -57,6 +57,16 @@ export function getAuth() {
         provider: "pg",
         schema: {
           user: users,
+          users,
+          session: sessions,
+          sessions,
+          account: accounts,
+          accounts,
+          verification: verifications,
+          verifications,
+          rateLimit: rateLimits,
+          rate_limit: rateLimits,
+          rate_limits: rateLimits,
         },
         usePlural: true,
       },
