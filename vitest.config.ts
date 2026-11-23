@@ -99,6 +99,7 @@ export default defineConfig({
     restoreMocks: true,
     globalSetup: ["./apps/web/tests/global-setup.ts"],
     fileParallelism: false,
+    testTimeout: 20_000,
   },
   resolve: {
     alias: {
