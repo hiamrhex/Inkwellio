@@ -90,32 +90,45 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: [check]
-    # Non-blocking activation: runs when lighthouserc.json is committed
-    if: hashFiles('lighthouserc.json') != ''
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 0
 
+      - name: Check for lighthouserc.json
+        id: check_lhci
+        run: |
+          if [ -f lighthouserc.json ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "lighthouserc.json not found; skipping Lighthouse CI until configured"
+          fi
+
       - name: Set up pnpm
+        if: steps.check_lhci.outputs.present == 'true'
         uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115
 
       - name: Set up Node.js
+        if: steps.check_lhci.outputs.present == 'true'
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version-file: .nvmrc
           cache: pnpm
 
       - name: Install
+        if: steps.check_lhci.outputs.present == 'true'
         run: pnpm install --frozen-lockfile
 
       - name: Build production app
+        if: steps.check_lhci.outputs.present == 'true'
         run: pnpm --filter @inkwellio/web build
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/inkwellio
 
       - name: Run Lighthouse CI (non-blocking measurement)
+        if: steps.check_lhci.outputs.present == 'true'
         continue-on-error: true
         run: pnpm dlx @lhci/cli@0.14.x autorun
         env:
