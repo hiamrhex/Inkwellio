@@ -14,6 +14,7 @@
  * U10. IconTile renders with icon-tile class.
  * U11. SquircleClipDef id attribute present.
  * U12. ThemeToggle has single button with data-theme-toggle.
+ * U13. useSpring & useSpring2D physics exports and initial state math.
  */
 
 import { describe, expect, it } from "vitest";
@@ -27,6 +28,7 @@ import {
   SquircleClipDef,
   ThemeToggle,
 } from "@inkwellio/ui";
+import { useSpring, useSpring2D } from "../src/client";
 
 /* ── WCAG contrast helper (duplicated from landing.test.ts for isolation) ── */
 function linearise(c: number): number {
@@ -135,5 +137,33 @@ describe("ThemeToggle", () => {
     const buttonMatches = html.match(/<button/g);
     expect(buttonMatches?.length).toBe(1);
     expect(html).toContain("data-theme-toggle");
+  });
+});
+
+/* ════════════════════════════════════════════════════════════════
+   U13: useSpring & useSpring2D physics
+   ════════════════════════════════════════════════════════════════ */
+describe("useSpring & useSpring2D physics (G1)", () => {
+  it("exports useSpring and useSpring2D functions", () => {
+    expect(typeof useSpring).toBe("function");
+    expect(typeof useSpring2D).toBe("function");
+  });
+
+  it("useSpring renders initial target value in static markup", () => {
+    function SpringTestComponent() {
+      const val = useSpring(42);
+      return createElement("div", { "data-testid": "spring-val" }, String(val));
+    }
+    const html = renderToStaticMarkup(createElement(SpringTestComponent));
+    expect(html).toContain("42");
+  });
+
+  it("useSpring2D renders initial target coordinates in static markup", () => {
+    function Spring2DTestComponent() {
+      const val = useSpring2D({ x: 10, y: -5 });
+      return createElement("div", {}, `${val.x},${val.y}`);
+    }
+    const html = renderToStaticMarkup(createElement(Spring2DTestComponent));
+    expect(html).toContain("10,-5");
   });
 });

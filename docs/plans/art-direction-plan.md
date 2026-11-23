@@ -68,3 +68,24 @@ Contrast ratios computed using the WCAG 2.1 relative-luminance formula ($L_1 + 0
 - CSP: Hash/nonce documented for inclusion before strict CSP header deployment.
 - Zero analytics or third-party trackers [V].
 - Zero premature sign-up commitments (read-only previews, no mock sign-up forms) [V].
+
+## 6. Phase 2 Implementation & Verification (Living Hero & Interactive Bento)
+- **G1: `useSpring` Physics Hook:** Implemented in `packages/ui/src/use-spring.ts` (`useSpring` and `useSpring2D`). Integrates numerical RK-style Euler spring simulation on `requestAnimationFrame`, halts loop when velocity and distance fall below precision threshold (idle CPU = 0%), and immediately snaps without animation when `prefers-reduced-motion: reduce` is detected [V].
+- **G2: Living Hero Artifact:** Focal centerpiece (`apps/web/src/app/living-hero-artifact.tsx`) featuring:
+  - Accessible `role="tablist"` segmented switcher between `[Write]` and `[Read]` modes.
+  - Write mode: realistic typing cadence of the 64th-minute tactical passage with live word count and read-time estimation.
+  - Interactive click-to-pause: clicking inside pauses auto-typing and allows immediate live drafting with responsive metadata.
+  - Read mode: morphs into Newsreader serif (`65ch` measure) showcasing the tactical article sample.
+  - Cursor 3D spring tilt (`max ±6°`) with specular edge highlight refraction, and floating status badges with parallax inertia.
+- **G3: Interactive 4-Cell Bento + Specular Border Refraction:**
+  - Asymmetric 7/5 + 5/7 grid stacking to 1 column on mobile (390px).
+  - Cell 1: Live address preview (`/@yourname`) updating canonical slug format.
+  - Cell 2: Distraction-free editor view toggle (`Rendered` vs `Markdown`).
+  - Cell 3: Automatic revision history checkpoint switcher (`10:04`, `10:02`, `10:00`).
+  - Cell 4: Editorial ergonomics font switcher (`Serif` vs `Sans`) and size selector (`17px`, `19px`, `21px`).
+  - Specular border refraction: dynamic cursor spotlight across cells with 1px border refraction (`-webkit-mask-composite: xor; mask-composite: exclude`).
+- **G4: Accessibility & Guardrails:** Zero `console.log`, `.sr-only` descriptions, touch target minimums, and strict monochrome button contrast [V].
+- **Regression Fixes Verified:**
+  - Honesty rule: Removed `"By Marcus Reed · Match analysis from London · 23 Nov 2026"`; replaced with plain unattributed sample label: `Sample preview · Match analysis · 65ch reading measure`.
+  - Plain writer language & v1 URL architecture: Removed "sovereign", updated all URLs to `inkwellio.example/@yourname` and `inkwellio.example/@sample/inverted-fullbacks`.
+  - Zero dead links: Verified on-page anchor navigation for `#essentials`, `#editor-preview`, `#reading-room`, and `#publishing`.

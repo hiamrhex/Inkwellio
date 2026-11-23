@@ -1,5 +1,5 @@
 /**
- * @inkwellio/ui — public surface
+ * @inkwellio/ui — public surface (Server-Safe)
  * WP7: Ink & Paper design system primitives.
  */
 export { UI_PACKAGE_NAME, tokens } from "./tokens";

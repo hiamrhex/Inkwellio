@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import { Chip, IconTile, SectionHeader, SquircleClipDef, ThemeToggle } from "@inkwellio/ui";
+import { LivingHeroArtifact } from "./living-hero-artifact";
+import { MagneticButton } from "./magnetic-button";
+import { InteractiveBento } from "./interactive-bento";
 
 export const metadata: Metadata = {
   title: "Inkwellio — independent football writing at your own link",
@@ -63,9 +66,9 @@ export default function Home() {
           </p>
 
           <div className="hero-cta-row">
-            <a href="#editor-preview" className="btn-primary">
+            <MagneticButton href="#editor-preview" className="btn-primary">
               See the planned editor
-            </a>
+            </MagneticButton>
             <a href="#essentials" className="btn-ghost">
               Read the story
             </a>
@@ -76,77 +79,9 @@ export default function Home() {
           </p>
         </div>
 
-        {/* Right: 3-layer ink form */}
-        <div className="hero-form-wrap" aria-hidden="true">
-          <div className="hero-form-shadow" />
-          <div className="hero-form-body">
-            {/* Mock editor toolbar */}
-            <div className="editor-mock-toolbar">
-              <span className="editor-mock-dot" />
-              <span className="editor-mock-dot" />
-              <span className="editor-mock-dot" />
-              <span className="editor-mock-title">Draft — City away leg</span>
-            </div>
-            {/* Mock content lines */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", flex: 1 }}>
-              <div className="editor-mock-line" style={{ width: "80%" }} />
-              <div className="editor-mock-line" style={{ width: "95%" }} />
-              <div className="editor-mock-line" style={{ width: "65%" }} />
-              <div className="editor-mock-line" style={{ width: "88%" }} />
-              <div className="editor-mock-line" style={{ width: "72%" }} />
-              <div className="editor-mock-line" style={{ width: "50%" }} />
-            </div>
-          </div>
-          <div className="hero-form-specular" />
-
-          {/* Floating depth cards */}
-          <div
-            className="hero-float-card hero-float-card-1"
-            aria-hidden="true"
-          >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "0.375rem",
-                fontSize: "0.625rem",
-                textTransform: "uppercase",
-                letterSpacing: "0.06em",
-                color: "var(--text-faint)",
-                marginBottom: "0.25rem",
-              }}
-            >
-              <span className="status-dot status-dot-live" />
-              <span>Published</span>
-            </div>
-            <div style={{ color: "var(--text-primary)", fontWeight: 500 }}>
-              Your article is live
-            </div>
-          </div>
-
-          <div
-            className="hero-float-card hero-float-card-2"
-            aria-hidden="true"
-          >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "0.375rem",
-                fontSize: "0.625rem",
-                textTransform: "uppercase",
-                letterSpacing: "0.06em",
-                color: "var(--text-faint)",
-                marginBottom: "0.25rem",
-              }}
-            >
-              <span className="status-dot status-dot-amber" />
-              <span>Draft saved</span>
-            </div>
-            <div style={{ color: "var(--text-primary)", fontWeight: 500 }}>
-              2 min ago
-            </div>
-          </div>
+        {/* Right: living focal centerpiece */}
+        <div className="hero-artifact-wrap" style={{ width: "100%", display: "flex", justifyContent: "center" }}>
+          <LivingHeroArtifact />
         </div>
       </section>
 
@@ -155,7 +90,15 @@ export default function Home() {
         id="essentials"
         className="section-entry"
         aria-labelledby="essentials-heading"
-        style={{ paddingTop: "clamp(5rem,10vw,9rem)", paddingBottom: "clamp(5rem,10vw,9rem)", maxWidth: "1200px", margin: "0 auto", width: "100%", paddingLeft: "clamp(1.25rem,4vw,3rem)", paddingRight: "clamp(1.25rem,4vw,3rem)" }}
+        style={{
+          paddingTop: "clamp(5rem,10vw,9rem)",
+          paddingBottom: "clamp(5rem,10vw,9rem)",
+          maxWidth: "1200px",
+          margin: "0 auto",
+          width: "100%",
+          paddingLeft: "clamp(1.25rem,4vw,3rem)",
+          paddingRight: "clamp(1.25rem,4vw,3rem)",
+        }}
       >
         <SectionHeader
           eyebrow="Core Architecture"
@@ -163,102 +106,7 @@ export default function Home() {
           body="Inkwellio is built around the work, not the platform. No recommendation algorithm. No engagement score. Just your writing at a web address you control."
         />
 
-        <div className="bento-grid">
-          {/* Cell 1: Sovereign link & publishing (span 7) */}
-          <article
-            className="spotlight-card essential-card bento-cell-7 section-entry"
-            data-spotlight="true"
-            aria-labelledby="bento-link-title"
-          >
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-                <IconTile size={40}>
-                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-                    <path d="M10 3v10M6 9l4-6 4 6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-                    <path d="M4 15h12" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-                  </svg>
-                </IconTile>
-                <span className="essential-num">01 / LINK</span>
-              </div>
-              <span style={{ fontSize: "0.75rem", fontFamily: "var(--font-geist-mono)", color: "var(--text-faint)" }}>
-                inkwellio.example/yourname
-              </span>
-            </div>
-            <h3 className="essential-title" id="bento-link-title">Publish under your own name</h3>
-            <p className="essential-body">
-              Your writing lives at a web address with your name in it. Readers bookmark you directly,
-              subscribing to your publication instead of an algorithmic timeline.
-            </p>
-          </article>
-
-          {/* Cell 2: Focused writing environment (span 5) */}
-          <article
-            className="spotlight-card essential-card bento-cell-5 section-entry"
-            data-spotlight="true"
-            aria-labelledby="bento-editor-title"
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-              <IconTile size={40}>
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-                  <path d="M3 14.5L14.5 3L17 5.5L5.5 17L3 17.5L3 14.5Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" fill="none" />
-                </svg>
-              </IconTile>
-              <span className="essential-num">02 / CRAFT</span>
-            </div>
-            <h3 className="essential-title" id="bento-editor-title">Distraction-free editor</h3>
-            <p className="essential-body">
-              A quiet, focused markdown environment built for long reads. Save drafts, preview tactical layouts, and format passages cleanly.
-            </p>
-          </article>
-
-          {/* Cell 3: Automatic Revision History (span 5) */}
-          <article
-            className="spotlight-card essential-card bento-cell-5 section-entry"
-            data-spotlight="true"
-            aria-labelledby="bento-archive-title"
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-              <IconTile size={40}>
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-                  <rect x="3" y="4" width="14" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.4" />
-                  <path d="M3 8h14" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-                  <path d="M7 12h6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-                </svg>
-              </IconTile>
-              <span className="essential-num">03 / REVISION</span>
-            </div>
-            <h3 className="essential-title" id="bento-archive-title">Automatic revision history</h3>
-            <p className="essential-body">
-              Every draft keeps its minute. Autosave checkpoints let you step back to earlier paragraphs with confidence. Nothing is overwritten by accident.
-            </p>
-          </article>
-
-          {/* Cell 4: Editorial Reading Experience (span 7) */}
-          <article
-            className="spotlight-card essential-card bento-cell-7 section-entry"
-            data-spotlight="true"
-            aria-labelledby="bento-reading-title"
-          >
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-                <IconTile size={40}>
-                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-                    <circle cx="10" cy="10" r="7" stroke="currentColor" strokeWidth="1.4" />
-                    <path d="M8 7h4M10 7v6M8 13h4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-                  </svg>
-                </IconTile>
-                <span className="essential-num">04 / ERGONOMICS</span>
-              </div>
-              <span style={{ fontSize: "0.75rem", fontFamily: "var(--font-geist-mono)", color: "var(--text-faint)" }}>
-                65ch measure &middot; Newsreader
-              </span>
-            </div>
-            <h3 className="essential-title" id="bento-reading-title">Editorial reading comfort</h3>
-            <p className="essential-body">
-              Engineered for 3,000-word tactical deep-dives. Calibrated contrast prevents optical glare on OLED, with generous line-height and reader-first typography.
-            </p>
-          </article>
-        </div>
+        <InteractiveBento />
       </section>
 
       {/* ── Editor preview ──────────────────────────────────────── */}
@@ -266,7 +114,15 @@ export default function Home() {
         id="editor-preview"
         className="section-entry"
         aria-labelledby="editor-heading"
-        style={{ paddingTop: "clamp(5rem,10vw,9rem)", paddingBottom: "clamp(5rem,10vw,9rem)", maxWidth: "1200px", margin: "0 auto", width: "100%", paddingLeft: "clamp(1.25rem,4vw,3rem)", paddingRight: "clamp(1.25rem,4vw,3rem)" }}
+        style={{
+          paddingTop: "clamp(5rem,10vw,9rem)",
+          paddingBottom: "clamp(5rem,10vw,9rem)",
+          maxWidth: "1200px",
+          margin: "0 auto",
+          width: "100%",
+          paddingLeft: "clamp(1.25rem,4vw,3rem)",
+          paddingRight: "clamp(1.25rem,4vw,3rem)",
+        }}
       >
         <SectionHeader
           align="left"
@@ -400,7 +256,7 @@ export default function Home() {
               fontFamily: "var(--font-geist-mono)",
             }}
           >
-            By Marcus Reed &middot; Match analysis from London &middot; 23 Nov 2026
+            Sample preview &middot; Match analysis &middot; 65ch reading measure
           </p>
 
           <div className="editorial-reading">
@@ -427,7 +283,7 @@ export default function Home() {
               color: "var(--text-faint)",
             }}
           >
-            <span>inkwellio.example/mreed/inverted-fullbacks</span>
+            <span>inkwellio.example/@sample/inverted-fullbacks</span>
             <span>Printed in Newsreader variable serif</span>
           </div>
         </div>
@@ -512,7 +368,7 @@ export default function Home() {
               {[
                 {
                   title: "Your link",
-                  body: "Every writer gets an address at inkwellio.example/yourname. Readers bookmark you, not the platform.",
+                  body: "Every writer gets an address at inkwellio.example/@yourname. Readers bookmark you, not the platform.",
                 },
                 {
                   title: "Honest only",
@@ -597,9 +453,9 @@ export default function Home() {
         </p>
 
         <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", justifyContent: "center" }}>
-          <a href="#editor-preview" className="btn-primary">
+          <MagneticButton href="#editor-preview" className="btn-primary">
             See the planned editor
-          </a>
+          </MagneticButton>
         </div>
 
         <p

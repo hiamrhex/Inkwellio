@@ -437,6 +437,56 @@ body {
   opacity: 1;
 }
 
+/* ── Specular border refraction (G3) ────────────────────────── */
+.bento-specular-card {
+  position: relative;
+}
+
+.bento-specular-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: radial-gradient(
+    320px circle at var(--spotlight-x, -999px) var(--spotlight-y, -999px),
+    rgba(255, 255, 255, 0.28),
+    transparent 70%
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+[data-theme="light"] .bento-specular-card::before {
+  background: radial-gradient(
+    320px circle at var(--spotlight-x, -999px) var(--spotlight-y, -999px),
+    rgba(0, 0, 0, 0.12),
+    transparent 70%
+  );
+}
+
+.bento-specular-card:hover::before {
+  opacity: 1;
+}
+
+/* ── Blinking cursor for live hero typing (G2) ──────────────── */
+@keyframes blink {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+.blinking-caret {
+  animation: blink 0.9s infinite;
+}
+
 /* ═══════════════════════════════════════════════════════════════
    Sections
    ═══════════════════════════════════════════════════════════════ */
@@ -892,6 +942,10 @@ body {
   .hero-float-card-2 {
     display: none;
   }
+
+  .hero-artifact-container .hero-float-card {
+    display: none;
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -912,6 +966,11 @@ body {
   .hero-form-specular {
     transform: none !important;
     transition: none !important;
+  }
+
+  .blinking-caret {
+    animation: none !important;
+    opacity: 1 !important;
   }
 }
 

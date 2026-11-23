@@ -11,11 +11,14 @@
  *  7. JS budget: landing-runtime.js <= 3 KB gzip.
  *  8. Theme toggle: single button, correct aria-labels via CSS state.
  *  9. No invented match stats (xG, turnovers, analyst handles).
- * 10. Hero object present in page source.
+ * 10. Hero object present in page source & living artifact.
  * 11. External theme script tag present.
  * 12. Nav links point to real anchor IDs.
  * 13. Flip section present.
  * 14. Editor preview label present.
+ * 15. Honesty rule — no fake author personas or dates.
+ * 16. Plain writer language & true v1 URL architecture (@slug).
+ * 17. Phase 2 components mounted.
  */
 
 import fs from "node:fs";
@@ -62,6 +65,8 @@ const pageSrc = readSrc("apps/web/src/app/page.tsx");
 const cssSrc  = readSrc("apps/web/src/app/globals.css");
 const iconTileSrc = readSrc("packages/ui/src/icon-tile.tsx");
 const themeToggleSrc = readSrc("packages/ui/src/theme-toggle.tsx");
+const heroArtifactSrc = readSrc("apps/web/src/app/living-hero-artifact.tsx");
+const bentoSrc = readSrc("apps/web/src/app/interactive-bento.tsx");
 const runtimePath = path.join(root, "apps/web/public/scripts/landing-runtime.js");
 
 /* ════════════════════════════════════════════════════════════════
@@ -104,8 +109,6 @@ describe("No trackers / no sign-up button", () => {
   });
 
   it('page.tsx has no sign-up form or "Get started" CTA (no premature commitments)', () => {
-    // The page may mention "sign-up opens soon" as a notice, but must not have
-    // a sign-up button, form, or href to a sign-up route.
     expect(pageSrc).not.toMatch(/href=["'][^"']*sign.?up/i);
     expect(pageSrc.toLowerCase()).not.toMatch(/\bget started\b/);
     expect(pageSrc).not.toMatch(/<form/);
@@ -193,7 +196,6 @@ describe("No inline scripts (CSP compliance)", () => {
   });
 
   it("page.tsx contains no <script> with inline content (tagged template literal)", () => {
-    // Detect patterns like <script>{`...`}</script>
     expect(pageSrc).not.toMatch(/<script[^>]*>\s*\{`/);
   });
 });
@@ -254,15 +256,22 @@ describe("No invented match stats", () => {
 });
 
 /* ════════════════════════════════════════════════════════════════
-   10. Hero object present
+   10. Hero object & Living Artifact
    ════════════════════════════════════════════════════════════════ */
-describe("Hero object", () => {
-  it("page.tsx contains hero-form-body class (3-layer ink form)", () => {
-    expect(pageSrc).toContain("hero-form-body");
+describe("Hero object & Living Artifact", () => {
+  it("page.tsx mounts LivingHeroArtifact", () => {
+    expect(pageSrc).toContain("<LivingHeroArtifact");
   });
 
-  it("page.tsx contains hero-form-specular (specular highlight layer)", () => {
-    expect(pageSrc).toContain("hero-form-specular");
+  it("living-hero-artifact.tsx contains hero-form-body and hero-form-specular", () => {
+    expect(heroArtifactSrc).toContain("hero-form-body");
+    expect(heroArtifactSrc).toContain("hero-form-specular");
+  });
+
+  it("living-hero-artifact.tsx contains Write and Read tabs", () => {
+    expect(heroArtifactSrc).toContain('role="tablist"');
+    expect(heroArtifactSrc).toContain("Write");
+    expect(heroArtifactSrc).toContain("Read");
   });
 });
 
@@ -285,7 +294,7 @@ describe("External theme script", () => {
    12. Nav anchors point to real IDs
    ════════════════════════════════════════════════════════════════ */
 describe("Nav anchor IDs", () => {
-  const NAV_ANCHORS = ["#essentials", "#editor-preview", "#publishing"];
+  const NAV_ANCHORS = ["#essentials", "#editor-preview", "#reading-room", "#publishing"];
 
   for (const anchor of NAV_ANCHORS) {
     it(`page.tsx has anchor ${anchor} in nav and matching id in content`, () => {
@@ -315,5 +324,64 @@ describe("Rhythm flip section", () => {
 describe("Editor preview", () => {
   it('page.tsx contains "Preview of the planned editor" label', () => {
     expect(pageSrc).toContain("Preview of the planned editor");
+  });
+});
+
+/* ════════════════════════════════════════════════════════════════
+   15. Honesty rule — No fake author attribution or dates
+   ════════════════════════════════════════════════════════════════ */
+describe("Honesty rule — No fake attribution or personas", () => {
+  it("page.tsx does not contain Marcus Reed", () => {
+    expect(pageSrc).not.toMatch(/marcus\s*reed/i);
+  });
+
+  it("page.tsx does not contain invented date strings like '23 Nov 2026'", () => {
+    expect(pageSrc).not.toMatch(/23\s*nov\s*2026/i);
+  });
+
+  it("reading room plainly labels sample preview", () => {
+    expect(pageSrc).toMatch(/Sample preview (&middot;|·) Match analysis (&middot;|·) 65ch reading measure/);
+  });
+});
+
+/* ════════════════════════════════════════════════════════════════
+   16. Plain writer language & True v1 URL architecture (@slug)
+   ════════════════════════════════════════════════════════════════ */
+describe("Plain writer language & True v1 URL architecture", () => {
+  it("page.tsx contains no developer/crypto jargon ('sovereign')", () => {
+    expect(pageSrc).not.toMatch(/\bsovereign\b/i);
+  });
+
+  it("page.tsx uses canonical /@ slug formatting", () => {
+    expect(pageSrc).toContain("inkwellio.example/@yourname");
+    expect(pageSrc).toContain("inkwellio.example/@sample/inverted-fullbacks");
+  });
+
+  it("page.tsx does not contain bare un-prefixed URLs or mreed paths", () => {
+    expect(pageSrc).not.toContain("inkwellio.example/yourname");
+    expect(pageSrc).not.toContain("inkwellio.example/mreed");
+  });
+
+  it("interactive-bento.tsx displays and formats /@ slug", () => {
+    expect(bentoSrc).toContain("inkwellio.example/@");
+    expect(bentoSrc).not.toMatch(/\bsovereign\b/i);
+  });
+});
+
+/* ════════════════════════════════════════════════════════════════
+   17. Phase 2 interactive components
+   ════════════════════════════════════════════════════════════════ */
+describe("Phase 2 interactive components mounted", () => {
+  it("page.tsx mounts MagneticButton", () => {
+    expect(pageSrc).toContain("<MagneticButton");
+  });
+
+  it("page.tsx mounts InteractiveBento", () => {
+    expect(pageSrc).toContain("<InteractiveBento");
+  });
+
+  it("globals.css defines specular border refraction and blinking caret", () => {
+    expect(cssSrc).toContain(".bento-specular-card");
+    expect(cssSrc).toContain(".blinking-caret");
   });
 });
