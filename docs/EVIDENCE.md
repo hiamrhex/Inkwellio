@@ -50,3 +50,5 @@
 | E-121 | B4 | Next.js 16.4.5 security advisory check and 16.4.6 changes | Security review & release note inspection | `docs/reviews/WP2a-self-review.md` | Recorded: 16.4.5 patched 6 CVEs; 16.4.6 maintenance only | Proven |
 | E-122 | G8 | Safe redirect helper with 12 boundary attack vectors | `apps/web/tests/safe-redirect.test.ts` > "sanitizes all 12 unsafe redirect targets to /" | `npx vitest run apps/web/tests/safe-redirect.test.ts` | `✓ sanitizes all 12 unsafe redirect targets to /` | Proven |
 | E-123 | G9 | Quality gate: ESLint, TypeScript, Unit Tests, Seam Check, Production Build | `pnpm check` | `pnpm check` in `.worktrees/wp2a-proof` | `Done in 13.5s` | Proven |
+| E-206 | WP7 | Landing page Phase A redesign: light/dark themes, contrast >= 4.5:1, touch >= 44px, no trackers, spelling | `apps/web/tests/landing.test.ts` | `pnpm vitest run apps/web/tests/landing.test.ts` | `✓ 38 tests passed` | Proven |
+| E-207 | WP7 | @inkwellio/ui primitives: tokens, Chip, SectionHeader, IconTile (squircle), ThemeToggle (single button) | `packages/ui/tests/components.test.ts` | `pnpm vitest run packages/ui/tests/components.test.ts` | `✓ 12 tests passed` | Proven |

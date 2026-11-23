@@ -23,6 +23,15 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
+      <head>
+        {/*
+         * theme.js — blocking inline-free zero-FOUC theme bootstrap.
+         * Sets data-theme on <html> before first paint.
+         * CSP hash/nonce must be added before strict CSP ships.
+         */}
+        {/* eslint-disable-next-line @next/next/no-sync-scripts */}
+        <script src="/scripts/theme.js" />
+      </head>
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );

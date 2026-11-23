@@ -7,12 +7,16 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
   test: {
     environment: "node",
-    include: ["apps/web/tests/**/*.test.ts"],
+    include: [
+      "apps/web/tests/**/*.test.ts",
+      "packages/ui/tests/**/*.test.ts",
+    ],
     restoreMocks: true,
   },
   resolve: {
     alias: {
       "@": path.join(__dirname, "apps", "web", "src"),
+      "@inkwellio/ui": path.join(__dirname, "packages", "ui", "src", "index.ts"),
     },
   },
 });

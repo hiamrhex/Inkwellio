@@ -18,8 +18,10 @@
         "name": "next"
       }
     ],
+    "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@inkwellio/ui": ["../../packages/ui/src/index"]
     }
   },
   "include": [
