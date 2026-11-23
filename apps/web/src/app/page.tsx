@@ -26,6 +26,9 @@ export default function Home() {
             <a href="#editor-preview">Editor</a>
           </li>
           <li>
+            <a href="#reading-room">Reading</a>
+          </li>
+          <li>
             <a href="#publishing">Publishing</a>
           </li>
         </ul>
@@ -147,7 +150,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── Essentials (3-up) ───────────────────────────────────── */}
+      {/* ── Essentials: Bento Feature Matrix ─────────────────────── */}
       <section
         id="essentials"
         className="section-entry"
@@ -155,17 +158,44 @@ export default function Home() {
         style={{ paddingTop: "clamp(5rem,10vw,9rem)", paddingBottom: "clamp(5rem,10vw,9rem)", maxWidth: "1200px", margin: "0 auto", width: "100%", paddingLeft: "clamp(1.25rem,4vw,3rem)", paddingRight: "clamp(1.25rem,4vw,3rem)" }}
       >
         <SectionHeader
-          eyebrow="Three things"
+          eyebrow="Core Architecture"
           heading={<span id="essentials-heading">Write. Publish. Keep it yours.</span>}
           body="Inkwellio is built around the work, not the platform. No recommendation algorithm. No engagement score. Just your writing at a web address you control."
         />
 
-        <div className="essentials-grid">
-          {/* Card 1: Write */}
+        <div className="bento-grid">
+          {/* Cell 1: Sovereign link & publishing (span 7) */}
           <article
-            className="spotlight-card essential-card section-entry"
+            className="spotlight-card essential-card bento-cell-7 section-entry"
             data-spotlight="true"
-            aria-labelledby="essential-write"
+            aria-labelledby="bento-link-title"
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                <IconTile size={40}>
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                    <path d="M10 3v10M6 9l4-6 4 6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M4 15h12" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                  </svg>
+                </IconTile>
+                <span className="essential-num">01 / LINK</span>
+              </div>
+              <span style={{ fontSize: "0.75rem", fontFamily: "var(--font-geist-mono)", color: "var(--text-faint)" }}>
+                inkwellio.example/yourname
+              </span>
+            </div>
+            <h3 className="essential-title" id="bento-link-title">Publish under your own name</h3>
+            <p className="essential-body">
+              Your writing lives at a web address with your name in it. Readers bookmark you directly,
+              subscribing to your publication instead of an algorithmic timeline.
+            </p>
+          </article>
+
+          {/* Cell 2: Focused writing environment (span 5) */}
+          <article
+            className="spotlight-card essential-card bento-cell-5 section-entry"
+            data-spotlight="true"
+            aria-labelledby="bento-editor-title"
           >
             <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
               <IconTile size={40}>
@@ -173,42 +203,19 @@ export default function Home() {
                   <path d="M3 14.5L14.5 3L17 5.5L5.5 17L3 17.5L3 14.5Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" fill="none" />
                 </svg>
               </IconTile>
-              <span className="essential-num">01</span>
+              <span className="essential-num">02 / CRAFT</span>
             </div>
-            <h3 className="essential-title" id="essential-write">Write at your pace</h3>
+            <h3 className="essential-title" id="bento-editor-title">Distraction-free editor</h3>
             <p className="essential-body">
-              A clean editor that stays out of the way. Save drafts, return to
-              them, finish when it feels right.
+              A quiet, focused markdown environment built for long reads. Save drafts, preview tactical layouts, and format passages cleanly.
             </p>
           </article>
 
-          {/* Card 2: Publish */}
+          {/* Cell 3: Automatic Revision History (span 5) */}
           <article
-            className="spotlight-card essential-card section-entry"
+            className="spotlight-card essential-card bento-cell-5 section-entry"
             data-spotlight="true"
-            aria-labelledby="essential-publish"
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-              <IconTile size={40}>
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-                  <path d="M10 3v10M6 9l4-6 4 6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-                  <path d="M4 15h12" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-                </svg>
-              </IconTile>
-              <span className="essential-num">02</span>
-            </div>
-            <h3 className="essential-title" id="essential-publish">Publish under your name</h3>
-            <p className="essential-body">
-              Your writing lives at a URL with your name in it. Readers find you
-              directly, not through a feed.
-            </p>
-          </article>
-
-          {/* Card 3: Archive */}
-          <article
-            className="spotlight-card essential-card section-entry"
-            data-spotlight="true"
-            aria-labelledby="essential-archive"
+            aria-labelledby="bento-archive-title"
           >
             <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
               <IconTile size={40}>
@@ -218,12 +225,37 @@ export default function Home() {
                   <path d="M7 12h6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
                 </svg>
               </IconTile>
-              <span className="essential-num">03</span>
+              <span className="essential-num">03 / REVISION</span>
             </div>
-            <h3 className="essential-title" id="essential-archive">Keep an archive</h3>
+            <h3 className="essential-title" id="bento-archive-title">Automatic revision history</h3>
             <p className="essential-body">
-              Everything you write is yours and stays online. No posts
-              disappear when a platform shuts down or moves the goal posts.
+              Every draft keeps its minute. Autosave checkpoints let you step back to earlier paragraphs with confidence. Nothing is overwritten by accident.
+            </p>
+          </article>
+
+          {/* Cell 4: Editorial Reading Experience (span 7) */}
+          <article
+            className="spotlight-card essential-card bento-cell-7 section-entry"
+            data-spotlight="true"
+            aria-labelledby="bento-reading-title"
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                <IconTile size={40}>
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                    <circle cx="10" cy="10" r="7" stroke="currentColor" strokeWidth="1.4" />
+                    <path d="M8 7h4M10 7v6M8 13h4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                  </svg>
+                </IconTile>
+                <span className="essential-num">04 / ERGONOMICS</span>
+              </div>
+              <span style={{ fontSize: "0.75rem", fontFamily: "var(--font-geist-mono)", color: "var(--text-faint)" }}>
+                65ch measure &middot; Newsreader
+              </span>
+            </div>
+            <h3 className="essential-title" id="bento-reading-title">Editorial reading comfort</h3>
+            <p className="essential-body">
+              Engineered for 3,000-word tactical deep-dives. Calibrated contrast prevents optical glare on OLED, with generous line-height and reader-first typography.
             </p>
           </article>
         </div>
@@ -302,6 +334,101 @@ export default function Home() {
             <p className="editor-label">
               Preview of the planned editor &mdash; not a finished product
             </p>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Reading Room Showcase ─────────────────────────────────── */}
+      <section
+        id="reading-room"
+        className="section-entry"
+        aria-labelledby="reading-heading"
+        style={{
+          paddingTop: "clamp(5rem,10vw,9rem)",
+          paddingBottom: "clamp(5rem,10vw,9rem)",
+          maxWidth: "1200px",
+          margin: "0 auto",
+          width: "100%",
+          paddingLeft: "clamp(1.25rem,4vw,3rem)",
+          paddingRight: "clamp(1.25rem,4vw,3rem)",
+        }}
+      >
+        <SectionHeader
+          align="left"
+          eyebrow="Reader Mode"
+          heading={<span id="reading-heading">The Reading Room</span>}
+          body="How your readers experience your writing. No banners, no pop-up overlays, no tracking scripts. Just print-grade typography on archival paper."
+        />
+
+        <div
+          className="reading-card"
+          style={{
+            marginTop: "3rem",
+            padding: "clamp(2rem, 5vw, 4rem)",
+            background: "var(--bg-surface1)",
+            border: "1px solid var(--border-hairline)",
+            borderRadius: "1.25rem",
+            boxShadow: "var(--shadow-card)",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "1.5rem" }}>
+            <span className="status-dot status-dot-live" aria-hidden="true" />
+            <span style={{ fontSize: "0.75rem", fontFamily: "var(--font-geist-mono)", color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+              Sample &middot; Tactical Culture &middot; 6 min read
+            </span>
+          </div>
+
+          <h3
+            style={{
+              fontFamily: "var(--font-editorial)",
+              fontSize: "clamp(1.75rem, 4vw, 2.75rem)",
+              fontWeight: 600,
+              letterSpacing: "-0.025em",
+              lineHeight: 1.15,
+              color: "var(--text-primary)",
+              margin: "0 0 1rem",
+            }}
+          >
+            Inverted Fullbacks &amp; The Quiet Death of The Touchline Winger
+          </h3>
+
+          <p
+            style={{
+              fontSize: "0.875rem",
+              color: "var(--text-muted)",
+              marginBottom: "2rem",
+              fontFamily: "var(--font-geist-mono)",
+            }}
+          >
+            By Marcus Reed &middot; Match analysis from London &middot; 23 Nov 2026
+          </p>
+
+          <div className="editorial-reading">
+            <p style={{ margin: "0 0 1.25rem" }}>
+              In the 64th minute, City inverted their right-back into the inside channel. It was a subtle structural adjustment, yet it instantly disrupted the defensive block, forcing the opposition winger to choose between tracking the overlapping runner or defending the interior passing lane.
+            </p>
+            <p style={{ margin: 0 }}>
+              Football writing deserves the space to examine these tactical nuances in full. When you publish on Inkwellio, your readers enjoy clean typography calibrated specifically for long-form focus—free from algorithmic distractions.
+            </p>
+          </div>
+
+          <div
+            style={{
+              marginTop: "2.5rem",
+              paddingTop: "1.5rem",
+              borderTop: "1px solid var(--border-hairline)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              flexWrap: "wrap",
+              gap: "1rem",
+              fontSize: "0.75rem",
+              fontFamily: "var(--font-geist-mono)",
+              color: "var(--text-faint)",
+            }}
+          >
+            <span>inkwellio.example/mreed/inverted-fullbacks</span>
+            <span>Printed in Newsreader variable serif</span>
           </div>
         </div>
       </section>

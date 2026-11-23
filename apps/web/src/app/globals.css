@@ -630,8 +630,30 @@ body {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   Essentials section (3-up cards)
+   Essentials & Bento Feature Matrix (Asymmetric 4-cell layout)
    ═══════════════════════════════════════════════════════════════ */
+.bento-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 1.5rem;
+  margin-top: 3.5rem;
+}
+
+.bento-cell-7 {
+  grid-column: span 7;
+}
+
+.bento-cell-5 {
+  grid-column: span 5;
+}
+
+@media (max-width: 900px) {
+  .bento-cell-7,
+  .bento-cell-5 {
+    grid-column: span 12;
+  }
+}
+
 .essentials-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -644,6 +666,11 @@ body {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
+  box-shadow: var(--shadow-card);
+}
+
+.reading-card {
+  transition: border-color var(--duration-hover) ease;
 }
 
 .essential-num {
