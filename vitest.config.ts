@@ -12,6 +12,7 @@ export default defineConfig({
       "packages/ui/tests/**/*.test.ts",
     ],
     restoreMocks: true,
+    fileParallelism: false,
   },
   resolve: {
     alias: {
