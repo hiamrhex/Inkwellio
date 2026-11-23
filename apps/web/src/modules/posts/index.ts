@@ -45,7 +45,6 @@ export {
   type ResolvedPostSlug,
 } from "./service/slugs";
 export {
-  autosaveDraft,
   deletePost,
   publishPost,
   restorePost,

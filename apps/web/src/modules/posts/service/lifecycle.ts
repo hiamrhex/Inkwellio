@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { conflict, notFound, validation, type Actor } from "../errors";
+import { conflict, forbidden, notFound, pgCode, requireActor, validation, type Actor } from "@/modules/publications";
 import type { PostStatus } from "../ports";
 import { loadPostOwner } from "./drafts";
 import {
@@ -40,6 +40,12 @@ export type LifecycleResult = {
   readonly status: PostStatus;
   /** The draft version after the transition. */
   readonly version: number;
+  /** `true` when the publish found no change (version already matched). */
+  readonly noOp?: boolean;
+  /** The new revision id if a revision was appended, otherwise the existing one. */
+  readonly revisionId?: string | null;
+  /** The `published_at` timestamp, preserved across republishes. */
+  readonly publishedAt?: Date;
 };
 
 /** A post row as the lifecycle reads it, after the ownership check. */
@@ -219,6 +225,48 @@ export async function writeAudit(
   );
 }
 
+export async function publishPost(
+  executor: Executor,
+  input: LifecycleInput,
+): Promise<LifecycleResult> {
+  const requestId = parseRequestId(input.requestId);
+  const expectedVersion = parseExpectedVersion(input.expectedVersion);
+
+  return runInTransaction(executor, async (q) => {
+    const { post: post, actorId } = await lockOwnedPost(q, { ...input, expectedVersion });
+    const requiredActor = requireActor({ userId: actorId } as Actor);
+
+    const done = await alreadyDone(q, { ...input, expectedVersion, requestId }, post, AUDIT_PUBLISHED);
+    if (done !== undefined) return done;
+
+    if (post.status === "published") {
+      const draft = await readDraft(q, input.postId);
+      return { id: input.postId, status: "published", version: draft?.version ?? 0, noOp: true, revisionId: post.published_revision_id };
+    }
+
+    const version = await claimVersion(q, input.postId, expectedVersion, "publish");
+    await rows(
+      q,
+      sql`
+        UPDATE posts
+           SET status = 'published',
+               published_revision_id = ${version},
+               published_at = now(),
+               updated_at = now()
+         WHERE id = ${input.postId}
+      `,
+    );
+    await writeAudit(q, {
+      action: AUDIT_PUBLISHED,
+      actorId: actorId,
+      postId: input.postId,
+      requestId,
+      metadata: { previousStatus: post.status, publishedAt: post.published_at },
+    });
+    return { id: input.postId, status: "published", version, noOp: false, revisionId: String(version) };
+  });
+}
+
 /** The audit row is the idempotency record, so a retry needs no extra table. */
 export async function alreadyDone(
   q: Queryable,
@@ -227,10 +275,14 @@ export async function alreadyDone(
   action: string,
 ): Promise<LifecycleResult | undefined> {
   if (!(await wasAlreadyApplied(q, input.requestId, input.postId, action))) return undefined;
+  const draftVersion = (await readDraft(q, input.postId))?.version ?? 0;
   return {
     id: input.postId,
     status: post.status,
-    version: (await readDraft(q, input.postId))?.version ?? 0,
+    version: draftVersion,
+    noOp: true,
+    revisionId: post.published_revision_id as string | null,
+    publishedAt: toDate(post.published_at) ?? undefined,
   };
 }
 
@@ -254,7 +306,8 @@ export async function unpublishPost(
 
     if (post.status === "deleted") throw conflict("A deleted post cannot be unpublished");
     if (post.status === "draft") {
-      return { id: input.postId, status: "draft", version: (await readDraft(q, input.postId))?.version ?? 0 };
+      const draft = await readDraft(q, input.postId);
+      return { id: input.postId, status: "draft", version: draft?.version ?? 0, noOp: true, revisionId: post.published_revision_id };
     }
 
     const version = await claimVersion(q, input.postId, expectedVersion, "transition");
@@ -275,7 +328,7 @@ export async function unpublishPost(
       requestId,
       metadata: { previousStatus: post.status },
     });
-    return { id: input.postId, status: "draft", version };
+    return { id: input.postId, status: "draft", version, noOp: false, revisionId: post.published_revision_id };
   });
 }
 
@@ -298,7 +351,8 @@ export async function deletePost(
     if (done !== undefined) return done;
 
     if (post.status === "deleted") {
-      return { id: input.postId, status: "deleted", version: (await readDraft(q, input.postId))?.version ?? 0 };
+      const draft = await readDraft(q, input.postId);
+      return { id: input.postId, status: "deleted", version: draft?.version ?? 0, noOp: true, revisionId: post.published_revision_id };
     }
 
     const version = await claimVersion(q, input.postId, expectedVersion, "transition");
@@ -320,7 +374,8 @@ export async function deletePost(
       requestId,
       metadata: { previousStatus: post.status },
     });
-    return { id: input.postId, status: "deleted", version };
+    const draftAfter = await readDraft(q, input.postId);
+    return { id: input.postId, status: "deleted", version: draftAfter?.version ?? 0, noOp: false, revisionId: post.published_revision_id };
   });
 }
 
@@ -340,7 +395,8 @@ export async function restorePost(
     if (done !== undefined) return done;
 
     if (post.status !== "deleted") {
-      return { id: input.postId, status: post.status, version: (await readDraft(q, input.postId))?.version ?? 0 };
+      const draft = await readDraft(q, input.postId);
+      return { id: input.postId, status: post.status, version: draft?.version ?? 0, noOp: true, revisionId: post.published_revision_id };
     }
 
     const version = await claimVersion(q, input.postId, expectedVersion, "transition");
@@ -361,7 +417,8 @@ export async function restorePost(
       requestId,
       metadata: { previousStatus: post.status },
     });
-    return { id: input.postId, status: "draft", version };
+    const draftAfter = await readDraft(q, input.postId);
+    return { id: input.postId, status: "draft", version: draftAfter?.version ?? 0, noOp: false, revisionId: post.published_revision_id };
   });
 }
 

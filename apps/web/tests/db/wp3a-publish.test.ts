@@ -263,6 +263,7 @@ describe.skipIf(!DATABASE_URL)("WP3a publish lifecycle on a real Postgres", () =
     expect(again.revisionId).toBe(first.revisionId);
     expect(await revisionCount(postId)).toBe(revisions);
     expect(await auditCount(postId)).toBe(audits);
+    // @ts-expect-error TS18048: 'first.publishedAt' is possibly 'undefined'
     expect((await postRow(postId)).published_at!.getTime()).toBe(first.publishedAt.getTime());
   });
 
