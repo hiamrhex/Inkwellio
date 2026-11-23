@@ -18,11 +18,13 @@ import {
   type PublicError,
 } from "@/kernel/errors";
 import { users, sessions, accounts, verifications, rateLimits } from "./schema";
+import { sendVerificationEmail, sendResetPasswordEmail } from "./email";
 
 // Re-export for other modules
 export { users, sessions, accounts, verifications, rateLimits };
 export * from "./limiter";
 export * from "./audit";
+export * from "./email";
 
 /**
  * Lazy Better Auth instance.
@@ -79,7 +81,7 @@ export function getAuth() {
       maxPasswordLength: 128,
       autoSignIn: false,
       sendResetPassword: async ({ user, url, token }) => {
-        logEvent("info", "send_reset_password", { userId: user.id, url, token });
+        await sendResetPasswordEmail({ user, url, token });
       },
     },
 
@@ -88,7 +90,7 @@ export function getAuth() {
       autoSignInAfterVerification: false,
       expiresIn: 3600,
       sendVerificationEmail: async ({ user, url, token }) => {
-        logEvent("info", "send_verification_email", { userId: user.id, url, token });
+        await sendVerificationEmail({ user, url, token });
       },
     },
 
