@@ -28,4 +28,9 @@ export {
 } from "./domain";
 export { MAX_SLUG_LENGTH, SLUG_PATTERN, isReservedSlug, parseSlug, slugify, withNumericSuffix } from "./slugs";
 export { ensurePublication, type EnsurePublicationInput, type Publication } from "./service";
+export {
+  getPublicationById,
+  getPublicationBySlug,
+  type PublicationSummary,
+} from "./reads";
 export { parsePublicationBio, parsePublicationName } from "./validation";
