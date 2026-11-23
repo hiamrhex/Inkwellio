@@ -37,6 +37,13 @@ export {
   type DraftWriteResult,
 } from "./service/drafts";
 export { assertCanReadDraft, assertOwner, isOwner } from "./service/ownership";
+export {
+  renamePost,
+  resolvePostSlug,
+  type RenamePostInput,
+  type RenameResult,
+  type ResolvedPostSlug,
+} from "./service/slugs";
 export { type Db, type Executor, type Queryable } from "./service/executor";
 export {
   FEED_PAGE_SIZE_DEFAULT,

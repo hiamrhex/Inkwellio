@@ -100,11 +100,20 @@ export async function row<T>(q: Queryable, query: SQL): Promise<T | undefined> {
   return found[0];
 }
 
-/** Postgres SQLSTATE of a thrown driver error, when it has one. */
+/** Postgres SQLSTATE of a thrown driver error, when it has one.
+ *
+ * Drizzle wraps a driver failure in `DrizzleQueryError` and keeps the original
+ * error on `cause`, so the code is looked up through the chain. Without this a
+ * unique violation or a malformed-uuid error would be reported as INTERNAL. */
 export function pgCode(error: unknown): string | undefined {
-  if (typeof error !== "object" || error === null) return undefined;
-  const candidate = (error as { code?: unknown }).code;
-  return typeof candidate === "string" ? candidate : undefined;
+  let current: unknown = error;
+  for (let depth = 0; depth < 6; depth += 1) {
+    if (typeof current !== "object" || current === null) return undefined;
+    const candidate = (current as { code?: unknown }).code;
+    if (typeof candidate === "string") return candidate;
+    current = (current as { cause?: unknown }).cause;
+  }
+  return undefined;
 }
 
 /** Bigint columns come back as strings from node-postgres. */
