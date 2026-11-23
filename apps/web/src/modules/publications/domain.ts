@@ -123,4 +123,17 @@ export function toNumber(value: unknown): number {
   return parsed;
 }
 
+/** Node-postgres parses `timestamptz` to a `Date`; Drizzle's raw `execute`
+ * path may hand back the string form instead. Both are normalised so the
+ * public type is always a `Date` and a timestamp is always safe to re-send. */
+export function toDate(value: unknown): Date | null {
+  if (value === null || value === undefined) return null;
+  if (value instanceof Date) return value;
+  if (typeof value === "string") {
+    const parsed = new Date(value);
+    if (!Number.isNaN(parsed.getTime())) return parsed;
+  }
+  throw new Error("Expected a timestamp column to parse as a Date");
+}
+
 export { sql };

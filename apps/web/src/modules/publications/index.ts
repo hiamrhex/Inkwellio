@@ -18,6 +18,7 @@ export {
   row,
   rows,
   runInTransaction,
+  toDate,
   toNumber,
   validation,
   type Actor,
