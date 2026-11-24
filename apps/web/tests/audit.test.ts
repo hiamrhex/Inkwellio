@@ -6,10 +6,20 @@ import {
   hashIp,
   hashEmail,
 } from "../src/modules/identity/audit";
+import { getPool } from "../src/kernel/db";
+
+const DATABASE_URL = process.env.DATABASE_URL;
+
+/** Remove only this file's rows, so rows owned by other suites cannot leak in. */
+async function clearSignInEvents(): Promise<void> {
+  if (!DATABASE_URL) return;
+  await getPool().query("DELETE FROM audit_events WHERE action = $1", ["auth.sign_in"]);
+}
 
 describe("Gate G7: Transactional Audit Writer", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     clearMemoryAuditEvents();
+    await clearSignInEvents();
   });
 
   it("five failed sign-ins produce exactly one aggregated audit_events row (A10: action, ip_hash, 10-minute window, attempts = 5)", async () => {
@@ -29,8 +39,12 @@ describe("Gate G7: Transactional Audit Writer", () => {
       });
     }
 
-    const events = await getAuditEvents();
-    // Exactly one aggregated row
+    // Scope to this file's bucket: `audit_events` is shared with the WP1 suite,
+    // which writes its own rows (and resets the schema).
+    const events = (await getAuditEvents()).filter(
+      (event) => event.action === "auth.sign_in" && event.ipHash === hashIp(ip),
+    );
+    // Exactly one aggregated row for this bucket
     expect(events.length).toBe(1);
 
     const aggregated = events[0]!;

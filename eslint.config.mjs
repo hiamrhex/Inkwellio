@@ -34,6 +34,10 @@ export default defineConfig([
     "**/out/**",
     "**/build/**",
     "**/coverage/**",
+    ".worktrees/**",
+    "**/.worktrees/**",
+    ".logs/**",
+    "**/.logs/**",
     "apps/web/next-env.d.ts",
     // Config files are CommonJS and are not application code.
     "**/*.cjs",
