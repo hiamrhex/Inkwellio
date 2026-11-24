@@ -7,6 +7,7 @@ export {
   row,
   rows,
   runInTransaction,
+  toDate,
   toNumber,
   type Db,
   type Executor,

@@ -4,6 +4,7 @@ import {
   pgCode,
   queryable,
   rows,
+  toDate,
   validation,
   type Actor,
   type Executor,
@@ -37,19 +38,6 @@ type PostRow = {
   deleted_at: unknown;
   owner_id: string;
 };
-
-/** Node-postgres parses `timestamptz` to a `Date`; Drizzle's raw `execute`
- * path may hand back the string form instead. Both are normalised here so the
- * public type is always a `Date` and a cursor is always safe to re-send. */
-function toDate(value: unknown): Date | null {
-  if (value === null || value === undefined) return null;
-  if (value instanceof Date) return value;
-  if (typeof value === "string") {
-    const parsed = new Date(value);
-    if (!Number.isNaN(parsed.getTime())) return parsed;
-  }
-  throw new Error("Expected a timestamp column to parse as a Date");
-}
 
 /** What a read returns. Deliberately metadata only: revision content is a
  * separate fetch, so a feed never pulls 100 KB bodies it will not render. */

@@ -15,6 +15,7 @@
 /** The complete set. A code outside this union is not renderable. */
 export type PublicErrorCode =
   | "VALIDATION_ERROR"
+  | "FORBIDDEN"
   | "NOT_FOUND"
   | "CONFLICT"
   | "UNAVAILABLE"
@@ -27,6 +28,7 @@ type PublicDefinition = {
 
 const PUBLIC_ERRORS: Record<PublicErrorCode, PublicDefinition> = {
   VALIDATION_ERROR: { status: 400, message: "Invalid input" },
+  FORBIDDEN: { status: 403, message: "Forbidden" },
   NOT_FOUND: { status: 404, message: "Not found" },
   CONFLICT: { status: 409, message: "That already exists" },
   UNAVAILABLE: { status: 503, message: "Temporarily unavailable" },
@@ -95,6 +97,12 @@ export class AppError extends Error {
 export class ValidationError extends AppError {
   constructor(message = "Invalid input", options?: ErrorOptions) {
     super(message, "VALIDATION_ERROR", options);
+  }
+}
+
+export class ForbiddenError extends AppError {
+  constructor(message = "Forbidden", options?: ErrorOptions) {
+    super(message, "FORBIDDEN", options);
   }
 }
 

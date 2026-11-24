@@ -44,6 +44,15 @@ export {
   type RenameResult,
   type ResolvedPostSlug,
 } from "./service/slugs";
+export {
+  deletePost,
+  publishPost,
+  restorePost,
+  unpublishPost,
+  type LifecycleInput,
+  type LifecycleResult,
+  type PublishResult,
+} from "./service/lifecycle";
 export { type Db, type Executor, type Queryable } from "./service/executor";
 export {
   FEED_PAGE_SIZE_DEFAULT,
