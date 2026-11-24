@@ -14,8 +14,8 @@ import { closeDb, getPool } from "../../src/kernel/db";
  * proves the SQL in `apps/web/drizzle/` is what the schema files claim.
  */
 
-const DATABASE_URL = process.env.DATABASE_URL;
-const REQUIRED = process.env.CI === "true" || process.env.REQUIRE_DATABASE === "1";
+const DATABASE_URL = process.env.DATABASE_URL?.trim() || undefined;
+const REQUIRED = process.env.REQUIRE_DB === "1" || process.env.CI === "true" || process.env.REQUIRE_DATABASE === "1";
 
 const DRIZZLE_DIR = fileURLToPath(new URL("../../drizzle/", import.meta.url));
 
@@ -100,6 +100,7 @@ describe("database suite environment", () => {
       return;
     }
     expect(DATABASE_URL, "CI must provide DATABASE_URL for the WP1 suite").toBeTruthy();
+    expect(DATABASE_URL).toMatch(/^postgres(ql)?:\/\//);
   });
 });
 

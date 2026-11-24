@@ -21,7 +21,8 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
-      "@inkwellio/ui": ["../../packages/ui/src/index"]
+      "@inkwellio/ui": ["../../packages/ui/src/index"],
+      "@inkwellio/ui/client": ["../../packages/ui/src/client"]
     }
   },
   "include": [

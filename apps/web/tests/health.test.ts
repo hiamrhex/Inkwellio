@@ -1,6 +1,8 @@
+import { createServer, type Socket } from "node:net";
 import { describe, expect, it } from "vitest";
 import { GET, checkDatabaseHealth } from "../src/app/api/health/route";
 import { policy } from "../src/app/api/health/policy";
+import { closeDb } from "@/kernel/db";
 
 describe("B3: Health check endpoint (/api/health, A11)", () => {
   it("has sibling policy 'public'", () => {
@@ -28,13 +30,48 @@ describe("B3: Health check endpoint (/api/health, A11)", () => {
   });
 
   it("enforces 5-second timeout on unresponsive database", async () => {
-    // Passes a small timeout (e.g. 50ms) to checkDatabaseHealth with invalid DB
-    const start = performance.now();
-    const healthy = await checkDatabaseHealth(50);
-    const duration = performance.now() - start;
+    // Spin up a local TCP server that accepts connections but never replies (black hole).
+    const sockets = new Set<Socket>();
+    const server = createServer((socket) => {
+      sockets.add(socket);
+      socket.on("close", () => sockets.delete(socket));
+    });
 
-    expect(healthy).toBe(false);
-    expect(duration).toBeLessThan(1000); // Does not hang or exceed limit
+    await new Promise<void>((resolve) => {
+      server.listen(0, "127.0.0.1", () => resolve());
+    });
+
+    const address = server.address();
+    if (!address || typeof address === "string") {
+      throw new Error("Failed to obtain ephemeral port for mock TCP server");
+    }
+
+    const origUrl = process.env.DATABASE_URL;
+    await closeDb();
+    process.env.DATABASE_URL = `postgres://unresponsive_user:unresponsive_pass@127.0.0.1:${address.port}/inkwellio`;
+
+    try {
+      const start = performance.now();
+      const healthy = await checkDatabaseHealth(100);
+      const duration = performance.now() - start;
+
+      // Must fail because the database was unresponsive
+      expect(healthy).toBe(false);
+      // Proves it actually waited for the 100ms timeout rather than failing fast
+      expect(duration).toBeGreaterThanOrEqual(90);
+      expect(duration).toBeLessThan(1000);
+    } finally {
+      if (origUrl !== undefined) {
+        process.env.DATABASE_URL = origUrl;
+      } else {
+        delete process.env.DATABASE_URL;
+      }
+      for (const socket of sockets) {
+        socket.destroy();
+      }
+      await closeDb();
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    }
   });
 
   it("returns minimal body without internal leak or stack trace", async () => {
