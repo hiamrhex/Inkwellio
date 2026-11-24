@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   AppError,
   ConflictError,
+  ForbiddenError,
   NotFoundError,
   ValidationError,
   isPublicErrorCode,
@@ -20,6 +21,7 @@ const REQUEST_ID = "req-0000-1111";
 
 const PUBLIC_CODES: PublicErrorCode[] = [
   "VALIDATION_ERROR",
+  "FORBIDDEN",
   "NOT_FOUND",
   "CONFLICT",
   "UNAVAILABLE",
@@ -139,6 +141,7 @@ describe("toPublicError", () => {
     const samples: unknown[] = [
       new NotFoundError(),
       new ConflictError(),
+      new ForbiddenError(),
       new Error("x"),
       pgError("23505"),
       pgError("XX000"),
@@ -154,7 +157,7 @@ describe("toPublicError", () => {
 });
 
 describe("isPublicErrorCode", () => {
-  it("accepts only the five codes", () => {
+  it("accepts only the six codes", () => {
     for (const code of PUBLIC_CODES) {
       expect(isPublicErrorCode(code)).toBe(true);
     }
