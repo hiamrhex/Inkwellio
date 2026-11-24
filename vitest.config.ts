@@ -104,6 +104,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.join(__dirname, "apps", "web", "src"),
+      "@inkwellio/ui": path.join(__dirname, "packages", "ui", "src", "index.ts"),
     },
   },
 });

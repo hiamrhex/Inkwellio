@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Newsreader } from "next/font/google";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -12,6 +12,12 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const newsreader = Newsreader({
+  variable: "--font-newsreader",
+  subsets: ["latin"],
+  style: ["normal", "italic"],
+});
+
 export const metadata: Metadata = {
   title: "Inkwellio",
   description: "A writing platform for independent publications.",
@@ -21,8 +27,17 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${newsreader.variable} h-full antialiased`}
     >
+      <head>
+        {/*
+         * theme.js — blocking inline-free zero-FOUC theme bootstrap.
+         * Sets data-theme on <html> before first paint.
+         * CSP hash/nonce must be added before strict CSP ships.
+         */}
+        {/* eslint-disable-next-line @next/next/no-sync-scripts */}
+        <script src="/scripts/theme.js" />
+      </head>
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );
