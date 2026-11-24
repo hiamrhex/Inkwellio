@@ -61,4 +61,26 @@ export function parseEnv(
   return result.data;
 }
 
-export const env = parseEnv();
+let cachedEnv: Env | undefined;
+
+function getEnv(): Env {
+  cachedEnv ??= parseEnv();
+  return cachedEnv;
+}
+
+/**
+ * Validated environment configuration.
+ *
+ * Parses eagerly at import time so a misconfigured server fails fast at startup.
+ * During `next build` (`NEXT_PHASE === "phase-production-build"`), route metadata
+ * collection imports modules without runtime auth secrets, so parsing is deferred
+ * until a property is actually read.
+ */
+export const env: Env =
+  process.env.NEXT_PHASE === "phase-production-build"
+    ? new Proxy({} as Env, {
+        get(_target, prop, receiver) {
+          return Reflect.get(getEnv(), prop, receiver);
+        },
+      })
+    : getEnv();
