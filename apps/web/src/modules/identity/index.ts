@@ -20,6 +20,7 @@ import {
 } from "@/kernel/errors";
 import { users, sessions, accounts, verifications, rateLimits } from "./schema";
 import { sendVerificationEmail, sendResetPasswordEmail } from "./email";
+import { rateLimitAuth } from "./limiter";
 
 // Re-export for other modules
 export { ForbiddenError, users, sessions, accounts, verifications, rateLimits };
@@ -158,12 +159,14 @@ export function getAuth() {
     hooks: {
       before: async (ctx) => {
         logEvent("debug", "auth_request", { path: (ctx as unknown as { path: string }).path, method: (ctx as unknown as { method: string }).method });
+        return { context: ctx };
       },
       after: async (ctx) => {
         logEvent("debug", "auth_response", {
           path: (ctx as unknown as { path: string }).path,
           status: (ctx as unknown as { context?: { returned?: { status?: string } } }).context?.returned?.status,
         });
+        return {};
       },
     },
 
@@ -188,6 +191,62 @@ export const auth = new Proxy({} as Record<string, unknown>, {
     return authInstance ? Reflect.get(authInstance, prop, receiver) : undefined;
   },
 });
+
+const RATE_LIMITED_AUTH_PATHS = new Set([
+  "sign-in/email",
+  "sign-up/email",
+  "forget-password",
+  "request-password-reset",
+  "reset-password",
+  "send-verification-email",
+]);
+
+/**
+ * Next.js App Router GET handler for `/api/auth/[...all]`.
+ *
+ * Kept inside `modules/identity` so `app/` never imports Better Auth directly.
+ */
+export async function handleAuthGet(request: Request): Promise<Response> {
+  return getAuth().handler(request);
+}
+
+/**
+ * Next.js App Router POST handler for `/api/auth/[...all]`.
+ *
+ * Enforces application-layer rate limiting (pinned `x-vercel-forwarded-for` +
+ * normalized email) before delegating to Better Auth's handler.
+ */
+export async function handleAuthPost(request: Request): Promise<Response> {
+  const url = new URL(request.url);
+  const subPath = url.pathname.replace(/^\/api\/auth\/?/, "");
+
+  if (RATE_LIMITED_AUTH_PATHS.has(subPath)) {
+    let email: string | undefined;
+    try {
+      const cloned = request.clone();
+      const body = (await cloned.json()) as { email?: unknown };
+      if (typeof body?.email === "string") {
+        email = body.email;
+      }
+    } catch {
+      // Non-JSON or empty body; IP rate limit still applies
+    }
+
+    const limitResult = await rateLimitAuth(
+      `auth:${subPath}`,
+      { headers: request.headers, email },
+      { max: 5, windowSeconds: 600 },
+    );
+    if (!limitResult.allowed) {
+      return Response.json(
+        { code: "RATE_LIMITED", message: "Too many requests" },
+        { status: 429 },
+      );
+    }
+  }
+
+  return getAuth().handler(request);
+}
 
 /**
  * Authorization policy.
