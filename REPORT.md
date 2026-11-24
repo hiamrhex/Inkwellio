@@ -7,10 +7,17 @@
 
 ## UNVERIFIED (read this first)
 
-1. **CI on `postgres:17` for `91b43c2`** — green in
+1. **CI on `postgres:17` for `91b43c2`** — the **push** run is green:
    https://github.com/hiamrhex/Inkwellio/actions/runs/45445775766 (push of
-   `67617e8`, which contains `91b43c2`). This docs-only follow-up commit
-   triggers its own PR #11 CI run; the URL above is the code run.
+   `67617e8`, which contains `91b43c2`). The **PR** run for `67617e8` was red:
+   https://github.com/hiamrhex/Inkwellio/actions/runs/45445797601. It merged
+   `origin/main` at `1a09ccd`, a commit whose own CI was red: the health test
+   asserted the database was unreachable while `DATABASE_URL` pointed at the
+   live CI service. `af8239c` (PR #12) replaced that test with a black-hole TCP
+   server. The later PR run for `25d9250` is green:
+   https://github.com/hiamrhex/Inkwellio/actions/runs/45484206066. The merge of
+   `origin/main` at `ab5d974` in this commit is new; its own CI run had not
+   finished when this file was written, and nothing here claims it is green.
 2. **`post_revisions` append-only enforcement** — application-level only. There
    is no database trigger preventing an `UPDATE`/`DELETE` on a revision. Logged
    for Agent 1 in `docs/handoffs/agent3-needs.md`.
@@ -18,10 +25,10 @@
    `FORBIDDEN` code; mapping to the kernel error is WP3b.
 4. **Agent 1's three `authorize()` divergences** — recorded in the handoff, not
    fixed here (not owned by this worktree).
-5. **`origin/kernel-forbidden`** — the task state says PR #8 is merged, but
-   `origin/kernel-forbidden` is one commit ahead of `origin/main` and not an
-   ancestor; `kernel/errors.ts` on `origin/main` still has no `ForbiddenError`.
-   Reported as a discrepancy, not resolved here.
+5. **`origin/kernel-forbidden`** — resolved upstream: PR #8 merged as
+   `ab5d974`, and `apps/web/src/kernel/errors.ts` now exports
+   `ForbiddenError`. The posts service still throws its own `FORBIDDEN` code;
+   mapping it is WP3b (item 3).
 
 ## Exact root cause of the eight failures
 
