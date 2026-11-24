@@ -34,4 +34,8 @@ export {
   getPublicationBySlug,
   type PublicationSummary,
 } from "./reads";
+export {
+  getOwnedPublication,
+  listPublicationsForOwner,
+} from "./owner-reads";
 export { parsePublicationBio, parsePublicationName } from "./validation";
