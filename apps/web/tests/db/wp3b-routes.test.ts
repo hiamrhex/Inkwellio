@@ -36,7 +36,8 @@ const { POST: publishRoute } = await import("../../src/app/api/posts/[id]/publis
 const { POST: unpublishRoute } = await import("../../src/app/api/posts/[id]/unpublish/route");
 const { POST: deleteRoute } = await import("../../src/app/api/posts/[id]/delete/route");
 const { POST: restoreRoute } = await import("../../src/app/api/posts/[id]/restore/route");
-const { PUT: saveDraftRoute } = await import("../../src/app/api/posts/[id]/draft/route");
+const { GET: getDraftRoute, PUT: saveDraftRoute } = await import("../../src/app/api/posts/[id]/draft/route");
+const { POST: renameRoute } = await import("../../src/app/api/posts/[id]/slug/route");
 
 describe("wp3b routes suite environment", () => {
   it("fails instead of skipping when CI claims to run it", () => {
@@ -82,6 +83,13 @@ describe.skipIf(!DATABASE_URL)("WP3b route handlers on a real Postgres", () => {
       method: "PUT",
       headers: { "content-type": "application/json", "x-request-id": "req-route-put" },
       body: JSON.stringify(body),
+    });
+  }
+
+  function jsonGet(path: string): Request {
+    return new Request(`http://localhost${path}`, {
+      method: "GET",
+      headers: { "x-request-id": "req-route-get" },
     });
   }
 
@@ -147,7 +155,7 @@ describe.skipIf(!DATABASE_URL)("WP3b route handlers on a real Postgres", () => {
     expect(body.details.currentVersion).toBe(saved.version);
   });
 
-  it("full lifecycle through the routes: create -> save -> publish -> unpublish -> delete -> restore", async () => {
+  it("full lifecycle through the routes: create -> save -> GET draft -> publish -> rename slug -> unpublish -> delete -> restore", async () => {
     const owner = await createOwner("lifecycle-route");
     state.userId = owner;
 
@@ -166,6 +174,13 @@ describe.skipIf(!DATABASE_URL)("WP3b route handlers on a real Postgres", () => {
     expect(savedResponse.status).toBe(200);
     const saved = (await savedResponse.json()) as { version: number };
 
+    const loadedDraft = await getDraftRoute(jsonGet(`/api/posts/${post.id}/draft`), ctx(post.id));
+    expect(loadedDraft.status).toBe(200);
+    expect((await loadedDraft.json()) as { version: number; title: string }).toMatchObject({
+      version: saved.version,
+      title: "Title",
+    });
+
     const published = await publishRoute(
       jsonPost(`/api/posts/${post.id}/publish`, { expectedVersion: saved.version }),
       ctx(post.id),
@@ -173,6 +188,13 @@ describe.skipIf(!DATABASE_URL)("WP3b route handlers on a real Postgres", () => {
     expect(published.status).toBe(200);
     const publishedBody = (await published.json()) as { status: string; version: number };
     expect(publishedBody.status).toBe("published");
+
+    const renamed = await renameRoute(
+      jsonPost(`/api/posts/${post.id}/slug`, { slug: `renamed-${seq}` }),
+      ctx(post.id),
+    );
+    expect(renamed.status).toBe(200);
+    expect(((await renamed.json()) as { slug: string }).slug).toBe(`renamed-${seq}`);
 
     const unpublished = await unpublishRoute(
       jsonPost(`/api/posts/${post.id}/unpublish`, { expectedVersion: publishedBody.version }),

@@ -7,6 +7,7 @@ import {
   deletePost,
   getDraftForOwner,
   publishPost,
+  renamePost,
   restorePost,
   saveDraft,
   unpublishPost,
@@ -93,7 +94,7 @@ describe.skipIf(!DATABASE_URL)("WP3b writer services on a real Postgres", () => 
     return { response, body };
   }
 
-  it("happy path: create publication -> create post -> save draft -> publish -> unpublish -> delete -> restore", async () => {
+  it("happy path: create publication -> create post -> save draft -> publish -> rename slug -> unpublish -> delete -> restore", async () => {
     const owner = await createOwner("happy");
     const who = actor(owner);
 
@@ -123,6 +124,17 @@ describe.skipIf(!DATABASE_URL)("WP3b writer services on a real Postgres", () => 
     });
     expect(published.status).toBe("published");
     expect((await statusOf(post.id)).published_at).not.toBeNull();
+
+    // A published post can be renamed; the new address is the live one and a
+    // history row records the old address for the redirect (WP3a slugs.ts).
+    const renamed = await renamePost(db(), {
+      actor: who,
+      postId: post.id,
+      slug: `renamed-${seq}`,
+    });
+    expect(renamed.changed).toBe(true);
+    const slugRow = await pool.query<{ slug: string }>("SELECT slug FROM posts WHERE id = $1", [post.id]);
+    expect(slugRow.rows[0]!.slug).toBe(`renamed-${seq}`);
 
     const unpublished = await unpublishPost(db(), {
       actor: who,
