@@ -62,6 +62,18 @@ export type Post = {
   readonly deletedAt: Date | null;
 };
 
+/** Publicly readable post with its active published revision content. */
+export type PublishedPostContent = {
+  readonly id: string;
+  readonly publicationId: string;
+  readonly publicationSlug: string;
+  readonly publicationName: string;
+  readonly slug: string;
+  readonly title: string;
+  readonly bodyMarkdown: string;
+  readonly publishedAt: Date;
+};
+
 /** Keyset cursor: the `(published_at, id)` tuple of the last row on the page. */
 export type FeedCursor = {
   readonly publishedAt: Date;
@@ -249,5 +261,82 @@ export async function getPostById(
     publishedRevisionId: row.published_revision_id,
     publishedAt: toDate(row.published_at),
     deletedAt: toDate(row.deleted_at),
+  };
+}
+
+/**
+ * Public read of a single published post with its published revision content.
+ *
+ * Strictly enforces `status = 'published' AND deleted_at IS NULL AND published_at IS NOT NULL`
+ * and joins `post_revisions` on `(published_revision_id, post_id)` so drafts,
+ * deleted posts, and unreferenced revisions can never leak to public readers.
+ */
+export async function getPublishedPostById(
+  executor: Executor,
+  postId: string,
+): Promise<PublishedPostContent | undefined> {
+  if (!isUuid(postId)) return undefined;
+
+  const q: Queryable = queryable(executor);
+
+  type PublishedRow = {
+    id: string;
+    publication_id: string;
+    publication_slug: string;
+    publication_name: string;
+    slug: string;
+    title: string;
+    body_markdown: string;
+    published_at: unknown;
+  };
+
+  let found: PublishedRow[];
+  try {
+    found = await rows<PublishedRow>(
+      q,
+      sql`
+        SELECT p.id,
+               p.publication_id,
+               pub.slug AS publication_slug,
+               pub.name AS publication_name,
+               p.slug,
+               r.title,
+               r.body_markdown,
+               p.published_at
+          FROM posts p
+          JOIN publications pub
+            ON pub.id = p.publication_id
+          JOIN post_revisions r
+            ON r.id = p.published_revision_id
+           AND r.post_id = p.id
+         WHERE p.id = ${postId}
+           AND p.status = 'published'
+           AND p.deleted_at IS NULL
+           AND p.published_at IS NOT NULL
+         LIMIT 1
+      `,
+    );
+  } catch (error) {
+    if (pgCode(error) === "22P02") return undefined;
+    throw error;
+  }
+
+  const hit = found[0];
+  if (hit === undefined) return undefined;
+
+  const publishedAt = toDate(hit.published_at);
+  if (publishedAt === null) {
+    throw new Error("A published post row has no published_at");
+  }
+
+  return {
+    id: hit.id,
+    publicationId: hit.publication_id,
+    publicationSlug: hit.publication_slug,
+    publicationName: hit.publication_name,
+    slug: hit.slug,
+    title: hit.title,
+    bodyMarkdown: hit.body_markdown,
+    publishedAt,
   };
 }
