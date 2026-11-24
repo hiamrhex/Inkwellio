@@ -51,6 +51,7 @@ export {
   unpublishPost,
   type LifecycleInput,
   type LifecycleResult,
+  type PublishResult,
 } from "./service/lifecycle";
 export { type Db, type Executor, type Queryable } from "./service/executor";
 export {

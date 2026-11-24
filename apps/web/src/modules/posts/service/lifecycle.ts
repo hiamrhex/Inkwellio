@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { conflict, forbidden, notFound, pgCode, requireActor, validation, type Actor } from "@/modules/publications";
+import { conflict, notFound, validation, type Actor } from "@/modules/publications";
 import type { PostStatus } from "../ports";
 import { loadPostOwner } from "./drafts";
 import {
@@ -48,8 +48,20 @@ export type LifecycleResult = {
   readonly publishedAt?: Date;
 };
 
+/**
+ * A publish always leaves the post published, so its status and timestamp are
+ * narrower than the shared result. The timestamp is required, not optional:
+ * `posts_published_at_check` guarantees the column is populated, and callers
+ * (and the tests) should not need a non-null assertion to read it.
+ */
+export type PublishResult = Omit<LifecycleResult, "status" | "publishedAt"> & {
+  readonly status: "published";
+  readonly publishedAt: Date;
+};
+
 /** A post row as the lifecycle reads it, after the ownership check. */
 export type LockedPost = {
+  readonly id: string;
   readonly status: PostStatus;
   readonly published_revision_id: string | null;
   readonly published_at: unknown;
@@ -96,7 +108,7 @@ export async function lockOwnedPost(
   const found = await rows<LockedPost>(
     q,
     sql`
-      SELECT status, published_revision_id, published_at
+      SELECT id, status, published_revision_id, published_at
         FROM posts
        WHERE id = ${input.postId}
        FOR UPDATE
@@ -225,45 +237,137 @@ export async function writeAudit(
   );
 }
 
+/**
+ * The published revision's text, so a republish of identical content can be
+ * recognised as a no-op rather than appending a duplicate revision.
+ */
+async function readPublishedRevision(
+  q: Queryable,
+  postId: string,
+  revisionId: string | null,
+): Promise<{ title: string; body_markdown: string } | undefined> {
+  if (revisionId === null) return undefined;
+  const found = await rows<{ title: string; body_markdown: string }>(
+    q,
+    sql`
+      SELECT title, body_markdown
+        FROM post_revisions
+       WHERE id = ${revisionId} AND post_id = ${postId}
+    `,
+  );
+  return found[0];
+}
+
 export async function publishPost(
   executor: Executor,
   input: LifecycleInput,
-): Promise<LifecycleResult> {
+): Promise<PublishResult> {
   const requestId = parseRequestId(input.requestId);
   const expectedVersion = parseExpectedVersion(input.expectedVersion);
+  const key = { ...input, expectedVersion, requestId };
 
   return runInTransaction(executor, async (q) => {
-    const { post: post, actorId } = await lockOwnedPost(q, { ...input, expectedVersion });
-    const requiredActor = requireActor({ userId: actorId } as Actor);
+    const { post, actorId } = await lockOwnedPost(q, key);
 
-    const done = await alreadyDone(q, { ...input, expectedVersion, requestId }, post, AUDIT_PUBLISHED);
-    if (done !== undefined) return done;
-
-    if (post.status === "published") {
-      const draft = await readDraft(q, input.postId);
-      return { id: input.postId, status: "published", version: draft?.version ?? 0, noOp: true, revisionId: post.published_revision_id };
+    const done = await alreadyDone(q, key, post, AUDIT_PUBLISHED);
+    if (done !== undefined) {
+      return {
+        ...done,
+        status: "published",
+        publishedAt: requirePublishedAt(post.published_at),
+      };
     }
 
+    // ADR-007: `deleted -> published` is the only illegal transition. The post
+    // must be restored first, so a deleted address never silently comes back.
+    if (post.status === "deleted") {
+      throw conflict("Restore the post before publishing it");
+    }
+
+    const draft = await readDraft(q, input.postId);
+
+    // Already published: identical text is a no-op, but a stale token is still
+    // a CONFLICT. That is what makes a concurrent publish lose rather than
+    // silently return success.
+    if (post.status === "published") {
+      const published = await readPublishedRevision(
+        q,
+        input.postId,
+        post.published_revision_id,
+      );
+      const unchanged =
+        draft === undefined ||
+        (published !== undefined &&
+          published.title === draft.title &&
+          published.body_markdown === draft.bodyMarkdown);
+
+      if (unchanged) {
+        if (draft !== undefined && draft.version !== expectedVersion) throw staleDraft(draft);
+        return {
+          id: input.postId,
+          status: "published",
+          version: draft?.version ?? 0,
+          noOp: true,
+          revisionId: post.published_revision_id,
+          publishedAt: requirePublishedAt(post.published_at),
+        };
+      }
+    }
+
+    if (draft === undefined) throw validation("There is nothing to publish");
+
     const version = await claimVersion(q, input.postId, expectedVersion, "publish");
+
+    // A publish appends the revision it makes public (A2). The pointer is the
+    // revision's own id; a draft version is a compare-and-set token, not an id.
+    const inserted = await rows<{ id: string }>(
+      q,
+      sql`
+        INSERT INTO post_revisions (post_id, title, body_markdown)
+        VALUES (${input.postId}, ${draft.title}, ${draft.bodyMarkdown})
+        RETURNING id
+      `,
+    );
+    const revisionId = inserted[0]!.id;
+
+    // The draft's base is now the published revision, exactly as an explicit
+    // save records it, so a later save diffs against what readers can see.
     await rows(
+      q,
+      sql`UPDATE draft_state SET base_revision_id = ${revisionId} WHERE post_id = ${input.postId}`,
+    );
+
+    // `published_at` is written once: COALESCE keeps the first publish time
+    // across a republish, an unpublish and a restore.
+    const updated = await rows<{ published_at: unknown }>(
       q,
       sql`
         UPDATE posts
            SET status = 'published',
-               published_revision_id = ${version},
-               published_at = now(),
+               published_revision_id = ${revisionId},
+               published_at = COALESCE(published_at, now()),
                updated_at = now()
          WHERE id = ${input.postId}
+        RETURNING published_at
       `,
     );
+
     await writeAudit(q, {
       action: AUDIT_PUBLISHED,
-      actorId: actorId,
+      actorId,
       postId: input.postId,
       requestId,
-      metadata: { previousStatus: post.status, publishedAt: post.published_at },
+      metadata: { previousStatus: post.status, revisionId },
     });
-    return { id: input.postId, status: "published", version, noOp: false, revisionId: String(version) };
+
+    return {
+      id: input.postId,
+      status: "published",
+      version,
+      noOp: false,
+      revisionId,
+      publishedAt: requirePublishedAt(updated[0]?.published_at),
+    };
   });
 }
 
@@ -374,8 +478,7 @@ export async function deletePost(
       requestId,
       metadata: { previousStatus: post.status },
     });
-    const draftAfter = await readDraft(q, input.postId);
-    return { id: input.postId, status: "deleted", version: draftAfter?.version ?? 0, noOp: false, revisionId: post.published_revision_id };
+    return { id: input.postId, status: "deleted", version, noOp: false, revisionId: post.published_revision_id };
   });
 }
 
@@ -417,8 +520,7 @@ export async function restorePost(
       requestId,
       metadata: { previousStatus: post.status },
     });
-    const draftAfter = await readDraft(q, input.postId);
-    return { id: input.postId, status: "draft", version: draftAfter?.version ?? 0, noOp: false, revisionId: post.published_revision_id };
+    return { id: input.postId, status: "draft", version, noOp: false, revisionId: post.published_revision_id };
   });
 }
 
