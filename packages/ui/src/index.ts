@@ -1,5 +1,10 @@
 /**
- * Shared UI primitives live here once WP1 introduces a design system. WP0
- * deliberately ships no components.
+ * @inkwellio/ui — public surface (Server-Safe)
+ * WP7: Ink & Paper design system primitives.
  */
-export const UI_PACKAGE_NAME = "@inkwellio/ui" as const;
+export { UI_PACKAGE_NAME, tokens } from "./tokens";
+export type { ColorMode, TokenKey } from "./tokens";
+export { Chip } from "./chip";
+export { SectionHeader } from "./section-header";
+export { IconTile, SquircleClipDef } from "./icon-tile";
+export { ThemeToggle } from "./theme-toggle";
