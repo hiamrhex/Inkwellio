@@ -120,7 +120,13 @@ export async function consumeRateLimit(
         status: allowed ? 200 : 429,
       };
     } catch {
-      // Fallback to memory store if query fails
+      // Fail closed when DATABASE_URL is configured: never allow bypass on DB failure
+      return {
+        allowed: false,
+        remaining: 0,
+        resetAt,
+        status: 429,
+      };
     }
   }
 

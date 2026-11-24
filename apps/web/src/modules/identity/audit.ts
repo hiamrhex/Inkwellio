@@ -13,7 +13,7 @@
  */
 
 import { createHash, randomUUID } from "node:crypto";
-import { and, eq, gte, sql } from "drizzle-orm";
+import { and, eq, gte } from "drizzle-orm";
 import { getDb } from "@/kernel/db";
 import { auditEvents } from "@/kernel/schema";
 import { normalizeRateLimitEmail } from "./limiter";

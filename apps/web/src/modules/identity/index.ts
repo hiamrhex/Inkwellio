@@ -12,6 +12,7 @@ import { env } from "@/kernel/env";
 import { logEvent } from "@/kernel/log";
 import {
   ConflictError,
+  ForbiddenError,
   NotFoundError,
   ValidationError,
   toPublicError,
@@ -21,7 +22,7 @@ import { users, sessions, accounts, verifications, rateLimits } from "./schema";
 import { sendVerificationEmail, sendResetPasswordEmail } from "./email";
 
 // Re-export for other modules
-export { users, sessions, accounts, verifications, rateLimits };
+export { ForbiddenError, users, sessions, accounts, verifications, rateLimits };
 export * from "./limiter";
 export * from "./audit";
 export * from "./email";
@@ -215,10 +216,18 @@ export type Action =
   | "read_publication"
   | "read_post";
 
+export type PostStatus = "draft" | "published" | "deleted";
+
 export type Resource =
   | { type: "user"; id: string }
   | { type: "publication"; id: string; ownerId: string }
-  | { type: "post"; id: string; publicationId: string }
+  | {
+      type: "post";
+      id: string;
+      publicationId: string;
+      ownerId: string;
+      status: PostStatus;
+    }
   | { type: "account"; action: "export" | "delete"; userId: string };
 
 export type Actor =
@@ -227,8 +236,19 @@ export type Actor =
 
 export function authorize(actor: Actor, action: Action, resource: Resource): boolean {
   // Public actions permitted to anyone (anonymous or authenticated)
-  if (["sign_up", "sign_in", "verify_email", "reset_password", "read_publication", "read_post"].includes(action)) {
+  if (["sign_up", "sign_in", "verify_email", "reset_password", "read_publication"].includes(action)) {
     return true;
+  }
+
+  // Post reads depend on publication status and ownership (identity-api.md §3)
+  if (action === "read_post" && resource.type === "post") {
+    if (resource.status === "published") {
+      return true;
+    }
+    if (actor.type === "anonymous") {
+      return false;
+    }
+    return actor.role === "admin" || resource.ownerId === actor.id;
   }
 
   // Anonymous cannot perform any other action
@@ -262,7 +282,14 @@ export function authorize(actor: Actor, action: Action, resource: Resource): boo
     case "publication":
       return resource.ownerId === actor.id;
     case "post":
-      // Post modification goes through publication ownership
+      if (
+        action === "update_post" ||
+        action === "publish_post" ||
+        action === "autosave_post" ||
+        action === "delete_post"
+      ) {
+        return resource.ownerId === actor.id;
+      }
       return false;
   }
 
@@ -293,9 +320,19 @@ export function safeRedirect(target: string, requestOrigin: string): string {
     return "/";
   }
 
-  // Check for encoded directory traversal before URL parsing
-  const decoded = decodeURIComponent(target);
-  if (decoded.includes("/../") || decoded.includes("/..\\") || decoded === "/..") {
+  // Check for encoded directory traversal, control chars, or backslashes before URL parsing
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(target);
+  } catch {
+    return "/";
+  }
+  if (
+    /[\x00-\x1f\\]/.test(decoded) ||
+    decoded.includes("/../") ||
+    decoded.includes("/..\\") ||
+    decoded === "/.."
+  ) {
     return "/";
   }
 

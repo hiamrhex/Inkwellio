@@ -255,7 +255,7 @@ const MATRIX_CASES: MatrixCase[] = [
     },
   },
   {
-    entryPoint: "post.read",
+    entryPoint: "post.read.published",
     action: "read_post",
     resourceForActor: (actor, target) => {
       const owner = getTargetOwner(actor, target);
@@ -263,13 +263,141 @@ const MATRIX_CASES: MatrixCase[] = [
         type: "post",
         id: `post-${owner}`,
         publicationId: `pub-${owner}`,
-      };
+        ownerId: owner,
+        status: "published",
+      } as Resource;
     },
     expected: {
       anon: "allow",
       userA_own: "allow",
       userA_other: "allow",
       userB: "allow",
+      admin: "allow",
+    },
+  },
+  {
+    entryPoint: "post.read.draft",
+    action: "read_post",
+    resourceForActor: (actor, target) => {
+      const owner = getTargetOwner(actor, target);
+      return {
+        type: "post",
+        id: `post-${owner}`,
+        publicationId: `pub-${owner}`,
+        ownerId: owner,
+        status: "draft",
+      } as Resource;
+    },
+    expected: {
+      anon: "deny",
+      userA_own: "allow",
+      userA_other: "deny",
+      userB: "deny",
+      admin: "allow",
+    },
+  },
+  {
+    entryPoint: "post.read.deleted",
+    action: "read_post",
+    resourceForActor: (actor, target) => {
+      const owner = getTargetOwner(actor, target);
+      return {
+        type: "post",
+        id: `post-${owner}`,
+        publicationId: `pub-${owner}`,
+        ownerId: owner,
+        status: "deleted",
+      } as Resource;
+    },
+    expected: {
+      anon: "deny",
+      userA_own: "allow",
+      userA_other: "deny",
+      userB: "deny",
+      admin: "allow",
+    },
+  },
+  {
+    entryPoint: "post.update",
+    action: "update_post",
+    resourceForActor: (actor, target) => {
+      const owner = getTargetOwner(actor, target);
+      return {
+        type: "post",
+        id: `post-${owner}`,
+        publicationId: `pub-${owner}`,
+        ownerId: owner,
+        status: "draft",
+      } as Resource;
+    },
+    expected: {
+      anon: "deny",
+      userA_own: "allow",
+      userA_other: "deny",
+      userB: "deny",
+      admin: "allow",
+    },
+  },
+  {
+    entryPoint: "post.publish",
+    action: "publish_post",
+    resourceForActor: (actor, target) => {
+      const owner = getTargetOwner(actor, target);
+      return {
+        type: "post",
+        id: `post-${owner}`,
+        publicationId: `pub-${owner}`,
+        ownerId: owner,
+        status: "draft",
+      } as Resource;
+    },
+    expected: {
+      anon: "deny",
+      userA_own: "allow",
+      userA_other: "deny",
+      userB: "deny",
+      admin: "allow",
+    },
+  },
+  {
+    entryPoint: "post.autosave",
+    action: "autosave_post",
+    resourceForActor: (actor, target) => {
+      const owner = getTargetOwner(actor, target);
+      return {
+        type: "post",
+        id: `post-${owner}`,
+        publicationId: `pub-${owner}`,
+        ownerId: owner,
+        status: "draft",
+      } as Resource;
+    },
+    expected: {
+      anon: "deny",
+      userA_own: "allow",
+      userA_other: "deny",
+      userB: "deny",
+      admin: "allow",
+    },
+  },
+  {
+    entryPoint: "post.delete",
+    action: "delete_post",
+    resourceForActor: (actor, target) => {
+      const owner = getTargetOwner(actor, target);
+      return {
+        type: "post",
+        id: `post-${owner}`,
+        publicationId: `pub-${owner}`,
+        ownerId: owner,
+        status: "draft",
+      } as Resource;
+    },
+    expected: {
+      anon: "deny",
+      userA_own: "allow",
+      userA_other: "deny",
+      userB: "deny",
       admin: "allow",
     },
   },

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { authorize, type Actor, type Action, type Resource } from "../src/modules/identity";
+import { authorize, type Actor, type Resource } from "../src/modules/identity";
 
 const testDir = path.dirname(fileURLToPath(import.meta.url));
 const appDir = path.resolve(testDir, "../src/app");

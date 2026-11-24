@@ -24,6 +24,11 @@ const testCases: Array<[string, string, string]> = [
   ["absolute URL to same origin allowed", "https://inkwellio.com/dashboard", "/dashboard"],
   ["absolute URL to different origin rejected", "https://evil.com/dashboard", "/"],
   ["relative with encoded slash rejected", "/path%2F..%2Fadmin", "/"],
+  ["malformed URI percent encoding rejected", "/%E0%A4%A", "/"],
+  ["encoded CRLF rejected", "/%0d%0aSet-Cookie:bad", "/"],
+  ["literal CRLF rejected", "/path\r\ninjection", "/"],
+  ["backslash in path rejected", "/path\\to\\resource", "/"],
+  ["double backslash protocol-relative rejected", "/\\\\evil.com", "/"],
 ];
 
 describe("safeRedirect", () => {
