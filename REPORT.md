@@ -7,9 +7,10 @@
 
 ## UNVERIFIED (read this first)
 
-1. **CI on `postgres:17` for `91b43c2`** — pending at the time this file was
-   written. Everything below is local PG 18.3 evidence. The CI run URL is added
-   once the branch workflow finishes.
+1. **CI on `postgres:17` for `91b43c2`** — green in
+   https://github.com/hiamrhex/Inkwellio/actions/runs/45445775766 (push of
+   `67617e8`, which contains `91b43c2`). This docs-only follow-up commit
+   triggers its own PR #11 CI run; the URL above is the code run.
 2. **`post_revisions` append-only enforcement** — application-level only. There
    is no database trigger preventing an `UPDATE`/`DELETE` on a revision. Logged
    for Agent 1 in `docs/handoffs/agent3-needs.md`.
@@ -66,14 +67,14 @@ Command prefix for every DB run:
 
 | Claim | Command | Exact output | Commit SHA | CI run URL |
 | --- | --- | --- | --- | --- |
-| Publish suite green (15/15, zero skipped) | `pnpm vitest run apps/web/tests/db/wp3a-publish.test.ts` | `Tests 15 passed (15)`; `15 passed, 0 failed, 0 skipped` | `91b43c2` | pending |
-| All five WP3a suites green (87/87, zero skipped) | `pnpm vitest run apps/web/tests/db/wp3a-{publications,reads,slugs,drafts,publish}.test.ts` | `Test Files 5 passed (5)`; `Tests 87 passed (87)` | `91b43c2` | pending |
-| Full gate green, 0 lint errors | `pnpm check` | `exit=0`; `4 problems (0 errors, 4 warnings)` (all Agent 1 files) | `91b43c2` | pending |
-| Mutation 1: version CAS predicate | remove `AND version = ${expectedVersion}` in `claimVersion`, then the stale-version test | red: `AssertionError: the call must fail: expected false to be true`; restored: `Tests 15 passed (15)` | `91b43c2` | pending |
-| Mutation 2: `deleted -> published` guard | remove the `post.status === "deleted"` guard in `publishPost`, then the lifecycle test | red: `AssertionError: expected undefined to be 'CONFLICT'`; restored: `Tests 15 passed (15)` | `91b43c2` | pending |
-| Mutation 3: ownership check | replace `assertOwner(...)` with `{ userId: ownerId }` in `lockOwnedPost`, then the stranger test | red: `AssertionError: the call must fail: expected false to be true`; restored: `Tests 15 passed (15)` | `91b43c2` | pending |
-| Mutation 4: history before pointer | move the history insert after the slug update in `renamePost`, then the ordering test | red: `Caused by: error: slug moved from order-old-1 before its history row was written` (23514); restored: `Tests 12 passed (12)` | `91b43c2` | pending |
-| Mutation 5: audit in transaction | replace `db.transaction(...)` with `fn(db)` in `runInTransaction`, then the audit-failure test | red: `AssertionError: expected 'published' to be 'draft'`; restored: `Tests 15 passed (15)` | `91b43c2` | pending |
+| Publish suite green (15/15, zero skipped) | `pnpm vitest run apps/web/tests/db/wp3a-publish.test.ts` | `Tests 15 passed (15)`; `15 passed, 0 failed, 0 skipped` | `91b43c2` | https://github.com/hiamrhex/Inkwellio/actions/runs/45445775766 |
+| All five WP3a suites green (87/87, zero skipped) | `pnpm vitest run apps/web/tests/db/wp3a-{publications,reads,slugs,drafts,publish}.test.ts` | `Test Files 5 passed (5)`; `Tests 87 passed (87)` | `91b43c2` | https://github.com/hiamrhex/Inkwellio/actions/runs/45445775766 |
+| Full gate green, 0 lint errors | `pnpm check` | `exit=0`; `4 problems (0 errors, 4 warnings)` (all Agent 1 files) | `91b43c2` | https://github.com/hiamrhex/Inkwellio/actions/runs/45445775766 |
+| Mutation 1: version CAS predicate | remove `AND version = ${expectedVersion}` in `claimVersion`, then the stale-version test | red: `AssertionError: the call must fail: expected false to be true`; restored: `Tests 15 passed (15)` | `91b43c2` | https://github.com/hiamrhex/Inkwellio/actions/runs/45445775766 |
+| Mutation 2: `deleted -> published` guard | remove the `post.status === "deleted"` guard in `publishPost`, then the lifecycle test | red: `AssertionError: expected undefined to be 'CONFLICT'`; restored: `Tests 15 passed (15)` | `91b43c2` | https://github.com/hiamrhex/Inkwellio/actions/runs/45445775766 |
+| Mutation 3: ownership check | replace `assertOwner(...)` with `{ userId: ownerId }` in `lockOwnedPost`, then the stranger test | red: `AssertionError: the call must fail: expected false to be true`; restored: `Tests 15 passed (15)` | `91b43c2` | https://github.com/hiamrhex/Inkwellio/actions/runs/45445775766 |
+| Mutation 4: history before pointer | move the history insert after the slug update in `renamePost`, then the ordering test | red: `Caused by: error: slug moved from order-old-1 before its history row was written` (23514); restored: `Tests 12 passed (12)` | `91b43c2` | https://github.com/hiamrhex/Inkwellio/actions/runs/45445775766 |
+| Mutation 5: audit in transaction | replace `db.transaction(...)` with `fn(db)` in `runInTransaction`, then the audit-failure test | red: `AssertionError: expected 'published' to be 'draft'`; restored: `Tests 15 passed (15)` | `91b43c2` | https://github.com/hiamrhex/Inkwellio/actions/runs/45445775766 |
 
 Every mutated file was restored with `git checkout -- <path>`; `git status` was
 clean before the next proof.
