@@ -133,7 +133,7 @@ export async function searchPublishedPosts(
            ${topicClause}
            ${cursorClause}
          ORDER BY p.published_at DESC, p.id DESC
-         LIMIT ${limit}
+         LIMIT ${limit + 1}
       `,
     );
   } catch (error) {
@@ -143,7 +143,10 @@ export async function searchPublishedPosts(
     throw error;
   }
 
-  const items: SearchResultItem[] = found.map((row) => ({
+  const hasMore = found.length > limit;
+  const pageRows = hasMore ? found.slice(0, limit) : found;
+
+  const items: SearchResultItem[] = pageRows.map((row) => ({
     id: row.id,
     slug: row.slug,
     title: row.title,
@@ -155,7 +158,7 @@ export async function searchPublishedPosts(
 
   const last = items.at(-1);
   const nextCursor: FeedCursor | null =
-    last === undefined || items.length < limit
+    !hasMore || last === undefined
       ? null
       : { publishedAt: last.publishedAt, postId: last.id };
 

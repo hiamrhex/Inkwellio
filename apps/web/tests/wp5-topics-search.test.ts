@@ -94,6 +94,54 @@ describe("WP5: Seeded Topics & Search Validation", () => {
     await expect(listTopics(rejectingExecutor(err))).rejects.toThrow(err);
     await expect(seedTopics(rejectingExecutor(err))).rejects.toThrow(err);
   });
+
+  it("searchPublishedPosts uses limit+1 lookahead so exact-full final pages return nextCursor: null", async () => {
+    const row1 = {
+      id: "00000000-0000-4000-8000-000000000001",
+      slug: "post-1",
+      title: "Post 1",
+      body_markdown: "tactics",
+      published_at: "2026-10-03T10:00:00.000Z",
+      publication_slug: "pub",
+      publication_name: "Pub",
+    };
+    const row2 = {
+      id: "00000000-0000-4000-8000-000000000002",
+      slug: "post-2",
+      title: "Post 2",
+      body_markdown: "tactics",
+      published_at: "2026-10-02T10:00:00.000Z",
+      publication_slug: "pub",
+      publication_name: "Pub",
+    };
+
+    const twoRowsExecutor: Executor = {
+      kind: "tx",
+      tx: {
+        execute: async () => ({ rows: [row1, row2] }),
+      },
+    };
+    const oneRowExecutor: Executor = {
+      kind: "tx",
+      tx: {
+        execute: async () => ({ rows: [row2] }),
+      },
+    };
+
+    const page1 = await searchPublishedPosts(twoRowsExecutor, {
+      query: "tactics",
+      pageSize: 1,
+    });
+    expect(page1.items.map((i) => i.slug)).toEqual(["post-1"]);
+    expect(page1.nextCursor).not.toBeNull();
+
+    const page2 = await searchPublishedPosts(oneRowExecutor, {
+      query: "tactics",
+      pageSize: 1,
+    });
+    expect(page2.items.map((i) => i.slug)).toEqual(["post-2"]);
+    expect(page2.nextCursor).toBeNull();
+  });
 });
 
 describe("WP5: Public HTTP Route Boundaries (/api/search and /api/topics)", () => {

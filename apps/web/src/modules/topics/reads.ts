@@ -194,7 +194,7 @@ export async function fetchTopicPublishedPage(
            AND p.published_at IS NOT NULL
            ${after}
          ORDER BY p.published_at DESC, p.id DESC
-         LIMIT ${limit}
+         LIMIT ${limit + 1}
       `,
     );
   } catch (error) {
@@ -204,7 +204,10 @@ export async function fetchTopicPublishedPage(
     throw error;
   }
 
-  const posts: TopicPostItem[] = found.map((item) => ({
+  const hasMore = found.length > limit;
+  const pageRows = hasMore ? found.slice(0, limit) : found;
+
+  const posts: TopicPostItem[] = pageRows.map((item) => ({
     id: item.id,
     slug: item.slug,
     title: item.title,
@@ -215,7 +218,7 @@ export async function fetchTopicPublishedPage(
 
   const last = posts.at(-1);
   const nextCursor: FeedCursor | null =
-    last === undefined || posts.length < limit
+    !hasMore || last === undefined
       ? null
       : { publishedAt: last.publishedAt, postId: last.id };
 
