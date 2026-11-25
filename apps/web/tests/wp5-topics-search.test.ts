@@ -1,3 +1,4 @@
+import { PgDialect } from "drizzle-orm/pg-core";
 import { describe, expect, it } from "vitest";
 import {
   SEED_TOPICS,
@@ -74,6 +75,28 @@ describe("WP5: Seeded Topics & Search Validation", () => {
     expect(escapeLikePattern("100% pass_rate\\ok")).toBe(
       "100\\% pass\\_rate\\\\ok",
     );
+  });
+
+  it("searchPublishedPosts emits ESCAPE '\\' (not empty ESCAPE '') and bound parameters", async () => {
+    let capturedSql = "";
+    let capturedParams: unknown[] = [];
+    const dialect = new PgDialect();
+    const spyExecutor: Executor = {
+      kind: "tx",
+      tx: {
+        execute: async (query) => {
+          const built = dialect.sqlToQuery(query);
+          capturedSql = built.sql;
+          capturedParams = built.params;
+          return { rows: [] };
+        },
+      },
+    };
+
+    await searchPublishedPosts(spyExecutor, { query: "100%" });
+    expect(capturedSql).toContain("ESCAPE '\\'");
+    expect(capturedSql).not.toContain("ESCAPE ''");
+    expect(capturedParams).toContain("%100\\%%");
   });
 
   it("getTopicBySlug and searchPublishedPosts reject invalid slugs without hitting DB", async () => {

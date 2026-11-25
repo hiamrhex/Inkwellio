@@ -127,8 +127,8 @@ export async function searchPublishedPosts(
            AND p.deleted_at IS NULL
            AND p.published_at IS NOT NULL
            AND (
-             r.title ILIKE ${pattern} ESCAPE '\'
-             OR r.body_markdown ILIKE ${pattern} ESCAPE '\'
+             r.title ILIKE ${pattern} ESCAPE '\\'
+             OR r.body_markdown ILIKE ${pattern} ESCAPE '\\'
            )
            ${topicClause}
            ${cursorClause}
