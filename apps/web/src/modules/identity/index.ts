@@ -12,17 +12,21 @@ import { env } from "@/kernel/env";
 import { logEvent } from "@/kernel/log";
 import {
   ConflictError,
+  ForbiddenError,
   NotFoundError,
   ValidationError,
   toPublicError,
   type PublicError,
 } from "@/kernel/errors";
-import { users } from "./schema";
+import { users, sessions, accounts, verifications, rateLimits } from "./schema";
+import { sendVerificationEmail, sendResetPasswordEmail } from "./email";
+import { rateLimitAuth } from "./limiter";
 
 // Re-export for other modules
-export { users };
+export { ForbiddenError, users, sessions, accounts, verifications, rateLimits };
 export * from "./limiter";
 export * from "./audit";
+export * from "./email";
 
 /**
  * Lazy Better Auth instance.
@@ -57,6 +61,16 @@ export function getAuth() {
         provider: "pg",
         schema: {
           user: users,
+          users,
+          session: sessions,
+          sessions,
+          account: accounts,
+          accounts,
+          verification: verifications,
+          verifications,
+          rateLimit: rateLimits,
+          rate_limit: rateLimits,
+          rate_limits: rateLimits,
         },
         usePlural: true,
       },
@@ -69,7 +83,7 @@ export function getAuth() {
       maxPasswordLength: 128,
       autoSignIn: false,
       sendResetPassword: async ({ user, url, token }) => {
-        logEvent("info", "send_reset_password", { userId: user.id, url, token });
+        await sendResetPasswordEmail({ user, url, token });
       },
     },
 
@@ -78,7 +92,7 @@ export function getAuth() {
       autoSignInAfterVerification: false,
       expiresIn: 3600,
       sendVerificationEmail: async ({ user, url, token }) => {
-        logEvent("info", "send_verification_email", { userId: user.id, url, token });
+        await sendVerificationEmail({ user, url, token });
       },
     },
 
@@ -145,12 +159,14 @@ export function getAuth() {
     hooks: {
       before: async (ctx) => {
         logEvent("debug", "auth_request", { path: (ctx as unknown as { path: string }).path, method: (ctx as unknown as { method: string }).method });
+        return { context: ctx };
       },
       after: async (ctx) => {
         logEvent("debug", "auth_response", {
           path: (ctx as unknown as { path: string }).path,
           status: (ctx as unknown as { context?: { returned?: { status?: string } } }).context?.returned?.status,
         });
+        return {};
       },
     },
 
@@ -175,6 +191,62 @@ export const auth = new Proxy({} as Record<string, unknown>, {
     return authInstance ? Reflect.get(authInstance, prop, receiver) : undefined;
   },
 });
+
+const RATE_LIMITED_AUTH_PATHS = new Set([
+  "sign-in/email",
+  "sign-up/email",
+  "forget-password",
+  "request-password-reset",
+  "reset-password",
+  "send-verification-email",
+]);
+
+/**
+ * Next.js App Router GET handler for `/api/auth/[...all]`.
+ *
+ * Kept inside `modules/identity` so `app/` never imports Better Auth directly.
+ */
+export async function handleAuthGet(request: Request): Promise<Response> {
+  return getAuth().handler(request);
+}
+
+/**
+ * Next.js App Router POST handler for `/api/auth/[...all]`.
+ *
+ * Enforces application-layer rate limiting (pinned `x-vercel-forwarded-for` +
+ * normalized email) before delegating to Better Auth's handler.
+ */
+export async function handleAuthPost(request: Request): Promise<Response> {
+  const url = new URL(request.url);
+  const subPath = url.pathname.replace(/^\/api\/auth\/?/, "");
+
+  if (RATE_LIMITED_AUTH_PATHS.has(subPath)) {
+    let email: string | undefined;
+    try {
+      const cloned = request.clone();
+      const body = (await cloned.json()) as { email?: unknown };
+      if (typeof body?.email === "string") {
+        email = body.email;
+      }
+    } catch {
+      // Non-JSON or empty body; IP rate limit still applies
+    }
+
+    const limitResult = await rateLimitAuth(
+      `auth:${subPath}`,
+      { headers: request.headers, email },
+      { max: 5, windowSeconds: 600 },
+    );
+    if (!limitResult.allowed) {
+      return Response.json(
+        { code: "RATE_LIMITED", message: "Too many requests" },
+        { status: 429 },
+      );
+    }
+  }
+
+  return getAuth().handler(request);
+}
 
 /**
  * Authorization policy.
@@ -203,10 +275,18 @@ export type Action =
   | "read_publication"
   | "read_post";
 
+export type PostStatus = "draft" | "published" | "deleted";
+
 export type Resource =
   | { type: "user"; id: string }
   | { type: "publication"; id: string; ownerId: string }
-  | { type: "post"; id: string; publicationId: string }
+  | {
+      type: "post";
+      id: string;
+      publicationId: string;
+      ownerId: string;
+      status: PostStatus;
+    }
   | { type: "account"; action: "export" | "delete"; userId: string };
 
 export type Actor =
@@ -215,8 +295,19 @@ export type Actor =
 
 export function authorize(actor: Actor, action: Action, resource: Resource): boolean {
   // Public actions permitted to anyone (anonymous or authenticated)
-  if (["sign_up", "sign_in", "verify_email", "reset_password", "read_publication", "read_post"].includes(action)) {
+  if (["sign_up", "sign_in", "verify_email", "reset_password", "read_publication"].includes(action)) {
     return true;
+  }
+
+  // Post reads depend on publication status and ownership (identity-api.md §3)
+  if (action === "read_post" && resource.type === "post") {
+    if (resource.status === "published") {
+      return true;
+    }
+    if (actor.type === "anonymous") {
+      return false;
+    }
+    return actor.role === "admin" || resource.ownerId === actor.id;
   }
 
   // Anonymous cannot perform any other action
@@ -250,7 +341,14 @@ export function authorize(actor: Actor, action: Action, resource: Resource): boo
     case "publication":
       return resource.ownerId === actor.id;
     case "post":
-      // Post modification goes through publication ownership
+      if (
+        action === "update_post" ||
+        action === "publish_post" ||
+        action === "autosave_post" ||
+        action === "delete_post"
+      ) {
+        return resource.ownerId === actor.id;
+      }
       return false;
   }
 
@@ -281,9 +379,19 @@ export function safeRedirect(target: string, requestOrigin: string): string {
     return "/";
   }
 
-  // Check for encoded directory traversal before URL parsing
-  const decoded = decodeURIComponent(target);
-  if (decoded.includes("/../") || decoded.includes("/..\\") || decoded === "/..") {
+  // Check for encoded directory traversal, control chars, or backslashes before URL parsing
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(target);
+  } catch {
+    return "/";
+  }
+  if (
+    /[\x00-\x1f\\]/.test(decoded) ||
+    decoded.includes("/../") ||
+    decoded.includes("/..\\") ||
+    decoded === "/.."
+  ) {
     return "/";
   }
 

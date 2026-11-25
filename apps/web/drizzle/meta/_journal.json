@@ -8,6 +8,13 @@
       "when": 1795077710377,
       "tag": "0000_mature_lilandra",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1795420068382,
+      "tag": "0001_silent_zuras",
+      "breakpoints": true
     }
   ]
 }
