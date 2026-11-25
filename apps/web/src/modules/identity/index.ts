@@ -6,6 +6,7 @@
  */
 
 import { betterAuth } from "better-auth";
+import { APIError } from "better-auth/api";
 import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 import { getDb } from "@/kernel/db";
 import { env } from "@/kernel/env";
@@ -64,6 +65,7 @@ export function getAuth() {
     baseURL,
     basePath: "/api/auth",
     secret,
+    trustedOrigins: [baseURL],
 
     database: drizzleAdapter(
       process.env.DATABASE_URL ? getDb() : ({} as ReturnType<typeof getDb>),
@@ -95,7 +97,12 @@ export function getAuth() {
       resetPasswordTokenExpiresIn: 900, // 15 minutes
       revokeSessionsOnPasswordReset: true,
       sendResetPassword: async ({ user, url, token }, request) => {
-        await sendResetPasswordEmail({ user, url, token });
+        const parsedResetUrl = new URL(url);
+        const rawCallback = parsedResetUrl.searchParams.get("callbackURL");
+        if (rawCallback !== null && rawCallback !== "" && !isSafeResetRedirect(rawCallback, baseURL)) {
+          parsedResetUrl.searchParams.set("callbackURL", "/");
+        }
+        await sendResetPasswordEmail({ user, url: parsedResetUrl.toString(), token });
         await recordAuditEvent({
           action: "auth.password_reset_requested",
           outcome: "ok",
@@ -194,7 +201,22 @@ export function getAuth() {
 
     hooks: {
       before: async (ctx) => {
-        logEvent("debug", "auth_request", { path: (ctx as unknown as { path: string }).path, method: (ctx as unknown as { method: string }).method });
+        const hookCtx = ctx as unknown as {
+          path?: string;
+          method?: string;
+          body?: { redirectTo?: unknown };
+        };
+        logEvent("debug", "auth_request", { path: hookCtx.path, method: hookCtx.method });
+        if (
+          hookCtx.path === "/request-password-reset" &&
+          typeof hookCtx.body?.redirectTo === "string" &&
+          hookCtx.body.redirectTo.length > 0 &&
+          !isSafeResetRedirect(hookCtx.body.redirectTo, baseURL)
+        ) {
+          throw new APIError("FORBIDDEN", {
+            message: "Invalid redirect URL",
+          });
+        }
         return { context: ctx };
       },
       after: async (ctx) => {
@@ -333,6 +355,8 @@ export async function handleAccountExportGet(request: Request): Promise<Response
       headers: {
         "content-type": "application/json; charset=utf-8",
         "content-disposition": `attachment; filename="inkwellio-export-${userId}.json"`,
+        "cache-control": "no-store",
+        "x-content-type-options": "nosniff",
       },
     });
   } catch (error) {
@@ -588,6 +612,14 @@ export function authorize(actor: Actor, action: Action, resource: Resource): boo
  * `URL` parsing — to the request origin. Directory traversal attempts are
  * rejected, including encoded variants.
  */
+function isSafeResetRedirect(target: string, requestOrigin: string): boolean {
+  const sanitized = safeRedirect(target, requestOrigin);
+  if (sanitized !== "/") {
+    return true;
+  }
+  return target === "/" || target === requestOrigin || target === `${requestOrigin}/`;
+}
+
 export function safeRedirect(target: string, requestOrigin: string): string {
   // Reject empty string
   if (!target) {
