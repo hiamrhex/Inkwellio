@@ -51,6 +51,15 @@ over the research. If in doubt about a specific test, report first and ask.
 The project is pre-1.0 and deploys continuously from `main`. Only the current deployment is supported;
 there are no maintained release branches.
 
+## Disclosure contact
+
+- Primary channel: GitHub Private Vulnerability Reporting on the repository Security tab.
+- Fallback contact: `TODO: configure a monitored security email alias (for example, security@<domain>) before opening public signup`.
+
+## Secret rotation
+
+If a runtime secret (`BETTER_AUTH_SECRET`, `DATABASE_URL`, `DATABASE_URL_UNPOOLED`, or `GMAIL_APP_PASSWORD`) is suspected exposed, rotate it at the upstream provider first, update deployment environment variables, and trigger a fresh deployment before auditing `audit_events` for the exposure window. Never print connection strings or tokens in scripts, logs, or test output; follow [docs/RUNBOOKS.md](docs/RUNBOOKS.md).
+
 ## What is already known and written down
 
 `docs/design-amendments.md` A10–A13 and `docs/FAILURE_MODES.md` record the accepted gaps, including the
