@@ -1,0 +1,44 @@
+name: Live endpoint smoke
+
+on:
+  schedule:
+    # Every six hours, so a broken production deploy is found before a user
+    # reports it.
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: live-smoke
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    name: Live smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        # actions/checkout v7.0.1, 2026-07-20
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - name: Set up Node.js
+        # actions/setup-node v7.1.0, 2026-10-08
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version-file: .nvmrc
+
+      - name: Wait for the Vercel deployment to settle
+        # Only a push to main is racing a fresh deployment. Scheduled and manual
+        # runs test whatever production is currently serving.
+        if: github.event_name == 'push'
+        run: sleep 60
+
+      - name: Run live smoke verifier
+        env:
+          BASE_URL: https://inkwellio.vercel.app
+        run: node apps/web/scripts/smoke-live-endpoints.mjs
