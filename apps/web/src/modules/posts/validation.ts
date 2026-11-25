@@ -21,6 +21,8 @@ export function byteLength(value: string): number {
   return encoder.encode(value).length;
 }
 
+const CONTROL_CHARS = /[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/;
+
 export function parseTitle(value: string): string {
   const length = codePoints(value);
   if (length < 1 || length > TITLE_MAX) {
@@ -29,10 +31,16 @@ export function parseTitle(value: string): string {
   if (value.includes("\n") || value.includes("\r")) {
     throw validation("A title cannot contain line breaks");
   }
+  if (CONTROL_CHARS.test(value)) {
+    throw validation("A title cannot contain control characters");
+  }
   return value;
 }
 
 export function parseBodyMarkdown(value: string): string {
+  if (value.includes("\0")) {
+    throw validation("A body cannot contain NUL bytes");
+  }
   const bytes = byteLength(value);
   if (bytes < 1 || bytes > BODY_MAX_BYTES) {
     throw validation("A body is 1-102,400 bytes");
