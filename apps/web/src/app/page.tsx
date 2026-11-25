@@ -1,8 +1,12 @@
 import type { Metadata } from "next";
 import { Chip, IconTile, SectionHeader, SquircleClipDef, ThemeToggle } from "@inkwellio/ui";
 import { LivingHeroArtifact } from "./living-hero-artifact";
+import { HeroSculpture } from "./hero-sculpture";
 import { MagneticButton } from "./magnetic-button";
 import { InteractiveBento } from "./interactive-bento";
+import { HeroSilkCanvas } from "./hero-silk-canvas";
+import { CtaDotMatrix } from "./cta-dot-matrix";
+import { ScrollChoreography } from "./scroll-choreography";
 
 export const metadata: Metadata = {
   title: "Inkwellio — independent football writing at your own link",
@@ -44,46 +48,61 @@ export default function Home() {
       </div>
 
       {/* ── Hero ────────────────────────────────────────────────── */}
-      <section
-        aria-label="Introduction"
-        className="hero-section hero-stage"
-        style={{ position: "relative" }}
-      >
-        {/* Left: copy */}
-        <div className="hero-copy">
-          <p className="hero-eyebrow">
-            <span className="status-dot status-dot-live" aria-hidden="true" />
-            <span>Public preview &middot; opening soon</span>
-          </p>
+      <div className="hero-stage-outer">
+        <HeroSilkCanvas />
+        <section
+          aria-label="Introduction"
+          className="hero-section hero-stage"
+          style={{ position: "relative", zIndex: 1 }}
+        >
+          {/* Left: copy */}
+          <div className="hero-copy">
+            <p className="hero-eyebrow">
+              <span className="status-dot status-dot-live" aria-hidden="true" />
+              <span>Public preview &middot; opening soon</span>
+            </p>
 
-          <h1 className="hero-headline">
-            Independent football writing, at your own link.
-          </h1>
+            <h1 className="hero-headline">
+              Independent football writing,{" "}
+              <span className="hero-headline-sweep">at your own link.</span>
+            </h1>
 
-          <p className="hero-sub">
-            A quiet home for match analysis, club history, and long-form
-            football culture. Your work. Your address.
-          </p>
+            <p className="hero-sub">
+              A quiet home for match analysis, club history, and long-form
+              football culture. Your work. Your address.
+            </p>
 
-          <div className="hero-cta-row">
-            <MagneticButton href="#editor-preview" className="btn-primary">
-              See the planned editor
-            </MagneticButton>
-            <a href="#essentials" className="btn-ghost">
-              Read the story
-            </a>
+            <div className="hero-cta-row">
+              <MagneticButton href="#editor-preview" className="btn-primary">
+                See the planned editor
+              </MagneticButton>
+              <a href="#essentials" className="btn-ghost">
+                Read the story
+              </a>
+            </div>
+
+            <p className="hero-notice">
+              Public preview. Sign-up opens soon.
+            </p>
           </div>
 
-          <p className="hero-notice">
-            Public preview. Sign-up opens soon.
-          </p>
-        </div>
-
-        {/* Right: living focal centerpiece */}
-        <div className="hero-artifact-wrap" style={{ width: "100%", display: "flex", justifyContent: "center" }}>
-          <LivingHeroArtifact />
-        </div>
-      </section>
+          {/* Right: 3D monochrome sculpture layered behind living focal centerpiece */}
+          <div
+            className="hero-artifact-wrap"
+            style={{
+              position: "relative",
+              width: "100%",
+              display: "flex",
+              justifyContent: "center",
+            }}
+          >
+            <HeroSculpture />
+            <div style={{ position: "relative", zIndex: 1, width: "100%", display: "flex", justifyContent: "center" }}>
+              <LivingHeroArtifact />
+            </div>
+          </div>
+        </section>
+      </div>
 
       {/* ── Essentials: Bento Feature Matrix ─────────────────────── */}
       <section
@@ -91,8 +110,8 @@ export default function Home() {
         className="section-entry"
         aria-labelledby="essentials-heading"
         style={{
-          paddingTop: "clamp(5rem,10vw,9rem)",
-          paddingBottom: "clamp(5rem,10vw,9rem)",
+          paddingTop: "clamp(3.25rem, 6vw, 5.25rem)",
+          paddingBottom: "clamp(3.25rem, 6vw, 5.25rem)",
           maxWidth: "1200px",
           margin: "0 auto",
           width: "100%",
@@ -101,12 +120,18 @@ export default function Home() {
         }}
       >
         <SectionHeader
-          eyebrow="Core Architecture"
           heading={<span id="essentials-heading">Write. Publish. Keep it yours.</span>}
           body="Inkwellio is built around the work, not the platform. No recommendation algorithm. No engagement score. Just your writing at a web address you control."
         />
 
-        <InteractiveBento />
+        <div className="essentials-stage">
+          <div className="essentials-sticky-rail" aria-hidden="true">
+            <div className="essentials-rail-track">
+              <div className="essentials-rail-fill" />
+            </div>
+          </div>
+          <InteractiveBento />
+        </div>
       </section>
 
       {/* ── Editor preview ──────────────────────────────────────── */}
@@ -115,8 +140,8 @@ export default function Home() {
         className="section-entry"
         aria-labelledby="editor-heading"
         style={{
-          paddingTop: "clamp(5rem,10vw,9rem)",
-          paddingBottom: "clamp(5rem,10vw,9rem)",
+          paddingTop: "clamp(3.25rem, 6vw, 5.25rem)",
+          paddingBottom: "clamp(3.25rem, 6vw, 5.25rem)",
           maxWidth: "1200px",
           margin: "0 auto",
           width: "100%",
@@ -200,8 +225,8 @@ export default function Home() {
         className="section-entry"
         aria-labelledby="reading-heading"
         style={{
-          paddingTop: "clamp(5rem,10vw,9rem)",
-          paddingBottom: "clamp(5rem,10vw,9rem)",
+          paddingTop: "clamp(3.25rem, 6vw, 5.25rem)",
+          paddingBottom: "clamp(3.25rem, 6vw, 5.25rem)",
           maxWidth: "1200px",
           margin: "0 auto",
           width: "100%",
@@ -211,7 +236,7 @@ export default function Home() {
       >
         <SectionHeader
           align="left"
-          eyebrow="Reader Mode"
+          eyebrow="Reader mode"
           heading={<span id="reading-heading">The Reading Room</span>}
           body="How your readers experience your writing. No banners, no pop-up overlays, no tracking scripts. Just print-grade typography on archival paper."
         />
@@ -219,18 +244,25 @@ export default function Home() {
         <div
           className="reading-card"
           style={{
-            marginTop: "3rem",
-            padding: "clamp(2rem, 5vw, 4rem)",
+            position: "relative",
+            overflow: "hidden",
+            marginTop: "2.25rem",
+            padding: "clamp(2rem, 5vw, 3.75rem)",
             background: "var(--bg-surface1)",
             border: "1px solid var(--border-hairline)",
             borderRadius: "1.25rem",
             boxShadow: "var(--shadow-card)",
           }}
         >
+          {/* Thin live reading-progress bar driven by passive scroll */}
+          <div className="reading-progress-track" aria-hidden="true">
+            <div className="reading-progress-fill" />
+          </div>
+
           <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "1.5rem" }}>
             <span className="status-dot status-dot-live" aria-hidden="true" />
-            <span style={{ fontSize: "0.75rem", fontFamily: "var(--font-geist-mono)", color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-              Sample &middot; Tactical Culture &middot; 6 min read
+            <span style={{ fontSize: "0.75rem", fontFamily: "var(--font-geist-mono)", color: "var(--text-faint)" }}>
+              Sample &middot; Tactical culture &middot; 6 min read
             </span>
           </div>
 
@@ -299,17 +331,10 @@ export default function Home() {
           style={{
             maxWidth: "1200px",
             margin: "0 auto",
-            padding: "clamp(5rem,10vw,9rem) clamp(1.25rem,4vw,3rem)",
+            padding: "clamp(3.25rem, 6vw, 5.25rem) clamp(1.25rem,4vw,3rem)",
           }}
         >
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: "clamp(2rem,5vw,5rem)",
-              alignItems: "center",
-            }}
-          >
+          <div className="publishing-grid">
             <div>
               <Chip>For football writers</Chip>
               <h2
@@ -417,61 +442,79 @@ export default function Home() {
       <section
         className="closing-section section-entry"
         aria-labelledby="closing-heading"
+        style={{ position: "relative", overflow: "hidden" }}
       >
-        <IconTile size={64}>
-          <svg width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-            <path d="M16 6C10.477 6 6 10.477 6 16s4.477 10 10 10 10-4.477 10-10S21.523 6 16 6Z" stroke="currentColor" strokeWidth="1.5" fill="none" />
-            <path d="M12 16l3 3 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </IconTile>
+        <CtaDotMatrix />
 
-        <h2
-          id="closing-heading"
+        <div
           style={{
-            fontSize: "clamp(1.75rem,3.5vw,2.5rem)",
-            fontWeight: 600,
-            letterSpacing: "-0.03em",
-            color: "var(--text-primary)",
-            margin: 0,
-            maxWidth: "24ch",
+            position: "relative",
+            zIndex: 1,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: "1.5rem",
           }}
         >
-          A calm platform for serious football writing.
-        </h2>
+          <IconTile size={64}>
+            <svg width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+              <path d="M16 6C10.477 6 6 10.477 6 16s4.477 10 10 10 10-4.477 10-10S21.523 6 16 6Z" stroke="currentColor" strokeWidth="1.5" fill="none" />
+              <path d="M12 16l3 3 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </IconTile>
 
-        <p
-          style={{
-            fontSize: "1.0625rem",
-            lineHeight: 1.65,
-            color: "var(--text-muted)",
-            maxWidth: "44ch",
-            margin: 0,
-          }}
-        >
-          We are building it carefully and honestly. Sign-up will open when
-          the editor is ready for real use.
-        </p>
+          <h2
+            id="closing-heading"
+            style={{
+              fontSize: "clamp(1.75rem,3.5vw,2.5rem)",
+              fontWeight: 600,
+              letterSpacing: "-0.03em",
+              color: "var(--text-primary)",
+              margin: 0,
+              maxWidth: "24ch",
+            }}
+          >
+            A calm platform for serious football writing.
+          </h2>
 
-        <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", justifyContent: "center" }}>
-          <MagneticButton href="#editor-preview" className="btn-primary">
-            See the planned editor
-          </MagneticButton>
+          <p
+            style={{
+              fontSize: "1.0625rem",
+              lineHeight: 1.65,
+              color: "var(--text-muted)",
+              maxWidth: "44ch",
+              margin: 0,
+            }}
+          >
+            We are building it carefully and honestly. Sign-up will open when
+            the editor is ready for real use.
+          </p>
+
+          <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", justifyContent: "center" }}>
+            <MagneticButton href="#editor-preview" className="btn-primary">
+              See the planned editor
+            </MagneticButton>
+          </div>
+
+          <p
+            style={{
+              fontSize: "0.75rem",
+              color: "var(--text-faint)",
+              margin: 0,
+            }}
+          >
+            Public preview. No sign-up yet.
+          </p>
         </div>
-
-        <p
-          style={{
-            fontSize: "0.75rem",
-            color: "var(--text-faint)",
-          }}
-        >
-          Public preview. No sign-up yet.
-        </p>
       </section>
 
       {/* ── Footer ──────────────────────────────────────────────── */}
       <footer className="site-footer">
         Inkwellio &middot; 2026 &middot; inkwellio.example
       </footer>
+
+      {/* Passive scroll-driven choreography */}
+      <ScrollChoreography />
 
       {/* Layer 3 runtime — passive pointer island + theme toggle */}
       <script src="/scripts/landing-runtime.js" defer />

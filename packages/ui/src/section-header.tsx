@@ -18,10 +18,16 @@ export function SectionHeader({
   align = "center",
 }: SectionHeaderProps) {
   const alignClass = align === "left" ? "text-left" : "text-center";
+  const isCenter = align === "center";
   return (
     <header
       className={`section-header ${alignClass}`}
-      style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: isCenter ? "center" : "flex-start",
+        gap: "0.75rem",
+      }}
     >
       {eyebrow && <Chip>{eyebrow}</Chip>}
       <h2
@@ -42,7 +48,10 @@ export function SectionHeader({
             fontSize: "1.0625rem",
             lineHeight: 1.65,
             color: "var(--text-muted)",
-            margin: 0,
+            marginTop: 0,
+            marginBottom: 0,
+            marginInline: isCenter ? "auto" : undefined,
+            textAlign: align,
             maxWidth: "52ch",
           }}
         >

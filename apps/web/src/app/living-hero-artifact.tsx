@@ -48,9 +48,8 @@ export function LivingHeroArtifact() {
     };
   }, [mode, isInteractive]);
 
-  // Handle pointer tracking for 3D tilt
+  // Handle pointer tracking for 3D tilt (clamped to max ±6°)
   const handlePointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-    // Disable on touch/coarse pointers
     if (window.matchMedia("(pointer: coarse)").matches) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
@@ -59,10 +58,9 @@ export function LivingHeroArtifact() {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
-    const mx = (x / rect.width - 0.5) * 2; // -1 to 1
-    const my = (y / rect.height - 0.5) * 2; // -1 to 1
+    const mx = (x / rect.width - 0.5) * 2;
+    const my = (y / rect.height - 0.5) * 2;
 
-    // Clamped to max ±6°
     const targetTiltX = Math.max(-6, Math.min(6, -my * 6));
     const targetTiltY = Math.max(-6, Math.min(6, mx * 6));
 
@@ -115,24 +113,84 @@ export function LivingHeroArtifact() {
         position: "relative",
         width: "100%",
         maxWidth: "540px",
+        paddingTop: "3.125rem",
+        paddingBottom: "3.125rem",
         perspective: "1000px",
         margin: "0 auto",
       }}
     >
-      {/* 3D Tilted Card Body */}
+      {/* Subtle architectural hairline wireframe offset behind focal card */}
       <div
-        className="hero-form-body hero-living-card"
+        className="hero-wireframe-frame"
+        aria-hidden="true"
         style={{
-          transform: `rotateX(${springTilt.x}deg) rotateY(${springTilt.y}deg)`,
+          position: "absolute",
+          top: "2.5rem",
+          bottom: "3.75rem",
+          left: "0.75rem",
+          right: "-0.5rem",
+          borderRadius: "1.35rem",
+          border: "1px solid var(--wireframe-hairline)",
+          pointerEvents: "none",
+          zIndex: 0,
+          transform: `rotateX(${springTilt.x * 0.45}deg) rotateY(${springTilt.y * 0.45}deg)`,
+          transition: "transform 0.12s linear",
+        }}
+      />
+
+      {/* Compact Top-Left Floating Status Pill (positioned cleanly outside card toolbar) */}
+      <div
+        className="hero-float-card hero-float-card-1"
+        aria-hidden="true"
+        style={{
+          position: "absolute",
+          top: "0.25rem",
+          bottom: "auto",
+          left: "0.25rem",
+          right: "auto",
+          display: "inline-flex",
+          alignItems: "center",
+          alignSelf: "flex-start",
+          gap: "0.5rem",
+          width: "fit-content",
+          height: "fit-content",
+          maxHeight: "42px",
+          maxWidth: "100%",
+          whiteSpace: "nowrap",
+          transform: `translate3d(${springTilt.y * -1.4}px, ${springTilt.x * 1.4}px, 35px)`,
+          transition: "transform 0.1s linear",
+          background: "var(--bg-surface2)",
+          border: "1px solid var(--border-hairline)",
+          borderRadius: "9999px",
+          padding: "0.4375rem 0.875rem",
+          boxShadow: "inset 0 1px 0 0 var(--rim-specular), var(--shadow-card)",
+          fontSize: "0.75rem",
+          zIndex: 10,
+        }}
+      >
+        <span className="status-dot status-dot-amber" />
+        <span style={{ color: "var(--text-faint)", fontWeight: 500 }}>Draft saved</span>
+        <span style={{ color: "var(--text-faint)" }}>&middot;</span>
+        <span style={{ color: "var(--text-primary)", fontWeight: 500, fontFamily: "var(--font-geist-mono)" }}>
+          2 min ago
+        </span>
+      </div>
+
+      {/* 3D Tilted Living Card Body */}
+      <div
+        className="hero-form-body hero-living-card hero-scroll-card"
+        style={{
+          transform: `rotateX(${springTilt.x}deg) rotateY(${springTilt.y}deg) translateY(calc(var(--hero-scroll, 0) * -14px))`,
           transformStyle: "preserve-3d",
           position: "relative",
+          zIndex: 2,
           borderRadius: "1.25rem",
           background:
             mode === "read"
-              ? "color-mix(in srgb, var(--bg-surface1) 90%, #0d0d10)"
+              ? "color-mix(in srgb, var(--bg-surface1) 92%, var(--bg-surface2))"
               : "var(--bg-surface1)",
           border: "1px solid var(--border-hairline)",
-          boxShadow: "var(--shadow-card)",
+          boxShadow: "inset 0 1px 0 0 var(--rim-specular), var(--shadow-card)",
           padding: "1.25rem 1.5rem",
           minHeight: "340px",
           display: "flex",
@@ -149,9 +207,23 @@ export function LivingHeroArtifact() {
             inset: 0,
             borderRadius: "inherit",
             pointerEvents: "none",
-            background: `radial-gradient(400px circle at ${50 + springTilt.y * 3}% ${50 - springTilt.x * 3}%, rgba(255, 255, 255, 0.08), transparent 70%)`,
+            background: `radial-gradient(400px circle at ${50 + springTilt.y * 3}% ${50 - springTilt.x * 3}%, var(--rim-specular), transparent 70%)`,
           }}
           aria-hidden="true"
+        />
+
+        {/* Crisp 1px top-edge specular rim line */}
+        <div
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            top: 0,
+            left: "12%",
+            right: "12%",
+            height: "1px",
+            background: "linear-gradient(90deg, transparent, var(--rim-edge), transparent)",
+            pointerEvents: "none",
+          }}
         />
 
         {/* Toolbar with [Write] / [Read] Segmented Switcher */}
@@ -160,29 +232,32 @@ export function LivingHeroArtifact() {
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
+            gap: "0.75rem",
             paddingBottom: "0.75rem",
             borderBottom: "1px solid var(--border-hairline)",
             position: "relative",
             zIndex: 2,
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", minWidth: 0 }}>
             <span
               style={{
-                width: "9px",
-                height: "9px",
+                width: "8px",
+                height: "8px",
                 borderRadius: "50%",
                 background: "var(--border-hairline)",
                 display: "inline-block",
+                flexShrink: 0,
               }}
             />
             <span
               style={{
-                width: "9px",
-                height: "9px",
+                width: "8px",
+                height: "8px",
                 borderRadius: "50%",
                 background: "var(--border-hairline)",
                 display: "inline-block",
+                flexShrink: 0,
               }}
             />
             <span
@@ -191,6 +266,9 @@ export function LivingHeroArtifact() {
                 fontFamily: "var(--font-geist-mono)",
                 color: "var(--text-muted)",
                 marginLeft: "0.25rem",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
               }}
             >
               Draft &middot; City away leg
@@ -203,6 +281,7 @@ export function LivingHeroArtifact() {
             aria-label="Editor view mode"
             style={{
               display: "inline-flex",
+              flexShrink: 0,
               background: "var(--bg-surface3)",
               padding: "2px",
               borderRadius: "9999px",
@@ -336,6 +415,7 @@ export function LivingHeroArtifact() {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
+                gap: "0.5rem",
                 paddingTop: "0.75rem",
                 borderTop: "1px solid var(--border-hairline)",
                 fontSize: "0.6875rem",
@@ -346,7 +426,7 @@ export function LivingHeroArtifact() {
               <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                 <span className="status-dot status-dot-amber" />
                 <span>
-                  {isInteractive ? "Interactive Mode &middot; Typing live" : "Auto-typing preview"}
+                  {isInteractive ? "Interactive mode · Typing live" : "Auto-typing preview"}
                 </span>
                 {isInteractive && (
                   <button
@@ -390,14 +470,12 @@ export function LivingHeroArtifact() {
           >
             <div
               style={{
-                fontSize: "0.6875rem",
+                fontSize: "0.75rem",
                 fontFamily: "var(--font-geist-mono)",
                 color: "var(--text-faint)",
-                textTransform: "uppercase",
-                letterSpacing: "0.06em",
               }}
             >
-              Sample preview &middot; Reader Mode
+              Sample preview &middot; Reader mode
             </div>
 
             <h4
@@ -436,6 +514,7 @@ export function LivingHeroArtifact() {
                 color: "var(--text-faint)",
                 display: "flex",
                 justifyContent: "space-between",
+                gap: "0.5rem",
               }}
             >
               <span>Newsreader Serif &middot; 65ch measure</span>
@@ -445,80 +524,50 @@ export function LivingHeroArtifact() {
         )}
       </div>
 
-      {/* Floating Status Pill 1: Top Left (translateZ: 35px) */}
-      <div
-        className="hero-float-card hero-float-card-1"
-        aria-hidden="true"
-        style={{
-          position: "absolute",
-          top: "-1rem",
-          left: "-1.5rem",
-          transform: `translate3d(${springTilt.y * -1.5}px, ${springTilt.x * 1.5}px, 35px)`,
-          transition: "transform 0.1s linear",
-          background: "var(--bg-surface2)",
-          border: "1px solid var(--border-hairline)",
-          borderRadius: "0.75rem",
-          padding: "0.625rem 0.875rem",
-          boxShadow: "var(--shadow-card)",
-          zIndex: 10,
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "0.375rem",
-            fontSize: "0.625rem",
-            textTransform: "uppercase",
-            letterSpacing: "0.06em",
-            color: "var(--text-faint)",
-            marginBottom: "0.2rem",
-          }}
-        >
-          <span className="status-dot status-dot-amber" />
-          <span>Draft saved</span>
-        </div>
-        <div style={{ color: "var(--text-primary)", fontWeight: 500, fontSize: "0.75rem" }}>
-          2 min ago
-        </div>
-      </div>
-
-      {/* Floating Status Pill 2: Bottom Right (translateZ: 50px) */}
+      {/* Compact Bottom-Right Floating Status Pill (positioned cleanly outside card body) */}
       <div
         className="hero-float-card hero-float-card-2"
         aria-hidden="true"
         style={{
           position: "absolute",
-          bottom: "-1.25rem",
-          right: "-1.5rem",
-          transform: `translate3d(${springTilt.y * -2.2}px, ${springTilt.x * 2.2}px, 50px)`,
+          bottom: "0.25rem",
+          top: "auto",
+          right: "0.25rem",
+          left: "auto",
+          display: "inline-flex",
+          alignItems: "center",
+          alignSelf: "flex-start",
+          gap: "0.5rem",
+          width: "fit-content",
+          height: "fit-content",
+          maxHeight: "42px",
+          maxWidth: "100%",
+          whiteSpace: "nowrap",
+          transform: `translate3d(${springTilt.y * -1.8}px, ${springTilt.x * 1.8}px, 45px)`,
           transition: "transform 0.1s linear",
           background: "var(--bg-surface2)",
           border: "1px solid var(--border-hairline)",
-          borderRadius: "0.75rem",
-          padding: "0.625rem 0.875rem",
-          boxShadow: "var(--shadow-card)",
+          borderRadius: "9999px",
+          padding: "0.4375rem 0.875rem",
+          boxShadow: "inset 0 1px 0 0 var(--rim-specular), var(--shadow-card)",
+          fontSize: "0.75rem",
           zIndex: 10,
         }}
       >
-        <div
+        <span className="status-dot status-dot-live" />
+        <span style={{ color: "var(--text-faint)", fontWeight: 500 }}>Published</span>
+        <span style={{ color: "var(--text-faint)" }}>&middot;</span>
+        <span
           style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "0.375rem",
-            fontSize: "0.625rem",
-            textTransform: "uppercase",
-            letterSpacing: "0.06em",
-            color: "var(--text-faint)",
-            marginBottom: "0.2rem",
+            color: "var(--text-primary)",
+            fontWeight: 500,
+            fontFamily: "var(--font-geist-mono)",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
           }}
         >
-          <span className="status-dot status-dot-live" />
-          <span>Published</span>
-        </div>
-        <div style={{ color: "var(--text-primary)", fontWeight: 500, fontSize: "0.75rem" }}>
           inkwellio.example/@sample
-        </div>
+        </span>
       </div>
     </div>
   );
