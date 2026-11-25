@@ -66,7 +66,13 @@ const cssSrc  = readSrc("apps/web/src/app/globals.css");
 const iconTileSrc = readSrc("packages/ui/src/icon-tile.tsx");
 const themeToggleSrc = readSrc("packages/ui/src/theme-toggle.tsx");
 const heroArtifactSrc = readSrc("apps/web/src/app/living-hero-artifact.tsx");
+const heroSculptureSrc = readSrc("apps/web/src/app/hero-sculpture.tsx");
 const bentoSrc = readSrc("apps/web/src/app/interactive-bento.tsx");
+const chipSrc = readSrc("packages/ui/src/chip.tsx");
+const sectionHeaderSrc = readSrc("packages/ui/src/section-header.tsx");
+const silkCanvasSrc = readSrc("apps/web/src/app/hero-silk-canvas.tsx");
+const dotMatrixSrc = readSrc("apps/web/src/app/cta-dot-matrix.tsx");
+const scrollChoreoSrc = readSrc("apps/web/src/app/scroll-choreography.tsx");
 const runtimePath = path.join(root, "apps/web/public/scripts/landing-runtime.js");
 
 /* ════════════════════════════════════════════════════════════════
@@ -383,5 +389,79 @@ describe("Phase 2 interactive components mounted", () => {
   it("globals.css defines specular border refraction and blinking caret", () => {
     expect(cssSrc).toContain(".bento-specular-card");
     expect(cssSrc).toContain(".blinking-caret");
+  });
+});
+
+/* ════════════════════════════════════════════════════════════════
+   18. Phase 2 Defect Regressions & Phase 3 Atmospheric Motion
+   ════════════════════════════════════════════════════════════════ */
+describe("Phase 2 geometry fixes & Phase 3 motion layers", () => {
+  it('bans "CORE ARCHITECTURE" across landing page and UI headers', () => {
+    for (const src of [pageSrc, bentoSrc, heroArtifactSrc, sectionHeaderSrc]) {
+      expect(src).not.toMatch(/core\s*architecture/i);
+    }
+  });
+
+  it("enforces compact fit-content pills and centered SectionHeader body", () => {
+    expect(chipSrc).toContain('width: "fit-content"');
+    expect(chipSrc).toContain('display: "inline-flex"');
+    expect(sectionHeaderSrc).toContain("marginInline");
+    expect(sectionHeaderSrc).toContain("alignItems");
+    expect(heroArtifactSrc).toContain('width: "fit-content"');
+    expect(heroArtifactSrc).toContain('height: "fit-content"');
+    expect(heroArtifactSrc).toContain('alignSelf: "flex-start"');
+    expect(heroArtifactSrc).toContain('maxHeight: "42px"');
+    expect(heroArtifactSrc).toContain('bottom: "auto"');
+    expect(heroArtifactSrc).toContain('top: "auto"');
+  });
+
+  it("mounts HeroSilkCanvas behind hero, CtaDotMatrix in closing CTA, and ScrollChoreography", () => {
+    expect(pageSrc).toContain("<HeroSilkCanvas");
+    expect(pageSrc).toContain("<CtaDotMatrix");
+    expect(pageSrc).toContain("<ScrollChoreography");
+    expect(pageSrc).toContain("hero-headline-sweep");
+    expect(pageSrc).toContain("reading-progress-fill");
+  });
+
+  it("isolates WebGL silk canvas from 2D CTA dot-matrix canvas", () => {
+    expect(silkCanvasSrc).toContain('getContext("webgl2"');
+    expect(silkCanvasSrc).not.toContain('getContext("2d"');
+    expect(dotMatrixSrc).toContain('getContext("2d"');
+    expect(dotMatrixSrc).not.toContain('getContext("webgl2"');
+  });
+
+  it("implements prefers-reduced-motion and IntersectionObserver pause across motion layers", () => {
+    for (const src of [silkCanvasSrc, dotMatrixSrc]) {
+      expect(src).toContain("prefers-reduced-motion: reduce");
+      expect(src).toContain("IntersectionObserver");
+      expect(src).toContain("visibilitychange");
+    }
+    expect(scrollChoreoSrc).toContain("prefers-reduced-motion: reduce");
+    expect(scrollChoreoSrc).toContain("passive: true");
+    expect(cssSrc).toMatch(/@media\s*\(prefers-reduced-motion:\s*reduce\)[\s\S]*\.hero-headline-sweep/);
+  });
+
+  it("contains zero external URLs or CDN origins in Phase 3 modules", () => {
+    for (const src of [silkCanvasSrc, dotMatrixSrc, scrollChoreoSrc, heroSculptureSrc]) {
+      expect(src).not.toMatch(/https?:\/\//i);
+    }
+  });
+
+  it("includes lean local 3D hero sculpture WebP assets (<= 80 KiB each) and aria-hidden layering", () => {
+    const darkPath = path.join(root, "apps/web/public/images/hero-ink-dark.webp");
+    const lightPath = path.join(root, "apps/web/public/images/hero-ink-light.webp");
+    expect(fs.existsSync(darkPath)).toBe(true);
+    expect(fs.existsSync(lightPath)).toBe(true);
+    expect(fs.statSync(darkPath).size).toBeLessThanOrEqual(81920);
+    expect(fs.statSync(lightPath).size).toBeLessThanOrEqual(81920);
+
+    expect(pageSrc).toContain("<HeroSculpture");
+    expect(heroSculptureSrc).toContain('alt=""');
+    expect(heroSculptureSrc).toContain('aria-hidden="true"');
+    expect(heroSculptureSrc).not.toMatch(/<Image[^>]*\bpriority\b/);
+    expect(cssSrc).toContain("mix-blend-mode: screen");
+    expect(cssSrc).toContain("mix-blend-mode: multiply");
+    expect(pageSrc).toContain("essentials-sticky-rail");
+    expect(cssSrc).toMatch(/@media\s*\(prefers-reduced-motion:\s*reduce\)[\s\S]*\.hero-sculpture-scroll/);
   });
 });

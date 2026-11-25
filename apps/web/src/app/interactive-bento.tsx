@@ -72,13 +72,13 @@ export function InteractiveBento() {
         display: "grid",
         gridTemplateColumns: "repeat(12, 1fr)",
         gap: "1.5rem",
-        marginTop: "3.5rem",
+        marginTop: "2.5rem",
         width: "100%",
       }}
     >
       {/* ── Cell 1: Your Own Link (Span 7) ────────────────────────── */}
       <article
-        className="spotlight-card bento-specular-card essential-card bento-cell-7 section-entry"
+        className="spotlight-card bento-specular-card essential-card bento-cell-7 bento-cell-reveal"
         data-spotlight="true"
         aria-labelledby="bento-link-title"
       >
@@ -90,7 +90,7 @@ export function InteractiveBento() {
                 <path d="M4 15h12" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
               </svg>
             </IconTile>
-            <span className="essential-num">01 / YOUR LINK</span>
+            <span className="essential-num">01 &middot; Your link</span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
             <span className="status-dot status-dot-live" aria-hidden="true" />
@@ -124,14 +124,12 @@ export function InteractiveBento() {
           <label
             htmlFor="bento-slug-input"
             style={{
-              fontSize: "0.6875rem",
+              fontSize: "0.75rem",
               fontFamily: "var(--font-geist-mono)",
               color: "var(--text-faint)",
-              textTransform: "uppercase",
-              letterSpacing: "0.06em",
             }}
           >
-            Live Address Preview
+            Live address preview
           </label>
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
             <span
@@ -171,7 +169,7 @@ export function InteractiveBento() {
 
       {/* ── Cell 2: Distraction-Free Editor (Span 5) ───────────────── */}
       <article
-        className="spotlight-card bento-specular-card essential-card bento-cell-5 section-entry"
+        className="spotlight-card bento-specular-card essential-card bento-cell-5 bento-cell-reveal"
         data-spotlight="true"
         aria-labelledby="bento-editor-title"
       >
@@ -182,7 +180,7 @@ export function InteractiveBento() {
                 <path d="M3 14.5L14.5 3L17 5.5L5.5 17L3 17.5L3 14.5Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" fill="none" />
               </svg>
             </IconTile>
-            <span className="essential-num">02 / CRAFT</span>
+            <span className="essential-num">02 &middot; Craft</span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
             <span className="status-dot status-dot-amber" aria-hidden="true" />
@@ -213,7 +211,7 @@ export function InteractiveBento() {
           }}
         >
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <span style={{ fontSize: "0.6875rem", fontFamily: "var(--font-geist-mono)", color: "var(--text-faint)", textTransform: "uppercase" }}>
+            <span style={{ fontSize: "0.75rem", fontFamily: "var(--font-geist-mono)", color: "var(--text-faint)" }}>
               Formatting view
             </span>
             <div
@@ -281,7 +279,7 @@ export function InteractiveBento() {
 
       {/* ── Cell 3: Automatic Revision History (Span 5) ───────────── */}
       <article
-        className="spotlight-card bento-specular-card essential-card bento-cell-5 section-entry"
+        className="spotlight-card bento-specular-card essential-card bento-cell-5 bento-cell-reveal"
         data-spotlight="true"
         aria-labelledby="bento-archive-title"
       >
@@ -294,7 +292,7 @@ export function InteractiveBento() {
                 <path d="M7 12h6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
               </svg>
             </IconTile>
-            <span className="essential-num">03 / REVISION</span>
+            <span className="essential-num">03 &middot; Revisions</span>
           </div>
           <span style={{ fontSize: "0.6875rem", fontFamily: "var(--font-geist-mono)", color: "var(--text-faint)" }}>
             Minute checkpoints
@@ -360,7 +358,7 @@ export function InteractiveBento() {
 
       {/* ── Cell 4: Editorial Reading Comfort (Span 7) ────────────── */}
       <article
-        className="spotlight-card bento-specular-card essential-card bento-cell-7 section-entry"
+        className="spotlight-card bento-specular-card essential-card bento-cell-7 bento-cell-reveal"
         data-spotlight="true"
         aria-labelledby="bento-reading-title"
       >
@@ -372,9 +370,9 @@ export function InteractiveBento() {
                 <path d="M8 7h4M10 7v6M8 13h4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
               </svg>
             </IconTile>
-            <span className="essential-num">04 / ERGONOMICS</span>
+            <span className="essential-num">04 &middot; Comfort</span>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
             {/* Font Selector */}
             <div
               style={{
