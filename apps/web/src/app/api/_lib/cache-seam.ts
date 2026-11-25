@@ -90,3 +90,28 @@ export async function invalidatePostSlug(
     });
   });
 }
+
+/**
+ * Account erasure deletes every publication and published post owned by the
+ * erased user, so purge every affected feed and post tag after commit.
+ */
+export async function invalidateErasedAccount(targets: {
+  publicationSlugs: string[];
+  publishedPosts: PostCacheTarget[];
+}): Promise<void> {
+  if (targets.publicationSlugs.length === 0 && targets.publishedPosts.length === 0) {
+    return;
+  }
+  run(() => {
+    for (const slug of targets.publicationSlugs) {
+      revalidatePublicationFeedFromRoute(slug);
+    }
+    for (const post of targets.publishedPosts) {
+      revalidatePublishedPostFromRoute({
+        publicationSlug: post.publicationSlug,
+        postSlug: post.postSlug,
+        postId: post.postId,
+      });
+    }
+  });
+}
