@@ -73,6 +73,10 @@ const sectionHeaderSrc = readSrc("packages/ui/src/section-header.tsx");
 const silkCanvasSrc = readSrc("apps/web/src/app/hero-silk-canvas.tsx");
 const dotMatrixSrc = readSrc("apps/web/src/app/cta-dot-matrix.tsx");
 const scrollChoreoSrc = readSrc("apps/web/src/app/scroll-choreography.tsx");
+const silkLoaderSrc = readSrc("apps/web/src/app/hero-silk-loader.tsx");
+const dotLoaderSrc = readSrc("apps/web/src/app/cta-dot-matrix-loader.tsx");
+const magneticSrc = readSrc("apps/web/src/app/magnetic-button.tsx");
+const layoutSrc = readSrc("apps/web/src/app/layout.tsx");
 const runtimePath = path.join(root, "apps/web/public/scripts/landing-runtime.js");
 
 /* ════════════════════════════════════════════════════════════════
@@ -346,7 +350,7 @@ describe("Honesty rule — No fake attribution or personas", () => {
   });
 
   it("reading room plainly labels sample preview", () => {
-    expect(pageSrc).toMatch(/Sample preview (&middot;|·) Match analysis (&middot;|·) 65ch reading measure/);
+    expect(pageSrc).toContain("Sample preview — Match analysis, 65ch reading measure");
   });
 });
 
@@ -410,17 +414,54 @@ describe("Phase 2 geometry fixes & Phase 3 motion layers", () => {
     expect(heroArtifactSrc).toContain('width: "fit-content"');
     expect(heroArtifactSrc).toContain('height: "fit-content"');
     expect(heroArtifactSrc).toContain('alignSelf: "flex-start"');
-    expect(heroArtifactSrc).toContain('maxHeight: "42px"');
+    expect(heroArtifactSrc).toContain('maxHeight: "40px"');
     expect(heroArtifactSrc).toContain('bottom: "auto"');
     expect(heroArtifactSrc).toContain('top: "auto"');
   });
 
-  it("mounts HeroSilkCanvas behind hero, CtaDotMatrix in closing CTA, and ScrollChoreography", () => {
-    expect(pageSrc).toContain("<HeroSilkCanvas");
-    expect(pageSrc).toContain("<CtaDotMatrix");
+  it("mounts HeroSilkLoader behind hero, CtaDotMatrixLoader in closing CTA, and ScrollChoreography", () => {
+    expect(pageSrc).toContain("<HeroSilkLoader");
+    expect(pageSrc).toContain("<CtaDotMatrixLoader");
     expect(pageSrc).toContain("<ScrollChoreography");
     expect(pageSrc).toContain("hero-headline-sweep");
     expect(pageSrc).toContain("reading-progress-fill");
+  });
+
+  it("enforces Phase 3b UX fixes: skip link, Reading Room CTA, nav blur/scroll-margin, curtain, no left hairline", () => {
+    expect(pageSrc).toContain('href="#main-content"');
+    expect(pageSrc).toContain('id="main-content"');
+    expect(pageSrc).toContain("See a sample post");
+    expect(pageSrc).toContain('href="#reading-room"');
+    expect(pageSrc).not.toContain("progress-rail");
+    expect(pageSrc).toContain("flip-curtain");
+    expect(cssSrc).toContain("--section-y:");
+    expect(cssSrc).toContain("scroll-margin-top");
+    expect(cssSrc).toMatch(/\.site-nav\s*\{[^}]*8[5-9]%|9\d%/);
+  });
+
+  it("bans uppercase styling and middle-dot strings on pills and eyebrows", () => {
+    for (const src of [chipSrc, heroArtifactSrc, bentoSrc]) {
+      expect(src).not.toMatch(/textTransform:\s*["']uppercase["']/);
+    }
+    expect(cssSrc).not.toMatch(/\.(chip|hero-eyebrow|hero-float-card|bento-pill-btn)[^}]*text-transform:\s*uppercase/);
+    expect(pageSrc).not.toContain("Public preview &middot; opening soon");
+    expect(heroArtifactSrc).not.toMatch(/Draft saved.*(&middot;|·)/);
+    expect(heroArtifactSrc).not.toMatch(/Published.*(&middot;|·)/);
+  });
+
+  it("enforces Part C motion gates, lazy loading, active-only sculpture image, and font deferral", () => {
+    expect(silkLoaderSrc).toContain("hardwareConcurrency");
+    expect(silkLoaderSrc).toContain("saveData");
+    expect(silkLoaderSrc).toContain("requestIdleCallback");
+    expect(silkLoaderSrc).toContain("dynamic(");
+    expect(dotLoaderSrc).toContain("dynamic(");
+    expect(silkCanvasSrc).toContain("30");
+    expect(heroArtifactSrc).toContain("Math.max(-4, Math.min(4");
+    expect(magneticSrc).toContain("Math.max(-4, Math.min(4");
+    expect(heroSculptureSrc).toContain("activeTheme");
+    expect(layoutSrc).toContain("preload: true");
+    expect(layoutSrc).toContain("preload: false");
+    expect(fs.existsSync(path.join(root, "docs/design/assets.md"))).toBe(true);
   });
 
   it("isolates WebGL silk canvas from 2D CTA dot-matrix canvas", () => {
@@ -461,7 +502,6 @@ describe("Phase 2 geometry fixes & Phase 3 motion layers", () => {
     expect(heroSculptureSrc).not.toMatch(/<Image[^>]*\bpriority\b/);
     expect(cssSrc).toContain("mix-blend-mode: screen");
     expect(cssSrc).toContain("mix-blend-mode: multiply");
-    expect(pageSrc).toContain("essentials-sticky-rail");
     expect(cssSrc).toMatch(/@media\s*\(prefers-reduced-motion:\s*reduce\)[\s\S]*\.hero-sculpture-scroll/);
   });
 });

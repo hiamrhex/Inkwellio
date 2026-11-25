@@ -15,7 +15,7 @@ export function MagneticButton({ children, style, onPointerMove, onPointerLeave,
   const handlePointerMove = useCallback(
     (e: React.PointerEvent<HTMLAnchorElement>) => {
       if (typeof window !== "undefined") {
-        if (window.matchMedia("(pointer: coarse)").matches) return;
+        if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
         if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
       }
 
@@ -24,9 +24,9 @@ export function MagneticButton({ children, style, onPointerMove, onPointerLeave,
       const centerX = rect.left + rect.width / 2;
       const centerY = rect.top + rect.height / 2;
 
-      // Magnetic pull clamped to max ±6px
-      const pullX = Math.max(-6, Math.min(6, (e.clientX - centerX) * 0.25));
-      const pullY = Math.max(-6, Math.min(6, (e.clientY - centerY) * 0.25));
+      // Magnetic pull clamped to max ±4px
+      const pullX = Math.max(-4, Math.min(4, (e.clientX - centerX) * 0.2));
+      const pullY = Math.max(-4, Math.min(4, (e.clientY - centerY) * 0.2));
 
       setOffset({ x: pullX, y: pullY });
       if (onPointerMove) onPointerMove(e);
