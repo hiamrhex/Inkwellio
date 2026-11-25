@@ -36,6 +36,15 @@ export {
   type DraftWrite,
   type DraftWriteResult,
 } from "./service/drafts";
+export {
+  createPost,
+  type CreatePostInput,
+  type CreatePostResult,
+} from "./service/create";
+export {
+  getDraftForOwner,
+  type DraftRead,
+} from "./service/draft-read";
 export { assertCanReadDraft, assertOwner, isOwner } from "./service/ownership";
 export {
   renamePost,
@@ -59,11 +68,13 @@ export {
   FEED_PAGE_SIZE_MAX,
   fetchPublishedPage,
   getPostById,
+  getPostCacheTarget,
   getPublishedPostById,
   type FeedCursor,
   type FeedItem,
   type FeedPage,
   type Post,
+  type PostCacheTarget,
   type PublishedPostContent,
 } from "./reads";
 export {
