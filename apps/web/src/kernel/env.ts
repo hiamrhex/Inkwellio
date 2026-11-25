@@ -4,25 +4,34 @@
  */
 import { z } from "zod";
 
+const emptyToUndefined = (value: unknown): unknown =>
+  typeof value === "string" && value.trim() === "" ? undefined : value;
+
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]),
-  LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
+  LOG_LEVEL: z.preprocess(
+    emptyToUndefined,
+    z.enum(["debug", "info", "warn", "error"]).default("info"),
+  ),
   /**
    * Optional at parse time because `next build` imports every module without a
    * database. `kernel/db.ts` refuses to open a socket until this is set, so a
    * running server still fails loudly rather than lazily pretending.
    */
-  DATABASE_URL: z
-    .string()
-    .regex(/^postgres(ql)?:\/\/\S+$/, "must be a postgres:// or postgresql:// URL")
-    .optional(),
+  DATABASE_URL: z.preprocess(
+    emptyToUndefined,
+    z
+      .string()
+      .regex(/^postgres(ql)?:\/\/\S+$/, "must be a postgres:// or postgresql:// URL")
+      .optional(),
+  ),
   /** Better Auth secret for encryption/signing (min 32 chars) */
   BETTER_AUTH_SECRET: z.string().min(32, "secret must be at least 32 characters"),
   /** Base URL for Better Auth (e.g. https://inkwellio.vercel.app) */
   BETTER_AUTH_URL: z.string().url("must be a valid URL"),
-  // Gmail SMTP (WP2b)
-  GMAIL_USER: z.string().email().optional(),
-  GMAIL_APP_PASSWORD: z.string().min(16).optional(),
+  // Gmail SMTP (WP2b / WP2c)
+  GMAIL_USER: z.preprocess(emptyToUndefined, z.string().email().optional()),
+  GMAIL_APP_PASSWORD: z.preprocess(emptyToUndefined, z.string().min(16).optional()),
 });
 
 export type Env = z.infer<typeof envSchema>;

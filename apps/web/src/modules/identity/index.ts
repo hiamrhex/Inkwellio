@@ -20,6 +20,7 @@ import {
 } from "@/kernel/errors";
 import { users, sessions, accounts, verifications, rateLimits } from "./schema";
 import { sendVerificationEmail, sendResetPasswordEmail } from "./email";
+import { recordAuditEvent } from "./audit";
 import { getClientIp, rateLimitAuth } from "./limiter";
 import {
   ErasureTokenExpiredError,
@@ -91,8 +92,34 @@ export function getAuth() {
       minPasswordLength: 8,
       maxPasswordLength: 128,
       autoSignIn: false,
-      sendResetPassword: async ({ user, url, token }) => {
+      resetPasswordTokenExpiresIn: 900, // 15 minutes
+      revokeSessionsOnPasswordReset: true,
+      sendResetPassword: async ({ user, url, token }, request) => {
         await sendResetPasswordEmail({ user, url, token });
+        await recordAuditEvent({
+          action: "auth.password_reset_requested",
+          outcome: "ok",
+          actorKind: "user",
+          actorUserId: user.id,
+          subjectUserId: user.id,
+          targetType: "user",
+          targetId: user.id,
+          requestId: (request?.headers.get("x-request-id") ?? crypto.randomUUID()).slice(0, 64),
+          ip: request ? getClientIp(request.headers) : null,
+        });
+      },
+      onPasswordReset: async ({ user }, request) => {
+        await recordAuditEvent({
+          action: "auth.password_reset",
+          outcome: "ok",
+          actorKind: "user",
+          actorUserId: user.id,
+          subjectUserId: user.id,
+          targetType: "user",
+          targetId: user.id,
+          requestId: (request?.headers.get("x-request-id") ?? crypto.randomUUID()).slice(0, 64),
+          ip: request ? getClientIp(request.headers) : null,
+        });
       },
     },
 
