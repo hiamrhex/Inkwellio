@@ -27,6 +27,19 @@ export function requireString(body: Record<string, unknown>, field: string): str
   return value;
 }
 
+/** A required array of strings (topic assignment). Every element is proven to
+ *  be a string here; the service owns slug format and curated-list rules. */
+export function requireStringArray(body: Record<string, unknown>, field: string): string[] {
+  const value = body[field];
+  if (!Array.isArray(value)) throw new ValidationError(`${field} must be an array of strings`);
+  return value.map((entry) => {
+    if (typeof entry !== "string") {
+      throw new ValidationError(`${field} must be an array of strings`);
+    }
+    return entry;
+  });
+}
+
 /** An optional string field; `undefined` when absent, validated when present. */
 export function optionalString(body: Record<string, unknown>, field: string): string | undefined {
   const value = body[field];
