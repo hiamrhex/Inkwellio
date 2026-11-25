@@ -124,6 +124,7 @@ describe.skipIf(!DATABASE_URL)("WP1 schema on a real Postgres", () => {
          ORDER BY table_name`,
       );
       expect(result.rows.map((row) => row.table_name)).toEqual([
+        "accounts",
         "audit_events",
         "draft_state",
         "post_revisions",
@@ -133,8 +134,11 @@ describe.skipIf(!DATABASE_URL)("WP1 schema on a real Postgres", () => {
         "publication_slug_history",
         "publications",
         "rate_limit_counters",
+        "rate_limits",
+        "sessions",
         "topics",
         "users",
+        "verifications",
       ]);
     });
 
