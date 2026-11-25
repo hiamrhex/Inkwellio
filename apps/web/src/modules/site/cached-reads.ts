@@ -1,4 +1,4 @@
-import { cacheLife, cacheTag } from "next/cache";
+import { cacheLife, cacheTag, revalidateTag } from "next/cache";
 import {
   postByIdTag,
   postTag,
@@ -49,4 +49,37 @@ export async function getCachedPost(
     cacheTag(postByIdTag(result.post.id));
   }
   return result;
+}
+
+/**
+ * Route Handler invalidation for a publication feed (WP3b write routes).
+ *
+ * Next 16.4.5's bundled docs (`04-functions/revalidateTag.md`) state that
+ * `revalidateTag` "can be called in Server Functions and Route Handlers" and
+ * that `updateTag` is Server-Action-only. They also give the exact signature
+ * `revalidateTag(tag: string, profile: string | { expire?: number }): void` —
+ * the second argument is required, the single-argument form is deprecated —
+ * and direct callers outside a Server Action to `{ expire: 0 }` for immediate
+ * expiration (the `updateTag` equivalent).
+ *
+ * These functions mirror `cache-tags.ts`'s `updateTag` invalidators tag for
+ * tag, so the Server Action path and the Route Handler path cannot drift.
+ */
+export function revalidatePublicationFeedFromRoute(publicationSlug: string): void {
+  revalidateTag(publicationTag(publicationSlug), { expire: 0 });
+  revalidateTag(publicationFeedTag(publicationSlug), { expire: 0 });
+}
+
+/** Route Handler invalidation for a post and its parent publication feed. */
+export function revalidatePublishedPostFromRoute(input: {
+  publicationSlug: string;
+  postSlug: string;
+  postId?: string;
+}): void {
+  revalidateTag(publicationTag(input.publicationSlug), { expire: 0 });
+  revalidateTag(publicationFeedTag(input.publicationSlug), { expire: 0 });
+  revalidateTag(postTag(input.publicationSlug, input.postSlug), { expire: 0 });
+  if (input.postId) {
+    revalidateTag(postByIdTag(input.postId), { expire: 0 });
+  }
 }

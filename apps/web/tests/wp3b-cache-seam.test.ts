@@ -1,37 +1,29 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
- * The WP4 cache seam, with `next/cache` under our control.
+ * The WP3b -> WP4 Route Handler seam, with `next/cache` under our control.
  *
- * Three Next contexts are simulated exactly:
- *   - "action"      `updateTag` works (a Server Action; the WP4 path).
- *   - "route"       `updateTag` throws its real Route Handler error, then
- *                   `revalidateTag` works (a Route Handler; the fallback).
- *   - "no-request"  both throw their real out-of-request errors (plain unit
- *                   test; nothing to invalidate, but it must be loud, not fatal).
- *   - "boom"        an unrelated `updateTag` failure must propagate.
+ * Next 16.4.5's `revalidateTag(tag, profile)` requires the second argument and
+ * the bundled docs direct Route Handlers to `{ expire: 0 }` for immediate
+ * expiry. These tests pin the exact tag list and profile the seam emits, plus
+ * the two error behaviours: a missing request scope (plain unit test) warns and
+ * skips, while any other failure propagates.
  */
 
-const UPDATE_TAG_OUTSIDE_ACTION =
-  "updateTag can only be called from within a Server Action. To invalidate cache tags in Route Handlers or other contexts, use revalidateTag instead.";
 const REVALIDATE_TAG_OUTSIDE_REQUEST =
   'Invariant: static generation store missing in revalidateTag("x")';
 
 const h = vi.hoisted(() => ({
-  mode: "action" as "action" | "route" | "no-request" | "boom",
-  update: [] as string[],
-  revalidate: [] as string[],
+  mode: "ok" as "ok" | "no-request" | "boom",
+  calls: [] as Array<{ tag: string; profile: unknown }>,
 }));
 
 vi.mock("next/cache", () => ({
-  updateTag: (tag: string) => {
-    if (h.mode === "route" || h.mode === "no-request") throw new Error(UPDATE_TAG_OUTSIDE_ACTION);
-    if (h.mode === "boom") throw new Error("cache backend exploded");
-    h.update.push(tag);
-  },
-  revalidateTag: (tag: string) => {
+  updateTag: () => undefined,
+  revalidateTag: (tag: string, profile: unknown) => {
     if (h.mode === "no-request") throw new Error(REVALIDATE_TAG_OUTSIDE_REQUEST);
-    h.revalidate.push(tag);
+    if (h.mode === "boom") throw new Error("cache backend exploded");
+    h.calls.push({ tag, profile });
   },
   cacheTag: () => undefined,
   cacheLife: () => undefined,
@@ -53,35 +45,29 @@ const POST_TAGS = [
 ];
 
 const FEED_TAGS = ["publication:pub-one", "publication-feed:pub-one"];
+const tags = () => h.calls.map((call) => call.tag);
 
-describe("WP4 cache seam", () => {
+describe("WP3b -> WP4 Route Handler cache seam", () => {
   beforeEach(() => {
-    h.mode = "action";
-    h.update.length = 0;
-    h.revalidate.length = 0;
+    h.mode = "ok";
+    h.calls.length = 0;
   });
 
-  it("in a Server Action, uses WP4's updateTag with the post's exact tags", async () => {
+  it("invalidates a published post with the exact tags and { expire: 0 }", async () => {
     await seam.invalidatePublishedPost(target);
-    expect(h.update).toEqual(POST_TAGS);
-    expect(h.revalidate).toEqual([]);
+    expect(tags()).toEqual(POST_TAGS);
+    expect(h.calls.every((call) => JSON.stringify(call.profile) === '{"expire":0}')).toBe(true);
   });
 
-  it("in a Route Handler, falls back to revalidateTag with the same tags", async () => {
-    h.mode = "route";
-    await seam.invalidatePublishedPost(target);
-    expect(h.update).toEqual([]);
-    expect(h.revalidate).toEqual(POST_TAGS);
-  });
-
-  it("invalidatePublicationFeed purges only the publication tags", async () => {
+  it("invalidates only the publication tags for a feed change", async () => {
     await seam.invalidatePublicationFeed(target);
-    expect(h.update).toEqual(FEED_TAGS);
+    expect(tags()).toEqual(FEED_TAGS);
+    expect(h.calls.every((call) => JSON.stringify(call.profile) === '{"expire":0}')).toBe(true);
   });
 
   it("a rename purges the retired and the new address", async () => {
     await seam.invalidatePostSlug(target, { ...target, postSlug: "New-Slug" });
-    expect(h.update).toEqual([
+    expect(tags()).toEqual([
       ...POST_TAGS,
       "publication:pub-one",
       "publication-feed:pub-one",
@@ -102,9 +88,8 @@ describe("WP4 cache seam", () => {
     }
   });
 
-  it("does not swallow an unexpected updateTag failure", async () => {
+  it("does not swallow an unexpected invalidation failure", async () => {
     h.mode = "boom";
     await expect(seam.invalidatePublishedPost(target)).rejects.toThrow("cache backend exploded");
-    expect(h.revalidate).toEqual([]);
   });
 });

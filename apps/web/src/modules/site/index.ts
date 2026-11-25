@@ -21,3 +21,7 @@ export {
   type PublicReadOptions,
 } from "./public-reads";
 export { getCachedPost, getCachedPublicationFeed } from "./cached-reads";
+export {
+  revalidatePublicationFeedFromRoute,
+  revalidatePublishedPostFromRoute,
+} from "./cached-reads";
