@@ -27,6 +27,7 @@ import {
   confirmAccountErasure,
   exportUserAccountData,
   requestAccountErasure,
+  type ErasedAccountCacheTargets,
 } from "./privacy";
 
 // Re-export for other modules
@@ -359,6 +360,9 @@ export async function handleErasureRequestPost(request: Request): Promise<Respon
     const result = await requestAccountErasure({ userId, password, requestId, ip });
     return Response.json({ requested: true, expiresInSeconds: result.expiresInSeconds }, { status: 202 });
   } catch (error) {
+    if (error instanceof ValidationError) {
+      return Response.json(toPublicError(error, requestId), { status: 400 });
+    }
     if (error instanceof ForbiddenError) {
       return Response.json(toPublicError(error, requestId), { status: 403 });
     }
@@ -372,7 +376,12 @@ export async function handleErasureRequestPost(request: Request): Promise<Respon
 /**
  * Confirms single-use erasure token and hard-deletes account (`POST /api/account/erasure/confirm`, `DELETE /api/account`).
  */
-export async function handleErasureConfirmPost(request: Request): Promise<Response> {
+export async function handleErasureConfirmPost(
+  request: Request,
+  options?: {
+    invalidateCache?: (targets: ErasedAccountCacheTargets) => Promise<void> | void;
+  },
+): Promise<Response> {
   const requestId = request.headers.get("x-request-id") ?? crypto.randomUUID();
   const ip = getClientIp(request.headers);
 
@@ -408,7 +417,13 @@ export async function handleErasureConfirmPost(request: Request): Promise<Respon
   }
 
   try {
-    const deletedCounts = await confirmAccountErasure({ userId, token, requestId, ip });
+    const deletedCounts = await confirmAccountErasure({
+      userId,
+      token,
+      requestId,
+      ip,
+      invalidateCache: options?.invalidateCache,
+    });
     return Response.json({ erased: true, deletedCounts }, { status: 200 });
   } catch (error) {
     if (error instanceof ErasureTokenExpiredError) {

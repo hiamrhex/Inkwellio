@@ -9,7 +9,7 @@
 import { createHash, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import { verifyPassword } from "better-auth/crypto";
 import { getPool } from "@/kernel/db";
-import { ForbiddenError, NotFoundError } from "@/kernel/errors";
+import { ForbiddenError, NotFoundError, ValidationError } from "@/kernel/errors";
 import { sendErasureConfirmationEmail } from "./email";
 import { hashIp, normalizeRateLimitEmail } from "./limiter-helpers";
 
@@ -112,6 +112,15 @@ export interface DeletedAccountCounts {
   postTopics: number;
   rateLimits: number;
   rateLimitCounters: number;
+}
+
+export interface ErasedAccountCacheTargets {
+  publicationSlugs: string[];
+  publishedPosts: Array<{
+    postId: string;
+    publicationSlug: string;
+    postSlug: string;
+  }>;
 }
 
 export function hashErasureToken(rawToken: string): string {
@@ -398,25 +407,31 @@ export async function requestAccountErasure(input: {
     throw new NotFoundError("Account not found");
   }
 
-  // Verify credential password when supplied (or required on credential accounts if password sent)
-  if (input.password !== undefined) {
-    const accountRes = await pool.query<{ password: string | null }>(
-      `SELECT password FROM accounts
-       WHERE user_id = $1 AND provider_id = 'credential' LIMIT 1`,
-      [input.userId],
-    );
-    const storedHash = accountRes.rows[0]?.password;
-    if (storedHash) {
-      const ok = await verifyPassword({ hash: storedHash, password: input.password });
-      if (!ok) {
-        const ipHash = input.ip ? hashIp(input.ip) : null;
-        await pool.query(
-          `INSERT INTO audit_events (id, action, outcome, actor_kind, actor_user_id, subject_user_id, target_type, target_id, request_id, ip_hash, metadata)
-           VALUES ($1, 'account.erasure_requested', 'denied', 'user', $2, $2, 'account', $3, $4, $5, $6::jsonb)`,
-          [randomUUID(), input.userId, input.userId, input.requestId.slice(0, 64), ipHash, "{}"],
-        );
-        throw new ForbiddenError("Invalid credentials");
-      }
+  // Verify credential password (required per ADR-014 §A6 whenever the account has a credential password)
+  const accountRes = await pool.query<{ password: string | null }>(
+    `SELECT password FROM accounts
+     WHERE user_id = $1 AND provider_id = 'credential' LIMIT 1`,
+    [input.userId],
+  );
+  const storedHash = accountRes.rows[0]?.password;
+  if (storedHash) {
+    const ipHashForDeny = input.ip ? hashIp(input.ip) : null;
+    if (!input.password) {
+      await pool.query(
+        `INSERT INTO audit_events (id, action, outcome, actor_kind, actor_user_id, subject_user_id, target_type, target_id, request_id, ip_hash, metadata)
+         VALUES ($1, 'account.erasure_requested', 'denied', 'user', $2, $2, 'account', $3, $4, $5, $6::jsonb)`,
+        [randomUUID(), input.userId, input.userId, input.requestId.slice(0, 64), ipHashForDeny, "{}"],
+      );
+      throw new ValidationError("Password is required to request account erasure");
+    }
+    const ok = await verifyPassword({ hash: storedHash, password: input.password });
+    if (!ok) {
+      await pool.query(
+        `INSERT INTO audit_events (id, action, outcome, actor_kind, actor_user_id, subject_user_id, target_type, target_id, request_id, ip_hash, metadata)
+         VALUES ($1, 'account.erasure_requested', 'denied', 'user', $2, $2, 'account', $3, $4, $5, $6::jsonb)`,
+        [randomUUID(), input.userId, input.userId, input.requestId.slice(0, 64), ipHashForDeny, "{}"],
+      );
+      throw new ForbiddenError("Invalid credentials");
     }
   }
 
@@ -465,10 +480,17 @@ export async function confirmAccountErasure(input: {
   token: string;
   requestId: string;
   ip?: string | null;
+  invalidateCache?: (targets: ErasedAccountCacheTargets) => Promise<void> | void;
 }): Promise<DeletedAccountCounts> {
   const pool = getPool();
   const identifier = `${ERASURE_IDENTIFIER_PREFIX}${input.userId}`;
   const ipHash = input.ip ? hashIp(input.ip) : null;
+
+  let cacheTargets: ErasedAccountCacheTargets = {
+    publicationSlugs: [],
+    publishedPosts: [],
+  };
+  let deletedCounts: DeletedAccountCounts;
 
   const client = await pool.connect();
   try {
@@ -597,12 +619,37 @@ export async function confirmAccountErasure(input: {
       ],
     );
 
+    // Capture public cache targets before cascading deletes remove them
+    const pubSlugsRes = await client.query<{ slug: string }>(
+      "SELECT slug FROM publications WHERE owner_id = $1",
+      [input.userId],
+    );
+    const publishedPostsRes = await client.query<{
+      post_id: string;
+      publication_slug: string;
+      post_slug: string;
+    }>(
+      `SELECT po.id AS post_id, p.slug AS publication_slug, po.slug AS post_slug
+       FROM posts po
+       JOIN publications p ON p.id = po.publication_id
+       WHERE p.owner_id = $1 AND po.status = 'published'`,
+      [input.userId],
+    );
+    cacheTargets = {
+      publicationSlugs: pubSlugsRes.rows.map((r) => r.slug),
+      publishedPosts: publishedPostsRes.rows.map((r) => ({
+        postId: r.post_id,
+        publicationSlug: r.publication_slug,
+        postSlug: r.post_slug,
+      })),
+    };
+
     // Hard-delete user (ON DELETE CASCADE removes sessions, accounts, publications, posts, revisions, drafts, slug history, post_topics)
     const userDeleteRes = await client.query("DELETE FROM users WHERE id = $1", [input.userId]);
 
     await client.query("COMMIT");
 
-    return {
+    deletedCounts = {
       users: userDeleteRes.rowCount ?? 0,
       sessions: sessionsCount,
       accounts: accountsCount,
@@ -623,4 +670,10 @@ export async function confirmAccountErasure(input: {
   } finally {
     client.release();
   }
+
+  if (input.invalidateCache) {
+    await input.invalidateCache(cacheTargets);
+  }
+
+  return deletedCounts;
 }

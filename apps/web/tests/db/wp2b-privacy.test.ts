@@ -10,6 +10,19 @@ import { POST as erasureRequestPost } from "../../src/app/api/account/erasure/re
 import { POST as erasureConfirmPost } from "../../src/app/api/account/erasure/confirm/route";
 import { DELETE as accountDelete } from "../../src/app/api/account/route";
 
+const cacheMock = vi.hoisted(() => ({
+  calls: [] as Array<{ tag: string; profile: unknown }>,
+}));
+
+vi.mock("next/cache", () => ({
+  updateTag: () => undefined,
+  revalidateTag: (tag: string, profile: unknown) => {
+    cacheMock.calls.push({ tag, profile });
+  },
+  cacheTag: () => undefined,
+  cacheLife: () => undefined,
+}));
+
 const DATABASE_URL = process.env.DATABASE_URL?.trim() || undefined;
 const REQUIRED =
   process.env.REQUIRE_DB === "1" ||
@@ -218,6 +231,10 @@ describe.skipIf(!DATABASE_URL)("WP2b Data Export & Account Erasure on Real Postg
       [postVictim.rows[0]!.id, "Victim Title", "Victim markdown body"],
     );
     await pool.query(
+      `UPDATE posts SET status = 'published', published_revision_id = $2, published_at = now() WHERE id = $1`,
+      [postVictim.rows[0]!.id, revVictim.rows[0]!.id],
+    );
+    await pool.query(
       "INSERT INTO draft_state (post_id, base_revision_id, title, body_markdown) VALUES ($1, $2, $3, $4)",
       [postVictim.rows[0]!.id, revVictim.rows[0]!.id, "Victim Draft", "Victim draft body"],
     );
@@ -229,6 +246,33 @@ describe.skipIf(!DATABASE_URL)("WP2b Data Export & Account Erasure on Real Postg
       "INSERT INTO publication_slug_history (publication_id, slug) VALUES ($1, $2)",
       [pubVictim.rows[0]!.id, `victim-pub-old-${suffix}`],
     );
+
+    // 0. Reject missing or wrong password on credential account before issuing erasure token
+    const missingPwRes = await erasureRequestPost(
+      new NextRequest("http://localhost:3000/api/account/erasure/request", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          cookie: victim.cookie,
+          "x-vercel-forwarded-for": "198.51.100.88",
+        },
+        body: JSON.stringify({}),
+      }),
+    );
+    expect(missingPwRes.status).toBe(400);
+
+    const wrongPwRes = await erasureRequestPost(
+      new NextRequest("http://localhost:3000/api/account/erasure/request", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          cookie: victim.cookie,
+          "x-vercel-forwarded-for": "198.51.100.88",
+        },
+        body: JSON.stringify({ password: "WrongPassword-999!" }),
+      }),
+    );
+    expect(wrongPwRes.status).toBe(403);
 
     // 1. Request erasure & inspect logs + DB token hashing
     const logSpy = vi.spyOn(console, "log");
@@ -319,6 +363,7 @@ describe.skipIf(!DATABASE_URL)("WP2b Data Export & Account Erasure on Real Postg
     const freshToken = transport.getLastSentEmail()!.token;
 
     // 4. Confirm erasure via DELETE /api/account (hard delete in single transaction)
+    cacheMock.calls.length = 0;
     const confirmRes = await accountDelete(
       new NextRequest("http://localhost:3000/api/account", {
         method: "DELETE",
@@ -331,6 +376,13 @@ describe.skipIf(!DATABASE_URL)("WP2b Data Export & Account Erasure on Real Postg
       }),
     );
     expect(confirmRes.status).toBe(200);
+
+    // Verify WP4 cache tags were invalidated after transaction commit
+    const invalidatedTags = cacheMock.calls.map((c) => c.tag);
+    expect(invalidatedTags).toContain(`publication:victim-pub-${suffix}`);
+    expect(invalidatedTags).toContain(`publication-feed:victim-pub-${suffix}`);
+    expect(invalidatedTags).toContain(`post:victim-pub-${suffix}:victim-post-${suffix}`);
+    expect(invalidatedTags).toContain(`post-id:${postVictim.rows[0]!.id}`);
     const confirmBody = (await confirmRes.json()) as {
       erased: boolean;
       deletedCounts: Record<string, number>;
