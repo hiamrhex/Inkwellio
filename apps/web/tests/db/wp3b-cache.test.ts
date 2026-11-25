@@ -4,25 +4,23 @@ import type { Executor } from "../../src/modules/publications";
 import { DATABASE_URL, REQUIRED, createTestDatabase, type TestDatabase } from "./wp3a/harness";
 
 /**
- * WP3b write routes -> WP4 cache invalidation, end to end on real Postgres.
+ * WP3b write routes -> WP4 Route Handler cache invalidation, on real Postgres.
  *
- * `next/cache` is mocked to behave like a Route Handler in Next 16: `updateTag`
- * throws its real Server-Action-only error, and `revalidateTag` records the
- * call. That makes the seam take its documented Route Handler fallback, so the
- * assertions below prove the routes purge the exact publication/slug/post-id
- * tags WP4 caches under — not merely that some function was called.
+ * `next/cache` is mocked to record `revalidateTag(tag, profile)` and to flag
+ * any `updateTag` call. The routes must never reach for `updateTag` — Next
+ * 16.4.5 throws it outside a Server Action — so the assertions below prove the
+ * exact publication/slug/post-id tags and `{ expire: 0 }` profile that WP4's
+ * `cache-tags.ts` defines.
  */
-
-const UPDATE_TAG_OUTSIDE_ACTION =
-  "updateTag can only be called from within a Server Action. To invalidate cache tags in Route Handlers or other contexts, use revalidateTag instead.";
 
 const cache = vi.hoisted(() => ({
   calls: [] as Array<{ tag: string; profile: unknown }>,
+  updateCalls: [] as string[],
 }));
 
 vi.mock("next/cache", () => ({
-  updateTag: () => {
-    throw new Error(UPDATE_TAG_OUTSIDE_ACTION);
+  updateTag: (tag: string) => {
+    cache.updateCalls.push(tag);
   },
   revalidateTag: (tag: string, profile: unknown) => {
     cache.calls.push({ tag, profile });
@@ -81,6 +79,7 @@ describe.skipIf(!DATABASE_URL)("WP3b write routes purge WP4 cache tags", () => {
 
   beforeEach(() => {
     cache.calls.length = 0;
+    cache.updateCalls.length = 0;
   });
 
   async function createOwner(label: string): Promise<string> {
@@ -151,6 +150,7 @@ describe.skipIf(!DATABASE_URL)("WP3b write routes purge WP4 cache tags", () => {
       `post-id:${post.id}`,
     ]);
     expect(cache.calls[0]?.profile).toEqual({ expire: 0 });
+    expect(cache.updateCalls).toEqual([]);
 
     cache.calls.length = 0;
     const renamed = await renameRoute(
@@ -208,6 +208,7 @@ describe.skipIf(!DATABASE_URL)("WP3b write routes purge WP4 cache tags", () => {
       `publication:${publication.slug}`,
       `publication-feed:${publication.slug}`,
     ]);
+    expect(cache.updateCalls).toEqual([]);
   });
 
   it("a rejected write does not purge anything", async () => {
