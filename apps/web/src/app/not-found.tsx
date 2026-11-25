@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "Not found",
@@ -12,11 +13,33 @@ export const metadata: Metadata = {
  */
 export default function NotFound() {
   return (
-    <main className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
-      <h1 className="text-2xl font-semibold">Not found</h1>
-      <p className="text-zinc-600 dark:text-zinc-400">
+    <main
+      className="flex flex-1 flex-col items-center justify-center gap-5 px-6 py-16 text-center"
+      style={{
+        backgroundColor: "var(--bg, var(--bg-canvas))",
+        color: "var(--fg, var(--text-primary))",
+      }}
+    >
+      <h1 className="font-serif text-2xl font-medium tracking-tight">
+        Not found
+      </h1>
+      <p
+        className="max-w-md text-sm leading-relaxed"
+        style={{ color: "var(--text-muted, var(--fg, currentColor))" }}
+      >
         There is nothing at this address.
       </p>
+      <Link
+        href="/"
+        prefetch={false}
+        className="rounded border px-4 py-2 text-sm font-medium transition-opacity hover:opacity-80"
+        style={{
+          borderColor: "var(--border, var(--border-hairline))",
+          color: "var(--fg, var(--text-primary))",
+        }}
+      >
+        Return home
+      </Link>
     </main>
   );
 }

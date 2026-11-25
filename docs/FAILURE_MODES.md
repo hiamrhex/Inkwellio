@@ -65,12 +65,26 @@ Recovery paths:
   DB restore      → Neon console (independent of Vercel)            ✓
   code recovery   → local clone / git bundle (independent of both)  ✓
   login recovery  → depends on Neon AND Vercel                      ✗ accepted for v1
-  status page     → none exists                                     ✗ to add in WP8
+  status page     → none exists                                     ✗ Unverified (rely on GET /api/health + external probe)
 ```
 
 The one genuine circularity: **you cannot log in to fix the database if the database is the thing that is
 broken.** At T2 with 5 writers the acceptable answer is "the owner fixes it from the Neon console", not a
 break-glass auth path. It must be written down, not forgotten.
+
+## 5a. Automated Code Proofs vs. Unverified Live Drills (WP8)
+
+The main failure-mode table above leaves `Proved` = `no` for live infrastructure events until executed against real preview/production services. Automated code-level checks prove the application fail-closed behavior under mocked/simulated faults:
+
+- **Proved in automated tests (`health.test.ts`, `failure-drills.test.ts`, `public-read-timeout.test.ts`, `disclosure.test.ts`, `seed-topics.test.ts`):**
+  - Unset `DATABASE_URL` and black-hole TCP hangs return `503` on `/api/health`, `/api/topics`, and `/api/search` within bounded timeouts (`SELECT 1` `5,000 ms`, public read timeout `15,000 ms`) with `cache-control: no-store`, `x-content-type-options: nosniff`, `x-request-id` (on API JSON errors), and zero leaked SQL/secrets/stack traces.
+  - `/api/search` validates input before database access (`400 VALIDATION_ERROR` when DB is unavailable).
+  - `error.tsx`, `global-error.tsx`, and `not-found.tsx` render only `error.digest`, keep dark/light token fallbacks intact, never render `error.message` or stack traces, and omit search inputs from `404`.
+  - `scripts/seed-topics.ts` fails closed without printing secrets when `DATABASE_URL_UNPOOLED`/`DATABASE_URL` is absent or invalid.
+- **`Unverified` live operational drills (not run against deployed Vercel/Neon/Gmail):**
+  - Live Neon 100 CU-hour quota exhaustion, Neon 1 GB storage cutoff, and real PITR/branch restore drill (`runbooks`: [docs/RUNBOOKS.md](docs/RUNBOOKS.md)).
+  - Live Gmail `500/day` SMTP quota saturation and live secret rotation end-to-end drill.
+  - External uptime monitor polling history and pre-writer synthetic load baseline ([docs/SLO.md](docs/SLO.md)).
 
 ## 6. Overload plan
 
