@@ -9,7 +9,9 @@
     "lint": "eslint .",
     "typecheck": "next typegen && tsc --noEmit",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate"
+    "db:migrate": "drizzle-kit migrate",
+    "db:migrate:verify": "node scripts/migrate-and-verify.mjs",
+    "smoke:live": "node scripts/smoke-live-endpoints.mjs"
   },
   "dependencies": {
     "@better-auth/drizzle-adapter": "1.7.15",

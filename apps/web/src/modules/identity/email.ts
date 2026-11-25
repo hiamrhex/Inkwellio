@@ -19,7 +19,7 @@ export interface OutboundEmail {
   html?: string;
   url: string;
   token: string;
-  type: "verification" | "reset_password";
+  type: "verification" | "reset_password" | "erasure_confirmation";
 }
 
 export interface EmailTransport {
@@ -150,5 +150,33 @@ export async function sendResetPasswordEmail({
   logEvent("info", "reset_password_email_sent", {
     userId: user.id,
     type: "reset_password",
+  });
+}
+
+/**
+ * Send a single-use account erasure confirmation token.
+ * Safe against token and email leakage in application logs.
+ */
+export async function sendErasureConfirmationEmail({
+  user,
+  token,
+}: {
+  user: { id: string; email: string; name?: string };
+  token: string;
+}): Promise<void> {
+  const transport = getEmailTransport();
+  await transport.send({
+    to: user.email,
+    subject: "Confirm deletion of your Inkwellio account",
+    text: `Use this single-use confirmation token within 15 minutes to permanently delete your account: ${token}`,
+    url: "",
+    token,
+    type: "erasure_confirmation",
+  });
+
+  // Safe metadata only: NEVER log raw token or email address
+  logEvent("info", "account_erasure_email_sent", {
+    userId: user.id,
+    type: "erasure_confirmation",
   });
 }
