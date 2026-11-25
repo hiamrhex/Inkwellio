@@ -179,5 +179,87 @@ describe("Finding B: Email & Capturing Transport", () => {
       expect(errorThrown).toBe(true);
       expect(consoleLogSpy).not.toHaveBeenCalled();
     });
+
+    it("delivers sanitized email via Gmail SMTP config and never logs credentials or tokens", async () => {
+      const sendMailMock = vi.fn().mockResolvedValue({ messageId: "msg-123" });
+      const capturedConfigs: Array<Record<string, unknown>> = [];
+      const logEventSpy = vi.spyOn(logModule, "logEvent");
+
+      const prodTransport = new ProductionEmailTransport(
+        "sender@gmail.com",
+        "super-secret-gmail-app-pw-16",
+        (config) => {
+          capturedConfigs.push(config as unknown as Record<string, unknown>);
+          return { sendMail: sendMailMock };
+        },
+      );
+
+      await prodTransport.send({
+        to: "writer@inkwellio.test",
+        subject: "Reset your Inkwellio password",
+        text: "Reset link: https://inkwellio.vercel.app/api/auth/reset-password/tok?a=1&b=2",
+        url: "https://inkwellio.vercel.app/api/auth/reset-password/tok?a=1&b=2",
+        token: "CANARY_SMTP_RESET_TOKEN",
+        type: "reset_password",
+      });
+
+      expect(capturedConfigs).toHaveLength(1);
+      expect(capturedConfigs[0]).toMatchObject({
+        host: "smtp.gmail.com",
+        port: 465,
+        secure: true,
+        connectionTimeout: 5000,
+        greetingTimeout: 5000,
+        socketTimeout: 10000,
+      });
+
+      expect(sendMailMock).toHaveBeenCalledTimes(1);
+      const sentArg = sendMailMock.mock.calls[0]?.[0] as {
+        from: string;
+        to: string;
+        subject: string;
+        text: string;
+        html: string;
+      };
+      expect(sentArg.from).toContain("sender@gmail.com");
+      expect(sentArg.to).toBe("writer@inkwellio.test");
+      expect(sentArg.html).toContain("&amp;");
+
+      const allLogged = JSON.stringify(logEventSpy.mock.calls);
+      expect(allLogged).not.toContain("super-secret-gmail-app-pw-16");
+      expect(allLogged).not.toContain("CANARY_SMTP_RESET_TOKEN");
+      expect(allLogged).not.toContain("writer@inkwellio.test");
+    });
+
+    it("propagates a safe error on SMTP timeout/failure without leaking credentials", async () => {
+      const logEventSpy = vi.spyOn(logModule, "logEvent");
+      const prodTransport = new ProductionEmailTransport(
+        "sender@gmail.com",
+        "super-secret-gmail-app-pw-16",
+        () => ({
+          sendMail: vi.fn().mockRejectedValue(
+            Object.assign(new Error("Connection timeout with super-secret-gmail-app-pw-16"), {
+              code: "ETIMEDOUT",
+            }),
+          ),
+        }),
+      );
+
+      await expect(
+        prodTransport.send({
+          to: "writer@inkwellio.test",
+          subject: "Verify",
+          text: "Verify",
+          url: "https://inkwellio.vercel.app/verify?token=SECRET_TOK",
+          token: "SECRET_TOK",
+          type: "verification",
+        }),
+      ).rejects.toThrow(/Email delivery failed/i);
+
+      const allLogged = JSON.stringify(logEventSpy.mock.calls);
+      expect(allLogged).not.toContain("super-secret-gmail-app-pw-16");
+      expect(allLogged).not.toContain("SECRET_TOK");
+      expect(allLogged).not.toContain("writer@inkwellio.test");
+    });
   });
 });
