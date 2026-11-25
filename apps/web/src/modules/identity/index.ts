@@ -20,13 +20,21 @@ import {
 } from "@/kernel/errors";
 import { users, sessions, accounts, verifications, rateLimits } from "./schema";
 import { sendVerificationEmail, sendResetPasswordEmail } from "./email";
-import { rateLimitAuth } from "./limiter";
+import { getClientIp, rateLimitAuth } from "./limiter";
+import {
+  ErasureTokenExpiredError,
+  MAX_EXPORT_BYTES,
+  confirmAccountErasure,
+  exportUserAccountData,
+  requestAccountErasure,
+} from "./privacy";
 
 // Re-export for other modules
 export { ForbiddenError, users, sessions, accounts, verifications, rateLimits };
 export * from "./limiter";
 export * from "./audit";
 export * from "./email";
+export * from "./privacy";
 
 /**
  * Lazy Better Auth instance.
@@ -246,6 +254,181 @@ export async function handleAuthPost(request: Request): Promise<Response> {
   }
 
   return getAuth().handler(request);
+}
+
+/**
+ * Authenticated owner-only account export (`GET /api/account/export`).
+ */
+export async function handleAccountExportGet(request: Request): Promise<Response> {
+  const requestId = request.headers.get("x-request-id") ?? crypto.randomUUID();
+  const ip = getClientIp(request.headers);
+
+  const session = await getAuth().api.getSession({ headers: request.headers });
+  const userId = session?.user?.id;
+  const userEmail = session?.user?.email;
+  if (!userId || !userEmail) {
+    return Response.json(
+      { code: "UNAUTHORIZED", message: "Authentication required" },
+      { status: 401 },
+    );
+  }
+
+  const actor: Actor = { type: "user", id: userId, role: "user" };
+  if (!authorize(actor, "export_data", { type: "account", action: "export", userId })) {
+    return Response.json(toPublicError(new ForbiddenError("Forbidden"), requestId), { status: 403 });
+  }
+
+  const limit = await rateLimitAuth(
+    "account_export",
+    { ip, email: userEmail },
+    { max: 1, windowSeconds: 3600 },
+  );
+  if (!limit.allowed) {
+    return Response.json({ code: "RATE_LIMITED", message: "Too many export requests" }, { status: 429 });
+  }
+
+  try {
+    const payload = await exportUserAccountData(userId, { requestId, ip });
+    const serialized = JSON.stringify(payload, null, 2);
+    if (Buffer.byteLength(serialized, "utf8") > MAX_EXPORT_BYTES) {
+      return Response.json(
+        {
+          code: "PAYLOAD_TOO_LARGE",
+          message: "Export exceeds 25 MB limit; see /privacy for support contact.",
+        },
+        { status: 413 },
+      );
+    }
+
+    return new Response(serialized, {
+      status: 200,
+      headers: {
+        "content-type": "application/json; charset=utf-8",
+        "content-disposition": `attachment; filename="inkwellio-export-${userId}.json"`,
+      },
+    });
+  } catch (error) {
+    return Response.json(toPublicError(error, requestId), {
+      status: error instanceof NotFoundError ? 404 : 500,
+    });
+  }
+}
+
+/**
+ * Initiates account erasure (`POST /api/account/erasure/request`).
+ */
+export async function handleErasureRequestPost(request: Request): Promise<Response> {
+  const requestId = request.headers.get("x-request-id") ?? crypto.randomUUID();
+  const ip = getClientIp(request.headers);
+
+  const session = await getAuth().api.getSession({ headers: request.headers });
+  const userId = session?.user?.id;
+  const userEmail = session?.user?.email;
+  if (!userId || !userEmail) {
+    return Response.json(
+      { code: "UNAUTHORIZED", message: "Authentication required" },
+      { status: 401 },
+    );
+  }
+
+  const actor: Actor = { type: "user", id: userId, role: "user" };
+  if (!authorize(actor, "delete_account", { type: "account", action: "delete", userId })) {
+    return Response.json(toPublicError(new ForbiddenError("Forbidden"), requestId), { status: 403 });
+  }
+
+  const limit = await rateLimitAuth(
+    "account_erasure_request",
+    { ip, email: userEmail },
+    { max: 5, windowSeconds: 600 },
+  );
+  if (!limit.allowed) {
+    return Response.json({ code: "RATE_LIMITED", message: "Too many requests" }, { status: 429 });
+  }
+
+  let password: string | undefined;
+  try {
+    const body = (await request.json()) as { password?: unknown };
+    if (typeof body?.password === "string") {
+      password = body.password;
+    }
+  } catch {
+    // Empty or non-JSON body
+  }
+
+  try {
+    const result = await requestAccountErasure({ userId, password, requestId, ip });
+    return Response.json({ requested: true, expiresInSeconds: result.expiresInSeconds }, { status: 202 });
+  } catch (error) {
+    if (error instanceof ForbiddenError) {
+      return Response.json(toPublicError(error, requestId), { status: 403 });
+    }
+    if (error instanceof NotFoundError) {
+      return Response.json(toPublicError(error, requestId), { status: 404 });
+    }
+    return Response.json(toPublicError(error, requestId), { status: 500 });
+  }
+}
+
+/**
+ * Confirms single-use erasure token and hard-deletes account (`POST /api/account/erasure/confirm`, `DELETE /api/account`).
+ */
+export async function handleErasureConfirmPost(request: Request): Promise<Response> {
+  const requestId = request.headers.get("x-request-id") ?? crypto.randomUUID();
+  const ip = getClientIp(request.headers);
+
+  const session = await getAuth().api.getSession({ headers: request.headers });
+  const userId = session?.user?.id;
+  if (!userId) {
+    return Response.json(
+      { code: "UNAUTHORIZED", message: "Authentication required" },
+      { status: 401 },
+    );
+  }
+
+  const actor: Actor = { type: "user", id: userId, role: "user" };
+  if (!authorize(actor, "delete_account", { type: "account", action: "delete", userId })) {
+    return Response.json(toPublicError(new ForbiddenError("Forbidden"), requestId), { status: 403 });
+  }
+
+  let token = "";
+  try {
+    const body = (await request.json()) as { token?: unknown };
+    if (typeof body?.token === "string") {
+      token = body.token.trim();
+    }
+  } catch {
+    // Invalid JSON
+  }
+
+  if (!token) {
+    return Response.json(
+      toPublicError(new ValidationError("Confirmation token is required"), requestId),
+      { status: 400 },
+    );
+  }
+
+  try {
+    const deletedCounts = await confirmAccountErasure({ userId, token, requestId, ip });
+    return Response.json({ erased: true, deletedCounts }, { status: 200 });
+  } catch (error) {
+    if (error instanceof ErasureTokenExpiredError) {
+      return Response.json(
+        {
+          code: error.code,
+          message: "Erasure confirmation token has expired",
+          requestId,
+        },
+        { status: 410 },
+      );
+    }
+    if (error instanceof ForbiddenError) {
+      return Response.json(toPublicError(error, requestId), { status: 403 });
+    }
+    if (error instanceof NotFoundError) {
+      return Response.json(toPublicError(error, requestId), { status: 404 });
+    }
+    return Response.json(toPublicError(error, requestId), { status: 500 });
+  }
 }
 
 /**
