@@ -68,11 +68,13 @@ export {
   FEED_PAGE_SIZE_MAX,
   fetchPublishedPage,
   getPostById,
+  getPostCacheTarget,
   getPublishedPostById,
   type FeedCursor,
   type FeedItem,
   type FeedPage,
   type Post,
+  type PostCacheTarget,
   type PublishedPostContent,
 } from "./reads";
 export {

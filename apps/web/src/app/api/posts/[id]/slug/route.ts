@@ -1,4 +1,4 @@
-import { renamePost } from "@/modules/posts";
+import { getPostCacheTarget, renamePost } from "@/modules/posts";
 import { readJsonObject, requireString } from "../../../_lib/body";
 import { invalidatePostSlug } from "../../../_lib/cache-seam";
 import { dbExecutor } from "../../../_lib/executor";
@@ -26,8 +26,15 @@ export async function POST(
     const body = await readJsonObject(request);
     const slug = requireString(body, "slug");
 
-    const result = await renamePost(dbExecutor(), { actor, postId: id, slug });
-    await invalidatePostSlug(id);
+    const executor = dbExecutor();
+    const target = await getPostCacheTarget(executor, id, actor);
+    const result = await renamePost(executor, { actor, postId: id, slug });
+    if (target === undefined) {
+      throw new Error("cache target missing after a committed rename");
+    }
+    if (result.changed) {
+      await invalidatePostSlug(target, { ...target, postSlug: result.slug });
+    }
     return Response.json(result, {
       headers: { "cache-control": "no-store", "x-content-type-options": "nosniff" },
     });

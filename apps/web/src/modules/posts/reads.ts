@@ -252,6 +252,74 @@ export async function getPostById(
   };
 }
 
+/** The coordinates WP4 needs to purge every cached page a post can appear on. */
+export type PostCacheTarget = {
+  readonly postId: string;
+  readonly publicationSlug: string;
+  readonly postSlug: string;
+};
+
+/**
+ * Resolve a post's cache coordinates for its owner, in any status.
+ *
+ * WP4 tags cached pages with `publication:<pub>`, `publication-feed:<pub>`,
+ * `post:<pub>:<slug>` and `post-id:<id>`. A mutating route must purge exactly
+ * those tags after the write commits, so it needs the slugs — which the
+ * lifecycle results do not carry. This read is deliberately status-agnostic:
+ * a delete or unpublish still has to invalidate the address the post *had*.
+ *
+ * Returns `undefined` rather than throwing for a missing, malformed, or
+ * unowned post: the caller always follows with a service call that produces
+ * the correct 404/403, and this read must not become an oracle of its own.
+ */
+export async function getPostCacheTarget(
+  executor: Executor,
+  postId: string,
+  actor: Actor,
+): Promise<PostCacheTarget | undefined> {
+  if (!isUuid(postId)) return undefined;
+
+  const q: Queryable = queryable(executor);
+
+  let found: Array<{
+    id: string;
+    slug: string;
+    publication_slug: string;
+    owner_id: string;
+  }>;
+  try {
+    found = await rows<{
+      id: string;
+      slug: string;
+      publication_slug: string;
+      owner_id: string;
+    }>(
+      q,
+      sql`
+        SELECT p.id,
+               p.slug,
+               pub.slug AS publication_slug,
+               pub.owner_id
+          FROM posts p
+          JOIN publications pub ON pub.id = p.publication_id
+         WHERE p.id = ${postId}
+      `,
+    );
+  } catch (error) {
+    if (pgCode(error) === "22P02") return undefined;
+    throw error;
+  }
+
+  const row = found[0];
+  if (row === undefined || !isOwner(actor, row.owner_id)) return undefined;
+
+  return {
+    postId: row.id,
+    publicationSlug: row.publication_slug,
+    postSlug: row.slug,
+  };
+}
+
 /**
  * Public read of a single published post with its published revision content.
  *

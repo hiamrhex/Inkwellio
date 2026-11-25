@@ -1,6 +1,6 @@
-import { restorePost } from "@/modules/posts";
+import { getPostCacheTarget, restorePost } from "@/modules/posts";
 import { readJsonObject } from "../../../_lib/body";
-import { invalidatePublicationFeed, invalidatePublishedPost } from "../../../_lib/cache-seam";
+import { invalidatePublicationFeed } from "../../../_lib/cache-seam";
 import { dbExecutor } from "../../../_lib/executor";
 import { requireExpectedVersion } from "../../../_lib/lifecycle";
 import { jsonError, requestIdFrom } from "../../../_lib/respond";
@@ -26,14 +26,18 @@ export async function POST(
     const body = await readJsonObject(request);
     const expectedVersion = requireExpectedVersion(body);
 
-    const result = await restorePost(dbExecutor(), {
+    const executor = dbExecutor();
+    const target = await getPostCacheTarget(executor, id, actor);
+    const result = await restorePost(executor, {
       actor,
       postId: id,
       expectedVersion,
       requestId,
     });
-    await invalidatePublishedPost(id);
-    await invalidatePublicationFeed(id);
+    if (target === undefined) {
+      throw new Error("cache target missing after a committed restore");
+    }
+    await invalidatePublicationFeed(target);
     return Response.json(result, {
       headers: { "cache-control": "no-store", "x-content-type-options": "nosniff" },
     });
