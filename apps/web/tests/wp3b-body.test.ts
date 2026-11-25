@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { optionalString, readJsonObject, requireString, requireVersion } from "../src/app/api/_lib/body";
+import { optionalString, readJsonObject, requireString, requireStringArray, requireVersion } from "../src/app/api/_lib/body";
 
 /**
  * WP3b request-body parsing. A malformed body is a 400 (ValidationError), never
@@ -57,5 +57,20 @@ describe("field helpers", () => {
     expect(() => requireVersion({ expectedVersion: -1 })).toThrow();
     expect(() => requireVersion({ expectedVersion: 1.5 })).toThrow();
     expect(() => requireVersion({})).toThrow();
+  });
+
+  it("requireStringArray accepts an array of strings, including an empty one", () => {
+    expect(requireStringArray({ topicSlugs: ["tactics", "analytics"] }, "topicSlugs")).toEqual([
+      "tactics",
+      "analytics",
+    ]);
+    expect(requireStringArray({ topicSlugs: [] }, "topicSlugs")).toEqual([]);
+  });
+
+  it("requireStringArray rejects anything that is not an array of strings", () => {
+    expect(() => requireStringArray({}, "topicSlugs")).toThrow();
+    expect(() => requireStringArray({ topicSlugs: "tactics" }, "topicSlugs")).toThrow();
+    expect(() => requireStringArray({ topicSlugs: ["tactics", 7] }, "topicSlugs")).toThrow();
+    expect(() => requireStringArray({ topicSlugs: null }, "topicSlugs")).toThrow();
   });
 });

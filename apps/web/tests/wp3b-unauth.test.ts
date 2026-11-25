@@ -29,6 +29,7 @@ const { POST: unpublishRoute } = await import("../src/app/api/posts/[id]/unpubli
 const { POST: deleteRoute } = await import("../src/app/api/posts/[id]/delete/route");
 const { POST: restoreRoute } = await import("../src/app/api/posts/[id]/restore/route");
 const { POST: renameRoute } = await import("../src/app/api/posts/[id]/slug/route");
+const { PUT: setTopicsRoute } = await import("../src/app/api/posts/[id]/topics/route");
 
 const ID = "00000000-0000-0000-0000-000000000001";
 const ctx = { params: Promise.resolve({ id: ID }) };
@@ -58,6 +59,7 @@ const ownerRoutes: Array<[string, Handler]> = [
   ["POST /api/posts/:id/delete", deleteRoute as Handler],
   ["POST /api/posts/:id/restore", restoreRoute as Handler],
   ["POST /api/posts/:id/slug", renameRoute as Handler],
+  ["PUT /api/posts/:id/topics", setTopicsRoute as Handler],
 ];
 
 describe("WP3b write/owner routes fail closed at 401", () => {

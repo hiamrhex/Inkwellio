@@ -21,3 +21,10 @@ export {
   type TopicPostItem,
   type TopicSummary,
 } from "./reads";
+export {
+  MAX_POST_TOPICS,
+  setPostTopics,
+  type AssignedTopic,
+  type SetPostTopicsInput,
+  type SetPostTopicsResult,
+} from "./service/assign";
