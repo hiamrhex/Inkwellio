@@ -5,23 +5,27 @@
  *   BASE_URL=https://inkwellio.vercel.app \
  *     pnpm --filter @inkwellio/web smoke:live
  *
- * Checks the deployed site, not the source tree:
+ * Checks the deployed site, not the source tree. No cookies are sent, so a
+ * 401 on an owner endpoint is also proof that no write happened. The only
+ * POST to the auth route is a method probe (`POST /api/auth/get-session`),
+ * which is rejected with 405 and creates no data — production DB mutation is
+ * explicitly out of scope.
  *
- * 1. Public API: `/api/health` (200 and `status: "ok"`), `/api/topics` and
- *    `/api/search?q=football` (200 with a JSON body).
- * 2. Public pages: `/`, `/topics`, `/search` answer 200.
- * 3. Security headers on `/`: `x-content-type-options: nosniff`, a
- *    `referrer-policy`, and a content security policy. The repository ships the
- *    public-page policy as `Content-Security-Policy-Report-Only` (A13), so both
- *    the enforced and the report-only header satisfy this check; the output
- *    names which one was seen.
- * 4. Protected write/owner endpoints fail closed: an unauthenticated request
- *    must be 401, never a write. The script sends no cookies, so a 401 here is
- *    also proof that nothing mutated.
+ * Every method/path pair declared under `apps/web/src/app/api/**` is covered:
+ *
+ * - public 200: health, topics, search, auth get-session, plus the 404 of a
+ *   missing published post (the public post read);
+ * - auth POST route probed without mutation;
+ * - 16 owner/account endpoints must answer 401 unauthenticated;
+ * - public pages `/`, `/topics`, `/search` and the security headers on `/`.
+ *
+ * The repository ships the public-page CSP as `Content-Security-Policy-Report-Only`
+ * (A13), so both the enforced and report-only header satisfy the header check;
+ * the output names which one was seen.
  *
  * Every request uses `AbortSignal.timeout(10000)` and reports latency in ms.
- * Any failed check makes the process exit non-zero; a human runs this, and the
- * scheduled workflow treats a non-zero exit as a red build.
+ * Any failed check makes the process exit non-zero; the scheduled workflow
+ * treats that as a red build.
  *
  * Uses Node built-ins only (fetch, AbortSignal, performance). No dependency is
  * added to the app for an ops check.
@@ -32,6 +36,9 @@ import { fileURLToPath } from "node:url";
 
 const DEFAULT_BASE_URL = "https://inkwellio.vercel.app";
 const REQUEST_TIMEOUT_MS = 10_000;
+const ZERO_UUID = "00000000-0000-0000-0000-000000000000";
+const MIN_SEED_TOPICS = 12;
+
 /**
  * Resolve and normalise the target. A trailing slash is stripped instead of
  * producing `//api/health`; anything that is not an absolute http(s) URL is a
@@ -125,6 +132,28 @@ function jsonCheck(name, path, verify) {
   };
 }
 
+function statusCheck(name, method, path, expectedStatus, detail) {
+  return {
+    name,
+    async run(fetchImpl, baseUrl) {
+      const hasBody = method !== "GET";
+      const outcome = await request(fetchImpl, `${baseUrl}${path}`, {
+        method,
+        headers: {
+          accept: "application/json",
+          ...(hasBody ? { "content-type": "application/json" } : {}),
+        },
+        ...(hasBody ? { body: "{}" } : {}),
+      });
+      if (outcome.error) return fail(outcome, describeError(outcome.error));
+      if (outcome.status !== expectedStatus) {
+        return fail(outcome, `expected ${expectedStatus}, got ${outcome.status}`);
+      }
+      return pass(outcome, detail);
+    },
+  };
+}
+
 function pageCheck(name, path) {
   return {
     name,
@@ -140,19 +169,70 @@ function pageCheck(name, path) {
   };
 }
 
+/**
+ * Every authenticated/owner method/path in the API tree. `policy.ts` marks
+ * each of these `authenticated`; the handlers call `requireUser` (or identity's
+ * session check) before a service call, so an absent cookie must be 401.
+ */
 const PROTECTED_ENDPOINTS = [
+  { name: "GET /api/publications", method: "GET", path: "/api/publications" },
   { name: "POST /api/publications", method: "POST", path: "/api/publications" },
+  {
+    name: `GET /api/publications/${ZERO_UUID}`,
+    method: "GET",
+    path: `/api/publications/${ZERO_UUID}`,
+  },
   { name: "POST /api/posts", method: "POST", path: "/api/posts" },
   {
-    name: "PUT /api/posts/00000000-0000-0000-0000-000000000000/topics",
+    name: `GET /api/posts/${ZERO_UUID}/draft`,
+    method: "GET",
+    path: `/api/posts/${ZERO_UUID}/draft`,
+  },
+  {
+    name: `PUT /api/posts/${ZERO_UUID}/draft`,
     method: "PUT",
-    path: "/api/posts/00000000-0000-0000-0000-000000000000/topics",
+    path: `/api/posts/${ZERO_UUID}/draft`,
+  },
+  {
+    name: `POST /api/posts/${ZERO_UUID}/publish`,
+    method: "POST",
+    path: `/api/posts/${ZERO_UUID}/publish`,
+  },
+  {
+    name: `POST /api/posts/${ZERO_UUID}/unpublish`,
+    method: "POST",
+    path: `/api/posts/${ZERO_UUID}/unpublish`,
+  },
+  {
+    name: `POST /api/posts/${ZERO_UUID}/slug`,
+    method: "POST",
+    path: `/api/posts/${ZERO_UUID}/slug`,
+  },
+  {
+    name: `POST /api/posts/${ZERO_UUID}/delete`,
+    method: "POST",
+    path: `/api/posts/${ZERO_UUID}/delete`,
+  },
+  {
+    name: `POST /api/posts/${ZERO_UUID}/restore`,
+    method: "POST",
+    path: `/api/posts/${ZERO_UUID}/restore`,
+  },
+  {
+    name: `PUT /api/posts/${ZERO_UUID}/topics`,
+    method: "PUT",
+    path: `/api/posts/${ZERO_UUID}/topics`,
   },
   { name: "GET /api/account/export", method: "GET", path: "/api/account/export" },
   {
     name: "POST /api/account/erasure/request",
     method: "POST",
     path: "/api/account/erasure/request",
+  },
+  {
+    name: "POST /api/account/erasure/confirm",
+    method: "POST",
+    path: "/api/account/erasure/confirm",
   },
   { name: "DELETE /api/account", method: "DELETE", path: "/api/account" },
 ];
@@ -222,7 +302,10 @@ export function buildChecks() {
       if (body === null || typeof body !== "object" || !Array.isArray(body.topics)) {
         return fail(outcome, "body.topics is not an array");
       }
-      return pass(outcome, `body.topics=${body.topics.length}`);
+      if (body.topics.length < MIN_SEED_TOPICS) {
+        return fail(outcome, `body.topics=${body.topics.length} expected >= ${MIN_SEED_TOPICS}`);
+      }
+      return pass(outcome, `body.topics=${body.topics.length} (>= ${MIN_SEED_TOPICS})`);
     }),
     jsonCheck("GET /api/search?q=football", "/api/search?q=football", (outcome, body) => {
       if (body === null || typeof body !== "object" || Array.isArray(body)) {
@@ -231,6 +314,26 @@ export function buildChecks() {
       const items = Array.isArray(body.items) ? `items=${body.items.length}` : "items absent";
       return pass(outcome, `JSON object, ${items}`);
     }),
+    jsonCheck("GET /api/auth/get-session", "/api/auth/get-session", (outcome, body) => {
+      if (body !== null) return fail(outcome, `expected null session, got ${JSON.stringify(body)}`);
+      return pass(outcome, "unauthenticated null session");
+    }),
+    // The auth route also declares POST. A method probe is the only safe way
+    // to exercise it live: a real sign-up would mutate the production DB.
+    statusCheck(
+      "POST /api/auth/[...all] (method probe)",
+      "POST",
+      "/api/auth/get-session",
+      405,
+      "rejected without creating a session",
+    ),
+    statusCheck(
+      `GET /api/posts/${ZERO_UUID}`,
+      "GET",
+      `/api/posts/${ZERO_UUID}`,
+      404,
+      "missing post is indistinguishable and public",
+    ),
     pageCheck("GET /", "/"),
     pageCheck("GET /topics", "/topics"),
     pageCheck("GET /search", "/search"),

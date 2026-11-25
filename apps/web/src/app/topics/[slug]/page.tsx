@@ -1,17 +1,63 @@
 import { Suspense } from "react";
+import type { CSSProperties } from "react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import type { FeedCursor } from "@/modules/posts";
 import { withPublicDbTimeout } from "@/modules/search";
-import {
-  fetchTopicPublishedPage,
-  normalizeTopicSlug,
-} from "@/modules/topics";
+import { fetchTopicPublishedPage, normalizeTopicSlug } from "@/modules/topics";
 
-function parseCursor(
-  after?: string,
-  afterId?: string,
-): FeedCursor | undefined {
+/** Same full-width constrained measure as /topics and /search. */
+const PAGE_STYLE: CSSProperties = {
+  width: "100%",
+  maxWidth: "44rem", // 704px
+  marginInline: "auto",
+  paddingInline: "clamp(1rem, 3vw, 1.5rem)",
+  paddingBlock: "3rem",
+};
+
+const FOCUS_RING =
+  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)]";
+
+function Breadcrumb({ topicName }: { topicName?: string }) {
+  return (
+    <nav
+      aria-label="Breadcrumb"
+      className="mb-6 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-[var(--text-muted)]"
+    >
+      <Link
+        href="/"
+        prefetch={false}
+        className={`hover:text-[var(--text-primary)] hover:underline ${FOCUS_RING}`}
+      >
+        Home
+      </Link>
+      <span aria-hidden="true">/</span>
+      <Link
+        href="/topics"
+        prefetch={false}
+        className={`hover:text-[var(--text-primary)] hover:underline ${FOCUS_RING}`}
+      >
+        Topics
+      </Link>
+      <span aria-hidden="true">/</span>
+      <Link
+        href="/search"
+        prefetch={false}
+        className={`hover:text-[var(--text-primary)] hover:underline ${FOCUS_RING}`}
+      >
+        Search
+      </Link>
+      {topicName ? (
+        <>
+          <span aria-hidden="true">/</span>
+          <span aria-current="page">{topicName}</span>
+        </>
+      ) : null}
+    </nav>
+  );
+}
+
+function parseCursor(after?: string, afterId?: string): FeedCursor | undefined {
   if (!after || !afterId) {
     return undefined;
   }
@@ -47,10 +93,9 @@ async function TopicFeedView({
     );
   } catch {
     return (
-      <main className="mx-auto max-w-2xl px-6 py-12">
-        <p className="text-zinc-600 dark:text-zinc-400">
-          Topic feed is temporarily unavailable.
-        </p>
+      <main className="mx-auto max-w-2xl px-6 py-12" style={PAGE_STYLE}>
+        <Breadcrumb />
+        <p className="text-[var(--text-muted)]">Topic feed is temporarily unavailable.</p>
       </main>
     );
   }
@@ -61,24 +106,14 @@ async function TopicFeedView({
 
   const { topic, posts, nextCursor } = page;
   return (
-    <main className="mx-auto max-w-2xl px-6 py-12">
+    <main className="mx-auto max-w-2xl px-6 py-12" style={PAGE_STYLE}>
+      <Breadcrumb topicName={topic.name} />
       <header className="mb-8 border-b border-zinc-200 pb-4 dark:border-zinc-800">
-        <Link
-          href="/topics"
-          prefetch={false}
-          className="text-sm text-zinc-500 hover:underline"
-        >
-          All topics
-        </Link>
-        <h1 className="mt-2 text-3xl font-semibold tracking-tight">
-          {topic.name}
-        </h1>
+        <h1 className="text-3xl font-semibold tracking-tight">{topic.name}</h1>
       </header>
 
       {posts.length === 0 ? (
-        <p className="text-zinc-600 dark:text-zinc-400">
-          No published posts in this topic yet.
-        </p>
+        <p className="text-[var(--text-muted)]">No published posts in this topic yet.</p>
       ) : (
         <ul className="space-y-6">
           {posts.map((post) => (
@@ -89,11 +124,11 @@ async function TopicFeedView({
               <Link
                 href={`/@${encodeURIComponent(post.publicationSlug)}/${encodeURIComponent(post.slug)}`}
                 prefetch={false}
-                className="text-xl font-medium hover:underline"
+                className={`text-xl font-medium hover:text-[var(--text-primary)] hover:underline ${FOCUS_RING}`}
               >
                 {post.title}
               </Link>
-              <p className="mt-1 text-xs text-zinc-500">
+              <p className="mt-1 text-xs text-[var(--text-faint)]">
                 @{post.publicationSlug} — {post.publishedAt.toISOString().slice(0, 10)}
               </p>
             </li>
@@ -106,7 +141,7 @@ async function TopicFeedView({
           <Link
             href={`/topics/${encodeURIComponent(topic.slug)}?after=${encodeURIComponent(nextCursor.publishedAt.toISOString())}&afterId=${encodeURIComponent(nextCursor.postId)}`}
             prefetch={false}
-            className="text-sm font-medium hover:underline"
+            className={`text-sm font-medium hover:text-[var(--text-primary)] hover:underline ${FOCUS_RING}`}
           >
             Older posts →
           </Link>
@@ -126,7 +161,7 @@ export default function TopicDetailPage({
   return (
     <Suspense
       fallback={
-        <main className="mx-auto max-w-2xl px-6 py-12">
+        <main className="mx-auto max-w-2xl px-6 py-12" style={PAGE_STYLE}>
           <p>Loading topic...</p>
         </main>
       }
