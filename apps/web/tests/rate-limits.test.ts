@@ -1,11 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   getClientIp,
   normalizeRateLimitEmail,
   consumeRateLimit,
   rateLimitAuth,
-  RateLimitError,
 } from "../src/modules/identity/limiter";
+import * as dbModule from "../src/kernel/db";
 
 describe("Gate G5: Rate limits and header rotation", () => {
   it("rotating x-forwarded-for does not reset the limit", async () => {
@@ -108,5 +108,27 @@ describe("Gate G5: Rate limits and header rotation", () => {
     expect(normalizeRateLimitEmail("  User@Example.Com  ")).toBe("user@example.com");
     // Full-width characters normalized via NFKC
     expect(normalizeRateLimitEmail("ｕｓｅｒ@example.com")).toBe("user@example.com");
+  });
+
+  it("fails closed when DATABASE_URL is configured and DB query throws", async () => {
+    const prevDbUrl = process.env.DATABASE_URL;
+    process.env.DATABASE_URL = "postgres://invalid:5432/nonexistent";
+    const spy = vi.spyOn(dbModule, "getDb").mockImplementation(() => {
+      throw new Error("ECONNREFUSED");
+    });
+
+    try {
+      const res = await consumeRateLimit("ip:198.51.100.42:sign_in", { max: 5, windowSeconds: 600 });
+      expect(res.allowed).toBe(false);
+      expect(res.status).toBe(429);
+      expect(res.remaining).toBe(0);
+    } finally {
+      spy.mockRestore();
+      if (prevDbUrl === undefined) {
+        delete process.env.DATABASE_URL;
+      } else {
+        process.env.DATABASE_URL = prevDbUrl;
+      }
+    }
   });
 });
