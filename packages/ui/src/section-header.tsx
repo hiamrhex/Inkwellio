@@ -26,6 +26,10 @@ export function SectionHeader({
         display: "flex",
         flexDirection: "column",
         alignItems: isCenter ? "center" : "flex-start",
+        textAlign: align,
+        width: "100%",
+        maxWidth: isCenter ? "58ch" : "64ch",
+        marginInline: isCenter ? "auto" : undefined,
         gap: "0.75rem",
       }}
     >
@@ -38,6 +42,8 @@ export function SectionHeader({
           lineHeight: 1.15,
           color: "var(--text-primary)",
           margin: 0,
+          width: "100%",
+          textAlign: align,
         }}
       >
         {heading}
@@ -52,7 +58,8 @@ export function SectionHeader({
             marginBottom: 0,
             marginInline: isCenter ? "auto" : undefined,
             textAlign: align,
-            maxWidth: "52ch",
+            maxWidth: "54ch",
+            width: "100%",
           }}
         >
           {body}

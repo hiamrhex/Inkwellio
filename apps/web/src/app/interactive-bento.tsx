@@ -1,10 +1,9 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useState } from "react";
 import { IconTile } from "@inkwellio/ui";
 
 export function InteractiveBento() {
-  // Cell 1: Slug input state
   const [slugInput, setSlugInput] = useState("tactical-review");
   const normalizedSlug = slugInput
     .toLowerCase()
@@ -13,66 +12,45 @@ export function InteractiveBento() {
     .replace(/-+/g, "-")
     .replace(/^-|-$/g, "");
 
-  // Cell 2: Editor formatting preview state
   const [editorView, setEditorView] = useState<"formatted" | "markdown">("formatted");
 
-  // Cell 3: Revision checkpoint switcher state
   const [activeCheckpoint, setActiveCheckpoint] = useState<number>(0);
   const revisions = [
     {
       time: "10:04 (Current)",
-      desc: "Added 64th-minute inverted fullback tactical note.",
       snippet:
         "In the 64th minute, City inverted their right-back into the inside channel, instantly overloading the midfield pivot.",
     },
     {
       time: "10:02",
-      desc: "Adjusted pressing structure description.",
       snippet:
         "In the second half, City shifted their defensive line higher, forcing the opposition winger to retreat deeper.",
     },
     {
       time: "10:00",
-      desc: "Initial match outline saved.",
       snippet:
         "Tactical observations from the first half: high defensive block and structured wing overloads.",
     },
   ];
 
-  // Cell 4: Editorial typography & font-size state
   const [fontFamily, setFontFamily] = useState<"serif" | "sans">("serif");
   const [fontSize, setFontSize] = useState<"17px" | "19px" | "21px">("19px");
 
-  // Pointer tracking for spotlight & specular borders
-  const gridRef = useRef<HTMLDivElement>(null);
-  const rafRef = useRef<number | null>(null);
-
-  const handlePointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-    if (!gridRef.current) return;
-    const cards = gridRef.current.querySelectorAll<HTMLElement>("[data-spotlight]");
-
-    if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    rafRef.current = requestAnimationFrame(() => {
-      cards.forEach((card) => {
-        const rect = card.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-        card.style.setProperty("--spotlight-x", `${x}px`);
-        card.style.setProperty("--spotlight-y", `${y}px`);
-      });
-    });
-  }, []);
+  const handleSelectFont = (fam: "serif" | "sans") => {
+    setFontFamily(fam);
+    if (fam === "serif" && typeof document !== "undefined") {
+      document.documentElement.classList.add("editorial-font-ready");
+    }
+  };
 
   return (
     <div
-      ref={gridRef}
       className="bento-grid"
-      onPointerMove={handlePointerMove}
       style={{
         display: "grid",
         gridTemplateColumns: "repeat(12, 1fr)",
         gap: "1.5rem",
-        marginTop: "2.5rem",
+        marginTop: "2.25rem",
         width: "100%",
       }}
     >
@@ -90,11 +68,11 @@ export function InteractiveBento() {
                 <path d="M4 15h12" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
               </svg>
             </IconTile>
-            <span className="essential-num">01 &middot; Your link</span>
+            <span className="essential-num">01 / Your link</span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
             <span className="status-dot status-dot-live" aria-hidden="true" />
-            <span style={{ fontSize: "0.6875rem", fontFamily: "var(--font-geist-mono)", color: "var(--text-faint)" }}>
+            <span style={{ fontSize: "0.75rem", fontFamily: "var(--font-geist-mono)", color: "var(--text-faint)" }}>
               Direct bookmark
             </span>
           </div>
@@ -108,7 +86,6 @@ export function InteractiveBento() {
           </p>
         </div>
 
-        {/* Live Interactive Slug Preview */}
         <div
           style={{
             marginTop: "auto",
@@ -134,7 +111,7 @@ export function InteractiveBento() {
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
             <span
               style={{
-                fontSize: "0.8125rem",
+                fontSize: "0.875rem",
                 fontFamily: "var(--font-geist-mono)",
                 color: "var(--text-muted)",
               }}
@@ -150,18 +127,19 @@ export function InteractiveBento() {
               style={{
                 flex: 1,
                 minWidth: "120px",
+                minHeight: "44px",
                 background: "var(--bg-surface3)",
                 border: "1px solid var(--border-hairline)",
-                borderRadius: "0.375rem",
-                padding: "0.25rem 0.5rem",
-                fontSize: "0.8125rem",
+                borderRadius: "0.5rem",
+                padding: "0.5rem 0.75rem",
+                fontSize: "0.875rem",
                 fontFamily: "var(--font-geist-mono)",
                 color: "var(--text-primary)",
                 outline: "none",
               }}
             />
           </div>
-          <div style={{ fontSize: "0.6875rem", fontFamily: "var(--font-geist-mono)", color: "var(--text-faint)" }}>
+          <div style={{ fontSize: "0.75rem", fontFamily: "var(--font-geist-mono)", color: "var(--text-faint)" }}>
             Normalized link: <span style={{ color: "var(--text-primary)" }}>inkwellio.example/@{normalizedSlug || "yourname"}</span>
           </div>
         </div>
@@ -173,18 +151,18 @@ export function InteractiveBento() {
         data-spotlight="true"
         aria-labelledby="bento-editor-title"
       >
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
             <IconTile size={40}>
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
                 <path d="M3 14.5L14.5 3L17 5.5L5.5 17L3 17.5L3 14.5Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" fill="none" />
               </svg>
             </IconTile>
-            <span className="essential-num">02 &middot; Craft</span>
+            <span className="essential-num">02 / Craft</span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
             <span className="status-dot status-dot-amber" aria-hidden="true" />
-            <span style={{ fontSize: "0.6875rem", fontFamily: "var(--font-geist-mono)", color: "var(--text-faint)" }}>
+            <span style={{ fontSize: "0.75rem", fontFamily: "var(--font-geist-mono)", color: "var(--text-faint)" }}>
               Autosave active
             </span>
           </div>
@@ -197,7 +175,6 @@ export function InteractiveBento() {
           </p>
         </div>
 
-        {/* Live Formatting Mode Toggle */}
         <div
           style={{
             marginTop: "auto",
@@ -210,7 +187,7 @@ export function InteractiveBento() {
             gap: "0.75rem",
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem" }}>
             <span style={{ fontSize: "0.75rem", fontFamily: "var(--font-geist-mono)", color: "var(--text-faint)" }}>
               Formatting view
             </span>
@@ -226,9 +203,12 @@ export function InteractiveBento() {
               <button
                 type="button"
                 onClick={() => setEditorView("formatted")}
+                className="bento-pill-btn"
                 style={{
-                  padding: "2px 8px",
-                  fontSize: "0.6875rem",
+                  minHeight: "45px",
+                  minWidth: "45px",
+                  padding: "0 12px",
+                  fontSize: "0.75rem",
                   borderRadius: "9999px",
                   border: "none",
                   cursor: "pointer",
@@ -241,9 +221,12 @@ export function InteractiveBento() {
               <button
                 type="button"
                 onClick={() => setEditorView("markdown")}
+                className="bento-pill-btn"
                 style={{
-                  padding: "2px 8px",
-                  fontSize: "0.6875rem",
+                  minHeight: "45px",
+                  minWidth: "45px",
+                  padding: "0 12px",
+                  fontSize: "0.75rem",
                   borderRadius: "9999px",
                   border: "none",
                   cursor: "pointer",
@@ -258,20 +241,20 @@ export function InteractiveBento() {
 
           <div
             style={{
-              padding: "0.5rem 0.75rem",
+              padding: "0.625rem 0.75rem",
               background: "var(--bg-surface1)",
               borderRadius: "0.375rem",
               border: "1px solid var(--border-hairline)",
-              fontSize: "0.8125rem",
+              fontSize: "0.875rem",
               lineHeight: 1.5,
               fontFamily: editorView === "markdown" ? "var(--font-geist-mono)" : "var(--font-geist-sans)",
               color: "var(--text-primary)",
             }}
           >
             {editorView === "markdown" ? (
-              <span>## The 64th minute &middot; Inverted overload</span>
+              <span>## The 64th minute — Inverted overload</span>
             ) : (
-              <span style={{ fontWeight: 600 }}>The 64th minute &middot; Inverted overload</span>
+              <span style={{ fontWeight: 600 }}>The 64th minute — Inverted overload</span>
             )}
           </div>
         </div>
@@ -283,7 +266,7 @@ export function InteractiveBento() {
         data-spotlight="true"
         aria-labelledby="bento-archive-title"
       >
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
             <IconTile size={40}>
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
@@ -292,9 +275,9 @@ export function InteractiveBento() {
                 <path d="M7 12h6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
               </svg>
             </IconTile>
-            <span className="essential-num">03 &middot; Revisions</span>
+            <span className="essential-num">03 / Revisions</span>
           </div>
-          <span style={{ fontSize: "0.6875rem", fontFamily: "var(--font-geist-mono)", color: "var(--text-faint)" }}>
+          <span style={{ fontSize: "0.75rem", fontFamily: "var(--font-geist-mono)", color: "var(--text-faint)" }}>
             Minute checkpoints
           </span>
         </div>
@@ -306,7 +289,6 @@ export function InteractiveBento() {
           </p>
         </div>
 
-        {/* Live Checkpoint Switcher */}
         <div
           style={{
             marginTop: "auto",
@@ -316,7 +298,7 @@ export function InteractiveBento() {
             borderRadius: "0.75rem",
             display: "flex",
             flexDirection: "column",
-            gap: "0.5rem",
+            gap: "0.625rem",
           }}
         >
           <div style={{ display: "flex", gap: "0.375rem", flexWrap: "wrap" }}>
@@ -325,16 +307,19 @@ export function InteractiveBento() {
                 key={rev.time}
                 type="button"
                 onClick={() => setActiveCheckpoint(idx)}
+                className="bento-pill-btn"
                 style={{
-                  padding: "2px 8px",
-                  fontSize: "0.6875rem",
+                  minHeight: "45px",
+                  minWidth: "45px",
+                  padding: "0 12px",
+                  fontSize: "0.75rem",
                   fontFamily: "var(--font-geist-mono)",
                   borderRadius: "9999px",
                   border: "1px solid var(--border-hairline)",
                   cursor: "pointer",
                   background: activeCheckpoint === idx ? "var(--btn-primary-bg)" : "var(--bg-surface3)",
                   color: activeCheckpoint === idx ? "var(--btn-primary-text)" : "var(--text-muted)",
-                  transition: "background 0.15s ease, color 0.15s ease",
+                  transition: "background 0.15s ease, color 0.15s ease, transform 0.1s ease",
                 }}
               >
                 {rev.time}
@@ -344,8 +329,8 @@ export function InteractiveBento() {
           <p
             style={{
               margin: 0,
-              fontSize: "0.75rem",
-              lineHeight: 1.5,
+              fontSize: "0.875rem",
+              lineHeight: 1.55,
               color: "var(--text-muted)",
               fontFamily: "var(--font-editorial)",
               fontStyle: "italic",
@@ -362,7 +347,7 @@ export function InteractiveBento() {
         data-spotlight="true"
         aria-labelledby="bento-reading-title"
       >
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.75rem" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
             <IconTile size={40}>
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
@@ -370,10 +355,9 @@ export function InteractiveBento() {
                 <path d="M8 7h4M10 7v6M8 13h4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
               </svg>
             </IconTile>
-            <span className="essential-num">04 &middot; Comfort</span>
+            <span className="essential-num">04 / Comfort</span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
-            {/* Font Selector */}
             <div
               style={{
                 display: "inline-flex",
@@ -385,10 +369,13 @@ export function InteractiveBento() {
             >
               <button
                 type="button"
-                onClick={() => setFontFamily("serif")}
+                onClick={() => handleSelectFont("serif")}
+                className="bento-pill-btn"
                 style={{
-                  padding: "2px 8px",
-                  fontSize: "0.6875rem",
+                  minHeight: "45px",
+                  minWidth: "45px",
+                  padding: "0 12px",
+                  fontSize: "0.75rem",
                   borderRadius: "9999px",
                   border: "none",
                   cursor: "pointer",
@@ -400,10 +387,13 @@ export function InteractiveBento() {
               </button>
               <button
                 type="button"
-                onClick={() => setFontFamily("sans")}
+                onClick={() => handleSelectFont("sans")}
+                className="bento-pill-btn"
                 style={{
-                  padding: "2px 8px",
-                  fontSize: "0.6875rem",
+                  minHeight: "45px",
+                  minWidth: "45px",
+                  padding: "0 12px",
+                  fontSize: "0.75rem",
                   borderRadius: "9999px",
                   border: "none",
                   cursor: "pointer",
@@ -415,7 +405,6 @@ export function InteractiveBento() {
               </button>
             </div>
 
-            {/* Size Selector */}
             <div
               style={{
                 display: "inline-flex",
@@ -430,9 +419,12 @@ export function InteractiveBento() {
                   key={sz}
                   type="button"
                   onClick={() => setFontSize(sz)}
+                  className="bento-pill-btn"
                   style={{
-                    padding: "2px 6px",
-                    fontSize: "0.625rem",
+                    minHeight: "45px",
+                    minWidth: "45px",
+                    padding: "0 10px",
+                    fontSize: "0.75rem",
                     fontFamily: "var(--font-geist-mono)",
                     borderRadius: "9999px",
                     border: "none",
@@ -451,11 +443,10 @@ export function InteractiveBento() {
         <div>
           <h3 className="essential-title" id="bento-reading-title">Editorial reading comfort</h3>
           <p className="essential-body" style={{ marginTop: "0.5rem" }}>
-            Engineered for 3,000-word tactical deep-dives. Calibrated contrast prevents optical glare on OLED, with generous line-height and reader-first typography.
+            Calibrated for 3,000-word tactical deep-dives. Balanced contrast prevents optical glare on dark screens, with generous line-height and reader-first typography.
           </p>
         </div>
 
-        {/* Live Typography Preview Sample */}
         <div
           style={{
             marginTop: "auto",

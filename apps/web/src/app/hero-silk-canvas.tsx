@@ -62,9 +62,10 @@ void main() {
   float crestEdge = exp(-pow((sweepAxis - 0.26) * 4.4, 2.0)) * 0.55;
   float crestFold = smoothstep(-0.2, 0.92, primary * 0.5 + secondary * 0.5);
 
-  // Sharper crest luminance (0.24 - 0.32 peak) visible on standard IPS panels
-  float silkIntensity = crestMain * (0.22 + 0.10 * crestFold) + crestEdge * 0.18 + cursorLift * 0.12;
-  silkIntensity = clamp(silkIntensity, 0.0, 0.38);
+  // Subordinate silk ribbon crest at restrained luminance (0.12 - 0.16 peak)
+  // so it acts as depth atmosphere behind the 3D sculpture without competing.
+  float silkIntensity = crestMain * (0.11 + 0.05 * crestFold) + crestEdge * 0.08 + cursorLift * 0.06;
+  silkIntensity = clamp(silkIntensity, 0.0, 0.20);
 
   // Vignette fade near outer edges to blend into solid canvas seamlessly
   float vignette = smoothstep(1.35, 0.22, length((uv - 0.5) * vec2(1.15, 1.25)));
@@ -176,6 +177,8 @@ export function HeroSilkCanvas() {
     let isTabVisible = !document.hidden;
     let rafId: number | null = null;
     const startTime = performance.now();
+    let lastDrawTime = 0;
+    const minFrameMs = 1000 / 30; // Strict 30 fps cap
 
     let targetMouseX = 0.5;
     let targetMouseY = 0.5;
@@ -224,12 +227,14 @@ export function HeroSilkCanvas() {
         return;
       }
 
-      // Smoothly damped u_mouse + glow interpolation
-      currentMouseX += (targetMouseX - currentMouseX) * 0.075;
-      currentMouseY += (targetMouseY - currentMouseY) * 0.075;
-      currentEnergy += (targetEnergy - currentEnergy) * 0.06;
+      if (now - lastDrawTime >= minFrameMs) {
+        lastDrawTime = now;
+        currentMouseX += (targetMouseX - currentMouseX) * 0.075;
+        currentMouseY += (targetMouseY - currentMouseY) * 0.075;
+        currentEnergy += (targetEnergy - currentEnergy) * 0.06;
+        drawFrame((now - startTime) * 0.001);
+      }
 
-      drawFrame((now - startTime) * 0.001);
       rafId = requestAnimationFrame(tick);
     };
 
