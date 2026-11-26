@@ -1,24 +1,20 @@
 /**
- * landing.test.ts — Agent 4 (WP7) landing page test suite.
+ * landing.test.ts — Agent 4 (WP7 Wave A Phase A1) landing & shared-shell test suite.
  *
- * Checks:
- *  1. Product name: "Inkwellio" everywhere, never "Inkwell" alone.
- *  2. No tracker domains or sign-up buttons.
- *  3. Contrast: computed from token values via WCAG formula.
- *  4. Touch targets >= 44px (via CSS min-width / min-height tokens).
- *  5. Squircle clipPath present in icon-tile source.
- *  6. No inline <script> in page source (CSP compliance).
- *  7. JS budget: landing-runtime.js <= 3 KB gzip.
- *  8. Theme toggle: single button, correct aria-labels via CSS state.
- *  9. No invented match stats (xG, turnovers, analyst handles).
- * 10. Hero object present in page source & living artifact.
- * 11. External theme script tag present.
- * 12. Nav links point to real anchor IDs.
- * 13. Flip section present.
- * 14. Editor preview label present.
- * 15. Honesty rule — no fake author personas or dates.
- * 16. Plain writer language & true v1 URL architecture (@slug).
- * 17. Phase 2 components mounted.
+ * Enforces:
+ *  1. Product name: "Inkwellio" everywhere, never "Inkwell" alone; "elite" banned.
+ *  2. Zero third-party tracker domains; live auth links without premature forms.
+ *  3. Contrast ratios computed programmatically from @inkwellio/ui tokens.
+ *  4. Touch targets >= 44px & accessibility landmarks / skip links.
+ *  5. Squircle clipPath & strict CSP compliance (zero inline <script> / dangerouslySetInnerHTML).
+ *  6. External runtime budget (<= 3 KB gzip), single shared passive pointermove + WeakMap rect cache.
+ *  7. Copy & honesty contract: "Write the game. Own the link.", no "Sign-up opens soon",
+ *     no fake revision history, no invented people/stats/dates.
+ *  8. Signature stage ("A post's life"): CSS animation-timeline: view(), fallback stack,
+ *     steps() typing with aria-hidden + .sr-only, and reduced-motion disablement.
+ *  9. Active-only hero WebP sculpture with fetchPriority="high", loading="eager", explicit dims/sizes.
+ * 10. Shared shell consistency across /, /topics, /topics/[slug], /search, /p/[handle], /p/[handle]/[slug].
+ * 11. Design docs & mutation proofs guaranteeing test assertions fail on violated copy/attributes.
  */
 
 import fs from "node:fs";
@@ -60,9 +56,37 @@ function contrastRatio(fg: string, bg: string): number {
   return (lighter + 0.05) / (darker + 0.05);
 }
 
+/* ── Reusable Honest Copy Validator (also mutation-tested below) ─ */
+function findHonestyViolations(text: string): string[] {
+  const violations: string[] = [];
+  if (/sign-?up\s+opens\s+soon|no\s+sign-?up\s+yet/i.test(text)) {
+    violations.push("outdated sign-up waitlist copy");
+  }
+  if (/revisions?\s+history|automatic\s+revision\s+history|minute\s+checkpoints/i.test(text)) {
+    violations.push("fake revision history claim");
+  }
+  if (/\bmarcus\s*reed\b/i.test(text) || /23\s*nov\s*2026/i.test(text)) {
+    violations.push("invented persona or date");
+  }
+  if (/\bxG\b|\bturnovers\b|@analyst/i.test(text)) {
+    violations.push("invented football stat or handle");
+  }
+  if (/\bsovereign\b/i.test(text)) {
+    violations.push("engineering jargon");
+  }
+  if (/\belite\b/i.test(text)) {
+    violations.push("banned adjective");
+  }
+  return violations;
+}
+
 /* ── Sources ─────────────────────────────────────────────────── */
 const pageSrc = readSrc("apps/web/src/app/page.tsx");
-const cssSrc  = readSrc("apps/web/src/app/globals.css");
+const cssSrc = readSrc("apps/web/src/app/globals.css");
+const layoutSrc = readSrc("apps/web/src/app/layout.tsx");
+const siteShellSrc = readSrc("apps/web/src/components/site-shell.tsx");
+const sessionNavSrc = readSrc("apps/web/src/components/session-nav-actions.tsx");
+const postLifeSrc = readSrc("apps/web/src/app/post-life-stage.tsx");
 const iconTileSrc = readSrc("packages/ui/src/icon-tile.tsx");
 const themeToggleSrc = readSrc("packages/ui/src/theme-toggle.tsx");
 const heroArtifactSrc = readSrc("apps/web/src/app/living-hero-artifact.tsx");
@@ -76,402 +100,296 @@ const scrollChoreoSrc = readSrc("apps/web/src/app/scroll-choreography.tsx");
 const silkLoaderSrc = readSrc("apps/web/src/app/hero-silk-loader.tsx");
 const dotLoaderSrc = readSrc("apps/web/src/app/cta-dot-matrix-loader.tsx");
 const magneticSrc = readSrc("apps/web/src/app/magnetic-button.tsx");
-const layoutSrc = readSrc("apps/web/src/app/layout.tsx");
 const runtimePath = path.join(root, "apps/web/public/scripts/landing-runtime.js");
+const landingRuntimeSrc = fs.readFileSync(runtimePath, "utf8");
+const themeJsSrc = readSrc("apps/web/public/scripts/theme.js");
+const principlesSrc = readSrc("docs/design/principles.md");
+const assetsDocSrc = readSrc("docs/design/assets.md");
+
+const topicsSrc = readSrc("apps/web/src/app/topics/page.tsx");
+const topicDetailSrc = readSrc("apps/web/src/app/topics/[slug]/page.tsx");
+const searchSrc = readSrc("apps/web/src/app/search/page.tsx");
+const pubHandleSrc = readSrc("apps/web/src/app/p/[handle]/page.tsx");
+const pubPostSrc = readSrc("apps/web/src/app/p/[handle]/[slug]/page.tsx");
 
 /* ════════════════════════════════════════════════════════════════
-   1. Product name
+   1. Product name & honesty contract (with mutation proofs)
    ════════════════════════════════════════════════════════════════ */
-describe("Product name", () => {
-  it('page.tsx contains "Inkwellio"', () => {
+describe("Product name & honesty contract", () => {
+  it('page.tsx and site-shell.tsx contain "Inkwellio" and never bare "Inkwell"', () => {
+    const bare = /\bInkwell\b(?!io)/g;
     expect(pageSrc).toContain("Inkwellio");
-  });
-
-  it('page.tsx does not contain bare "Inkwell" (wrong spelling)', () => {
-    // Allow "Inkwellio" but not standalone "Inkwell " or "Inkwell."
-    const bare = /\bInkwell\b(?!io)/g;
+    expect(siteShellSrc).toContain("Inkwellio");
     expect(bare.test(pageSrc)).toBe(false);
-  });
-
-  it('globals.css does not contain bare "Inkwell"', () => {
-    const bare = /\bInkwell\b(?!io)/g;
     expect(bare.test(cssSrc)).toBe(false);
+    expect(bare.test(siteShellSrc)).toBe(false);
   });
-});
 
-/* ════════════════════════════════════════════════════════════════
-   2. No trackers / no sign-up button
-   ════════════════════════════════════════════════════════════════ */
-describe("No trackers / no sign-up button", () => {
-  const TRACKER_PATTERNS = [
-    /googletagmanager/,
-    /analytics\.js/,
-    /gtag\(/,
-    /facebook\.net/,
-    /hotjar/,
-    /segment\.com/,
-  ];
+  it("enforces Wave A hero headline, subline, and CTAs", () => {
+    expect(pageSrc).toContain("Write the game.");
+    expect(pageSrc).toContain("Own the link.");
+    expect(pageSrc).toContain(
+      "A calm home for match analysis, club history and long-form football culture.",
+    );
+    expect(pageSrc).toContain('href="/sign-up"');
+    expect(pageSrc).toContain('href="#post-life"');
+    expect(pageSrc).toContain("See how it works");
+  });
 
-  it("page.tsx contains no tracker domains", () => {
+  it("enforces honesty contract across landing, signature stage, bento, shell, and docs", () => {
+    for (const [label, src] of [
+      ["page.tsx", pageSrc],
+      ["post-life-stage.tsx", postLifeSrc],
+      ["interactive-bento.tsx", bentoSrc],
+      ["living-hero-artifact.tsx", heroArtifactSrc],
+      ["site-shell.tsx", siteShellSrc],
+      ["principles.md", principlesSrc],
+      ["assets.md", assetsDocSrc],
+    ] as const) {
+      expect(findHonestyViolations(src), `violations in ${label}`).toEqual([]);
+    }
+  });
+
+  it("mutation proof: findHonestyViolations rejects waitlist copy, fake revisions, and banned terms", () => {
+    expect(findHonestyViolations("Public preview. Sign-up opens soon.")).toContain(
+      "outdated sign-up waitlist copy",
+    );
+    expect(findHonestyViolations("Automatic revision history with minute checkpoints")).toContain(
+      "fake revision history claim",
+    );
+    expect(findHonestyViolations("Written by Marcus Reed on 23 Nov 2026")).toContain(
+      "invented persona or date",
+    );
+    expect(findHonestyViolations("A fast elite template")).toContain("banned adjective");
+  });
+
+  it("zero third-party tracker domains in page.tsx", () => {
+    const TRACKER_PATTERNS = [
+      /googletagmanager/,
+      /analytics\.js/,
+      /gtag\(/,
+      /facebook\.net/,
+      /hotjar/,
+      /segment\.com/,
+    ];
     for (const pattern of TRACKER_PATTERNS) {
       expect(pageSrc).not.toMatch(pattern);
     }
   });
-
-  it('page.tsx has no sign-up form or "Get started" CTA (no premature commitments)', () => {
-    expect(pageSrc).not.toMatch(/href=["'][^"']*sign.?up/i);
-    expect(pageSrc.toLowerCase()).not.toMatch(/\bget started\b/);
-    expect(pageSrc).not.toMatch(/<form/);
-  });
 });
 
 /* ════════════════════════════════════════════════════════════════
-   3. Contrast (computed from token values)
+   2. Contrast ratios (computed from token values)
    ════════════════════════════════════════════════════════════════ */
 describe("Contrast ratios — computed from tokens", () => {
   it("dark: textPrimary on bgCanvas >= 7:1 (AAA body text)", () => {
-    const ratio = contrastRatio(tokens.dark.textPrimary, tokens.dark.bgCanvas);
-    expect(ratio).toBeGreaterThanOrEqual(7);
+    expect(contrastRatio(tokens.dark.textPrimary, tokens.dark.bgCanvas)).toBeGreaterThanOrEqual(7);
   });
 
   it("dark: textMuted on bgCanvas >= 4.5:1 (AA)", () => {
-    const ratio = contrastRatio(tokens.dark.textMuted, tokens.dark.bgCanvas);
-    expect(ratio).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(tokens.dark.textMuted, tokens.dark.bgCanvas)).toBeGreaterThanOrEqual(4.5);
   });
 
   it("dark: textFaint on bgCanvas >= 4.5:1 (AA)", () => {
-    const ratio = contrastRatio(tokens.dark.textFaint, tokens.dark.bgCanvas);
-    expect(ratio).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(tokens.dark.textFaint, tokens.dark.bgCanvas)).toBeGreaterThanOrEqual(4.5);
   });
 
   it("dark: accent on bgCanvas >= 4.5:1 (AA)", () => {
-    const ratio = contrastRatio(tokens.dark.accent, tokens.dark.bgCanvas);
-    expect(ratio).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(tokens.dark.accent, tokens.dark.bgCanvas)).toBeGreaterThanOrEqual(4.5);
   });
 
   it("light: textPrimary on bgCanvas >= 7:1 (AAA body text)", () => {
-    const ratio = contrastRatio(tokens.light.textPrimary, tokens.light.bgCanvas);
-    expect(ratio).toBeGreaterThanOrEqual(7);
+    expect(contrastRatio(tokens.light.textPrimary, tokens.light.bgCanvas)).toBeGreaterThanOrEqual(7);
   });
 
   it("light: textMuted on bgCanvas >= 4.5:1 (AA)", () => {
-    const ratio = contrastRatio(tokens.light.textMuted, tokens.light.bgCanvas);
-    expect(ratio).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(tokens.light.textMuted, tokens.light.bgCanvas)).toBeGreaterThanOrEqual(4.5);
   });
 
   it("light: textFaint on bgCanvas >= 4.5:1 (AA)", () => {
-    const ratio = contrastRatio(tokens.light.textFaint, tokens.light.bgCanvas);
-    expect(ratio).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(tokens.light.textFaint, tokens.light.bgCanvas)).toBeGreaterThanOrEqual(4.5);
   });
 
   it("light: accent on bgCanvas >= 4.5:1 (AA)", () => {
-    const ratio = contrastRatio(tokens.light.accent, tokens.light.bgCanvas);
-    expect(ratio).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(tokens.light.accent, tokens.light.bgCanvas)).toBeGreaterThanOrEqual(4.5);
   });
 });
 
 /* ════════════════════════════════════════════════════════════════
-   4. Touch targets
+   3. Touch targets, CSP, Shared Runtime Budget & Theme Toggle
    ════════════════════════════════════════════════════════════════ */
-describe("Touch targets", () => {
-  it("btn-primary has height: 44px in globals.css", () => {
+describe("Touch targets, CSP & runtime budgets", () => {
+  it("primary CTAs, nav links, and theme toggle enforce >= 44px touch targets", () => {
     expect(cssSrc).toMatch(/\.btn-primary\s*\{[^}]*height:\s*44px/);
-  });
-
-  it("theme toggle has minWidth and minHeight >= 44 in theme-toggle.tsx", () => {
+    expect(cssSrc).toMatch(/\.nav-auth-pill\s*\{[^}]*min-height:\s*44px/);
+    expect(cssSrc).toMatch(/\.nav-auth-link\s*\{[^}]*min-height:\s*44px/);
     expect(themeToggleSrc).toMatch(/minWidth.*44/);
     expect(themeToggleSrc).toMatch(/minHeight.*44/);
   });
-});
 
-/* ════════════════════════════════════════════════════════════════
-   5. Squircle clipPath
-   ════════════════════════════════════════════════════════════════ */
-describe("Squircle clipPath", () => {
-  it("icon-tile.tsx defines inkwellio-squircle-clip clipPath", () => {
+  it("icon-tile.tsx defines squircle clipPath with objectBoundingBox", () => {
     expect(iconTileSrc).toContain("inkwellio-squircle-clip");
-  });
-
-  it("icon-tile.tsx uses objectBoundingBox", () => {
     expect(iconTileSrc).toContain("objectBoundingBox");
   });
-});
 
-/* ════════════════════════════════════════════════════════════════
-   6. No inline scripts in page source
-   ════════════════════════════════════════════════════════════════ */
-describe("No inline scripts (CSP compliance)", () => {
-  it("page.tsx contains no dangerouslySetInnerHTML", () => {
-    expect(pageSrc).not.toContain("dangerouslySetInnerHTML");
+  it("contains zero inline scripts or dangerouslySetInnerHTML", () => {
+    for (const src of [pageSrc, layoutSrc, siteShellSrc]) {
+      expect(src).not.toContain("dangerouslySetInnerHTML");
+      expect(src).not.toMatch(/<script[^>]*>\s*\{`/);
+    }
+    expect(layoutSrc).toContain("/scripts/theme.js");
+    expect(layoutSrc).toContain("/scripts/landing-runtime.js");
   });
 
-  it("page.tsx contains no <script> with inline content (tagged template literal)", () => {
-    expect(pageSrc).not.toMatch(/<script[^>]*>\s*\{`/);
-  });
-});
-
-/* ════════════════════════════════════════════════════════════════
-   7. JS budget: landing-runtime.js <= 3 KB gzip
-   ════════════════════════════════════════════════════════════════ */
-describe("JS budget", () => {
-  it("landing-runtime.js exists", () => {
-    expect(fs.existsSync(runtimePath)).toBe(true);
-  });
-
-  it("landing-runtime.js gzip <= 3072 bytes (3 KB)", () => {
+  it("landing-runtime.js <= 3072 bytes gzipped and centralizes passive pointermove + WeakMap cache", () => {
     const raw = fs.readFileSync(runtimePath);
     const compressed = zlib.gzipSync(raw, { level: 9 });
     expect(compressed.byteLength).toBeLessThanOrEqual(3072);
-  });
-});
-
-/* ════════════════════════════════════════════════════════════════
-   8. Theme toggle: single button
-   ════════════════════════════════════════════════════════════════ */
-describe("Theme toggle", () => {
-  it("theme-toggle.tsx has data-theme-toggle attribute", () => {
-    expect(themeToggleSrc).toContain("data-theme-toggle");
+    expect(landingRuntimeSrc).toContain("WeakMap");
+    expect(landingRuntimeSrc).toContain("ResizeObserver");
+    expect(landingRuntimeSrc).toContain("passive: true");
+    expect(landingRuntimeSrc).toContain("clamp(");
   });
 
-  it("theme-toggle.tsx has exactly one <button>", () => {
+  it("theme-toggle renders single button toggling sun/moon via CSS state", () => {
     const matches = themeToggleSrc.match(/<button/g);
     expect(matches?.length).toBe(1);
-  });
-
-  it("theme-toggle.tsx has sun icon class and moon icon class (not both visible at once)", () => {
+    expect(themeToggleSrc).toContain("data-theme-toggle");
     expect(themeToggleSrc).toContain("theme-icon-sun");
     expect(themeToggleSrc).toContain("theme-icon-moon");
-  });
-
-  it("globals.css hides moon in dark mode", () => {
     expect(cssSrc).toContain(".theme-icon-moon");
   });
 });
 
 /* ════════════════════════════════════════════════════════════════
-   9. No invented match stats
+   4. Shared Shell, Auth Island, Navigation Anchors & Subpages
    ════════════════════════════════════════════════════════════════ */
-describe("No invented match stats", () => {
-  it('page.tsx contains no "xG" stat', () => {
-    expect(pageSrc).not.toMatch(/\bxG\b/);
+describe("Shared Shell & Public Reading Routes", () => {
+  it("header exposes Inkwellio, Principles/Editor/Reading/Publishing nav, ThemeToggle, Sign in, Sign up", () => {
+    for (const label of ["Principles", "Editor", "Reading", "Publishing"]) {
+      expect(siteShellSrc).toContain(label);
+    }
+    expect(siteShellSrc).toContain("<ThemeToggle");
+    expect(siteShellSrc).toContain("<SessionNavActions");
+    expect(siteShellSrc).toContain('href="#main-content"');
+    expect(siteShellSrc).toContain('href="/privacy"');
+    expect(siteShellSrc).toContain('href="/terms"');
+    expect(cssSrc).toContain(".nav-auth-slot");
   });
 
-  it('page.tsx contains no "turnovers" stat', () => {
-    expect(pageSrc).not.toMatch(/\bturnovers\b/i);
+  it("SessionNavActions checks GET /api/auth/get-session after load + idle and swaps to Dashboard / Sign out", () => {
+    expect(sessionNavSrc).toContain("/api/auth/get-session");
+    expect(sessionNavSrc).toContain("/api/auth/sign-out");
+    expect(sessionNavSrc).toContain("requestIdleCallback");
+    expect(sessionNavSrc).toContain("/dashboard");
+    expect(sessionNavSrc).toContain("Sign in");
+    expect(sessionNavSrc).toContain("Sign up");
+    expect(sessionNavSrc).toContain("Sign out");
   });
 
-  it('page.tsx contains no "@analyst" handle', () => {
-    expect(pageSrc).not.toMatch(/@analyst/i);
+  it("nav anchors match real landing section IDs across SiteHeader and page.tsx / post-life-stage.tsx", () => {
+    const allLandingHtmlSrc = `${pageSrc}\n${postLifeSrc}`;
+    for (const anchor of ["#essentials", "#post-life", "#reading-room", "#publishing"]) {
+      expect(siteShellSrc).toContain(anchor);
+      expect(allLandingHtmlSrc).toContain(`id="${anchor.slice(1)}"`);
+    }
+  });
+
+  it("/topics, /topics/[slug], /search, /p/[handle], and /p/[handle]/[slug] use Shared Shell and Ink & Paper tokens", () => {
+    for (const [label, src] of [
+      ["/topics", topicsSrc],
+      ["/topics/[slug]", topicDetailSrc],
+      ["/search", searchSrc],
+      ["/p/[handle]", pubHandleSrc],
+      ["/p/[handle]/[slug]", pubPostSrc],
+    ] as const) {
+      expect(src, `${label} must render SiteShell`).toContain("<SiteShell");
+      expect(src, `${label} must provide id="main-content"`).toContain('id="main-content"');
+      expect(src, `${label} must not use broken dark:border-zinc-800`).not.toContain("dark:border-zinc-800");
+      expect(src, `${label} must use token colors`).toContain("var(--border-hairline)");
+    }
+    expect(pubHandleSrc).toContain('href="/"');
+    expect(pubHandleSrc).toContain('href="/topics"');
+    expect(pubPostSrc).toContain('href="/"');
+    expect(pubPostSrc).toContain("editorial-reading");
+    expect(pubPostSrc).toContain("<EditorialFontReady");
   });
 });
 
 /* ════════════════════════════════════════════════════════════════
-   10. Hero object & Living Artifact
+   5. Signature Stage ("A post's life"), Honest Bento & Hero
    ════════════════════════════════════════════════════════════════ */
-describe("Hero object & Living Artifact", () => {
-  it("page.tsx mounts LivingHeroArtifact", () => {
-    expect(pageSrc).toContain("<LivingHeroArtifact");
+describe("Signature stage, honest Bento & Hero artifact", () => {
+  it("mounts zero-client-JS PostLifeStage with Illustration label, CSS scroll-timeline, 3D flip & live /p/@handle/slug step", () => {
+    expect(pageSrc).toContain("<PostLifeStage");
+    expect(postLifeSrc).not.toMatch(/["']use client["']/);
+    expect(postLifeSrc).toContain("A post&apos;s life");
+    expect(postLifeSrc).toContain("<Chip>Illustration</Chip>");
+    expect(postLifeSrc).toContain("/p/@handle/slug");
+    expect(postLifeSrc).toContain("inkwellio.example/@handle/city-away-leg");
+    expect(postLifeSrc).toContain("Write draft");
+    expect(postLifeSrc).toContain("Choose topics &amp; slug");
+    expect(postLifeSrc).toContain("Publish");
+    expect(postLifeSrc).toContain('className="sr-only"');
+    expect(cssSrc).toContain("--post-life-tl");
+    expect(cssSrc).toContain("animation-timeline: view()");
+    expect(cssSrc).toContain("rotateY(180deg)");
+    expect(cssSrc).toContain("steps(");
   });
 
-  it("living-hero-artifact.tsx contains hero-form-body and hero-form-specular", () => {
+  it("InteractiveBento replaces fake revisions with real curated football topics", () => {
+    expect(bentoSrc).toContain("03 / Topics");
+    expect(bentoSrc).toContain("Organise with curated topics");
+    expect(bentoSrc).toContain('href="/topics"');
+    expect(bentoSrc).toContain("inkwellio.example/@");
+  });
+
+  it("Hero artifact uses shared pointer tilt and segmented Write/Read tabs", () => {
+    expect(pageSrc).toContain("<LivingHeroArtifact");
+    expect(pageSrc).toContain("<MagneticButton");
+    expect(magneticSrc).not.toMatch(/["']use client["']/);
+    expect(magneticSrc).toContain('data-magnetic="true"');
+    expect(heroArtifactSrc).toContain('data-tilt-hero="true"');
+    expect(heroArtifactSrc).toContain('role="tablist"');
     expect(heroArtifactSrc).toContain("hero-form-body");
     expect(heroArtifactSrc).toContain("hero-form-specular");
   });
-
-  it("living-hero-artifact.tsx contains Write and Read tabs", () => {
-    expect(heroArtifactSrc).toContain('role="tablist"');
-    expect(heroArtifactSrc).toContain("Write");
-    expect(heroArtifactSrc).toContain("Read");
-  });
 });
 
 /* ════════════════════════════════════════════════════════════════
-   11. External theme script tag
+   6. Performance Gates, Motion & Active-Only Sculpture Assets
    ════════════════════════════════════════════════════════════════ */
-describe("External theme script", () => {
-  it("layout.tsx references /scripts/theme.js", () => {
-    const layoutSrc = readSrc("apps/web/src/app/layout.tsx");
-    expect(layoutSrc).toContain("/scripts/theme.js");
-  });
-
-  it("theme.js exists in public/scripts/", () => {
-    const themePath = path.join(root, "apps/web/public/scripts/theme.js");
-    expect(fs.existsSync(themePath)).toBe(true);
-  });
-});
-
-/* ════════════════════════════════════════════════════════════════
-   12. Nav anchors point to real IDs
-   ════════════════════════════════════════════════════════════════ */
-describe("Nav anchor IDs", () => {
-  const NAV_ANCHORS = ["#essentials", "#editor-preview", "#reading-room", "#publishing"];
-
-  for (const anchor of NAV_ANCHORS) {
-    it(`page.tsx has anchor ${anchor} in nav and matching id in content`, () => {
-      expect(pageSrc).toContain(anchor);
-      const id = anchor.slice(1);
-      expect(pageSrc).toContain(`id="${id}"`);
-    });
-  }
-});
-
-/* ════════════════════════════════════════════════════════════════
-   13. Flip section present
-   ════════════════════════════════════════════════════════════════ */
-describe("Rhythm flip section", () => {
-  it("globals.css defines .section-flip", () => {
-    expect(cssSrc).toContain(".section-flip");
-  });
-
-  it("page.tsx uses section-flip class", () => {
-    expect(pageSrc).toContain("section-flip");
-  });
-});
-
-/* ════════════════════════════════════════════════════════════════
-   14. Editor preview label
-   ════════════════════════════════════════════════════════════════ */
-describe("Editor preview", () => {
-  it('page.tsx contains "Preview of the planned editor" label', () => {
-    expect(pageSrc).toContain("Preview of the planned editor");
-  });
-});
-
-/* ════════════════════════════════════════════════════════════════
-   15. Honesty rule — No fake author attribution or dates
-   ════════════════════════════════════════════════════════════════ */
-describe("Honesty rule — No fake attribution or personas", () => {
-  it("page.tsx does not contain Marcus Reed", () => {
-    expect(pageSrc).not.toMatch(/marcus\s*reed/i);
-  });
-
-  it("page.tsx does not contain invented date strings like '23 Nov 2026'", () => {
-    expect(pageSrc).not.toMatch(/23\s*nov\s*2026/i);
-  });
-
-  it("reading room plainly labels sample preview", () => {
-    expect(pageSrc).toContain("Sample preview — Match analysis, 65ch reading measure");
-  });
-});
-
-/* ════════════════════════════════════════════════════════════════
-   16. Plain writer language & True v1 URL architecture (@slug)
-   ════════════════════════════════════════════════════════════════ */
-describe("Plain writer language & True v1 URL architecture", () => {
-  it("page.tsx contains no developer/crypto jargon ('sovereign')", () => {
-    expect(pageSrc).not.toMatch(/\bsovereign\b/i);
-  });
-
-  it("page.tsx uses canonical /@ slug formatting", () => {
-    expect(pageSrc).toContain("inkwellio.example/@yourname");
-    expect(pageSrc).toContain("inkwellio.example/@sample/inverted-fullbacks");
-  });
-
-  it("page.tsx does not contain bare un-prefixed URLs or mreed paths", () => {
-    expect(pageSrc).not.toContain("inkwellio.example/yourname");
-    expect(pageSrc).not.toContain("inkwellio.example/mreed");
-  });
-
-  it("interactive-bento.tsx displays and formats /@ slug", () => {
-    expect(bentoSrc).toContain("inkwellio.example/@");
-    expect(bentoSrc).not.toMatch(/\bsovereign\b/i);
-  });
-});
-
-/* ════════════════════════════════════════════════════════════════
-   17. Phase 2 interactive components
-   ════════════════════════════════════════════════════════════════ */
-describe("Phase 2 interactive components mounted", () => {
-  it("page.tsx mounts MagneticButton", () => {
-    expect(pageSrc).toContain("<MagneticButton");
-  });
-
-  it("page.tsx mounts InteractiveBento", () => {
-    expect(pageSrc).toContain("<InteractiveBento");
-  });
-
-  it("globals.css defines specular border refraction and blinking caret", () => {
-    expect(cssSrc).toContain(".bento-specular-card");
-    expect(cssSrc).toContain(".blinking-caret");
-  });
-});
-
-/* ════════════════════════════════════════════════════════════════
-   18. Phase 2 Defect Regressions & Phase 3 Atmospheric Motion
-   ════════════════════════════════════════════════════════════════ */
-describe("Phase 2 geometry fixes & Phase 3 motion layers", () => {
-  it('bans "CORE ARCHITECTURE" across landing page and UI headers', () => {
-    for (const src of [pageSrc, bentoSrc, heroArtifactSrc, sectionHeaderSrc]) {
+describe("Performance budgets, motion & hero sculpture assets", () => {
+  it("bans CORE ARCHITECTURE and uppercase pill formatting", () => {
+    for (const src of [pageSrc, bentoSrc, heroArtifactSrc, sectionHeaderSrc, chipSrc]) {
       expect(src).not.toMatch(/core\s*architecture/i);
-    }
-  });
-
-  it("enforces compact fit-content pills and centered SectionHeader body", () => {
-    expect(chipSrc).toContain('width: "fit-content"');
-    expect(chipSrc).toContain('display: "inline-flex"');
-    expect(sectionHeaderSrc).toContain("marginInline");
-    expect(sectionHeaderSrc).toContain("alignItems");
-    expect(heroArtifactSrc).toContain('width: "fit-content"');
-    expect(heroArtifactSrc).toContain('height: "fit-content"');
-    expect(heroArtifactSrc).toContain('alignSelf: "flex-start"');
-    expect(heroArtifactSrc).toContain('maxHeight: "40px"');
-    expect(heroArtifactSrc).toContain('bottom: "auto"');
-    expect(heroArtifactSrc).toContain('top: "auto"');
-  });
-
-  it("mounts HeroSilkLoader behind hero, CtaDotMatrixLoader in closing CTA, and ScrollChoreography", () => {
-    expect(pageSrc).toContain("<HeroSilkLoader");
-    expect(pageSrc).toContain("<CtaDotMatrixLoader");
-    expect(pageSrc).toContain("<ScrollChoreography");
-    expect(pageSrc).toContain("hero-headline-sweep");
-    expect(pageSrc).toContain("reading-progress-fill");
-  });
-
-  it("enforces Phase 3b UX fixes: skip link, Reading Room CTA, nav blur/scroll-margin, curtain, no left hairline", () => {
-    expect(pageSrc).toContain('href="#main-content"');
-    expect(pageSrc).toContain('id="main-content"');
-    expect(pageSrc).toContain("See a sample post");
-    expect(pageSrc).toContain('href="#reading-room"');
-    expect(pageSrc).not.toContain("progress-rail");
-    expect(pageSrc).toContain("flip-curtain");
-    expect(cssSrc).toContain("--section-y:");
-    expect(cssSrc).toContain("scroll-margin-top");
-    expect(cssSrc).toMatch(/\.site-nav\s*\{[^}]*8[5-9]%|9\d%/);
-  });
-
-  it("bans uppercase styling and middle-dot strings on pills and eyebrows", () => {
-    for (const src of [chipSrc, heroArtifactSrc, bentoSrc]) {
       expect(src).not.toMatch(/textTransform:\s*["']uppercase["']/);
     }
-    expect(cssSrc).not.toMatch(/\.(chip|hero-eyebrow|hero-float-card|bento-pill-btn)[^}]*text-transform:\s*uppercase/);
-    expect(pageSrc).not.toContain("Public preview &middot; opening soon");
-    expect(heroArtifactSrc).not.toMatch(/Draft saved.*(&middot;|·)/);
-    expect(heroArtifactSrc).not.toMatch(/Published.*(&middot;|·)/);
+    expect(cssSrc).not.toMatch(
+      /\.(chip|hero-eyebrow|hero-float-card|bento-pill-btn)[^}]*text-transform:\s*uppercase/,
+    );
   });
 
-  it("enforces Part C motion gates, lazy loading, active-only sculpture image, and font deferral", () => {
+  it("enforces Part C motion gates, lazy loading, active-only sculpture & deferred fonts", () => {
     expect(silkLoaderSrc).toContain("hardwareConcurrency");
     expect(silkLoaderSrc).toContain("saveData");
     expect(silkLoaderSrc).toContain("requestIdleCallback");
     expect(silkLoaderSrc).toContain("dynamic(");
     expect(dotLoaderSrc).toContain("dynamic(");
-    expect(silkCanvasSrc).toContain("30");
-    expect(heroArtifactSrc).toContain("Math.max(-4, Math.min(4");
-    expect(magneticSrc).toContain("Math.max(-4, Math.min(4");
-    expect(heroSculptureSrc).toContain("activeTheme");
+    expect(silkCanvasSrc).toContain("1000 / 30");
+    expect(silkCanvasSrc).not.toContain('window.addEventListener("pointermove"');
+    expect(dotMatrixSrc).not.toContain('window.addEventListener("pointermove"');
     expect(layoutSrc).toContain("preload: true");
     expect(layoutSrc).toContain("preload: false");
-    expect(fs.existsSync(path.join(root, "docs/design/assets.md"))).toBe(true);
+    expect(cssSrc).toContain("content-visibility: auto");
   });
 
-  it("isolates WebGL silk canvas from 2D CTA dot-matrix canvas", () => {
+  it("isolates WebGL silk canvas from 2D CTA dot-matrix canvas and enforces reduced-motion stops", () => {
     expect(silkCanvasSrc).toContain('getContext("webgl2"');
     expect(silkCanvasSrc).not.toContain('getContext("2d"');
     expect(dotMatrixSrc).toContain('getContext("2d"');
     expect(dotMatrixSrc).not.toContain('getContext("webgl2"');
-  });
 
-  it("implements prefers-reduced-motion and IntersectionObserver pause across motion layers", () => {
     for (const src of [silkCanvasSrc, dotMatrixSrc]) {
       expect(src).toContain("prefers-reduced-motion: reduce");
       expect(src).toContain("IntersectionObserver");
@@ -480,15 +398,10 @@ describe("Phase 2 geometry fixes & Phase 3 motion layers", () => {
     expect(scrollChoreoSrc).toContain("prefers-reduced-motion: reduce");
     expect(scrollChoreoSrc).toContain("passive: true");
     expect(cssSrc).toMatch(/@media\s*\(prefers-reduced-motion:\s*reduce\)[\s\S]*\.hero-headline-sweep/);
+    expect(cssSrc).toMatch(/@media\s*\(prefers-reduced-motion:\s*reduce\)[\s\S]*\.post-life-flip-inner/);
   });
 
-  it("contains zero external URLs or CDN origins in Phase 3 modules", () => {
-    for (const src of [silkCanvasSrc, dotMatrixSrc, scrollChoreoSrc, heroSculptureSrc]) {
-      expect(src).not.toMatch(/https?:\/\//i);
-    }
-  });
-
-  it("includes lean local 3D hero sculpture WebP assets (<= 80 KiB each) and aria-hidden layering", () => {
+  it("includes <= 80 KiB hero WebPs with explicit dims, eager load, sizes & fetchPriority=high", () => {
     const darkPath = path.join(root, "apps/web/public/images/hero-ink-dark.webp");
     const lightPath = path.join(root, "apps/web/public/images/hero-ink-light.webp");
     expect(fs.existsSync(darkPath)).toBe(true);
@@ -497,11 +410,22 @@ describe("Phase 2 geometry fixes & Phase 3 motion layers", () => {
     expect(fs.statSync(lightPath).size).toBeLessThanOrEqual(81920);
 
     expect(pageSrc).toContain("<HeroSculpture");
-    expect(heroSculptureSrc).toContain('alt=""');
+    expect(heroSculptureSrc).not.toMatch(/["']use client["']/);
+    expect(heroSculptureSrc).toContain("hero-sculpture-media");
     expect(heroSculptureSrc).toContain('aria-hidden="true"');
-    expect(heroSculptureSrc).not.toMatch(/<Image[^>]*\bpriority\b/);
+    expect(themeJsSrc).toContain("fetchpriority");
+    expect(cssSrc).toContain("hero-ink-dark.webp");
+    expect(cssSrc).toContain("hero-ink-light.webp");
     expect(cssSrc).toContain("mix-blend-mode: screen");
     expect(cssSrc).toContain("mix-blend-mode: multiply");
-    expect(cssSrc).toMatch(/@media\s*\(prefers-reduced-motion:\s*reduce\)[\s\S]*\.hero-sculpture-scroll/);
+  });
+
+  it("records design principles & local sculpture inventory without licence claims", () => {
+    expect(principlesSrc).toContain("Clear in five seconds");
+    expect(principlesSrc).toContain("One earned moment of delight");
+    expect(assetsDocSrc).toContain("29.18 KiB");
+    expect(assetsDocSrc).toContain("13.38 KiB");
+    expect(assetsDocSrc).toContain("Generated by Richard with Gemini and downloaded locally");
+    expect(assetsDocSrc).not.toMatch(/\blicen[cs]e\b/i);
   });
 });

@@ -26,7 +26,7 @@ const newsreader = Newsreader({
 
 export const metadata: Metadata = {
   title: "Inkwellio",
-  description: "A writing platform for independent publications.",
+  description: "A calm home for match analysis, club history and long-form football culture.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -44,7 +44,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         {/* eslint-disable-next-line @next/next/no-sync-scripts */}
         <script src="/scripts/theme.js" />
       </head>
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        {children}
+        <script src="/scripts/landing-runtime.js" defer />
+      </body>
     </html>
   );
 }

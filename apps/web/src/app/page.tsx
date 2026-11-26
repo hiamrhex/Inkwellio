@@ -1,62 +1,30 @@
 import type { Metadata } from "next";
-import { Chip, IconTile, SectionHeader, SquircleClipDef, ThemeToggle } from "@inkwellio/ui";
+import Link from "next/link";
+import { IconTile, SectionHeader } from "@inkwellio/ui";
+import { SiteShell } from "@/components/site-shell";
 import { LivingHeroArtifact } from "./living-hero-artifact";
 import { HeroSculpture } from "./hero-sculpture";
 import { MagneticButton } from "./magnetic-button";
 import { InteractiveBento } from "./interactive-bento";
+import { PostLifeStage } from "./post-life-stage";
 import { HeroSilkLoader } from "./hero-silk-loader";
 import { CtaDotMatrixLoader } from "./cta-dot-matrix-loader";
 import { ScrollChoreography } from "./scroll-choreography";
 
 export const metadata: Metadata = {
-  title: "Inkwellio — independent football writing at your own link",
+  title: "Inkwellio — Write the game. Own the link.",
   description:
-    "A quiet home for match analysis, club history, and long-form football culture. Write at your own address. No sign-up required to read.",
+    "A calm home for match analysis, club history and long-form football culture. Write in Markdown, organise by topics, and publish at your own address.",
 };
 
 export default function Home() {
   return (
-    <>
-      <SquircleClipDef />
-
-      <a href="#main-content" className="skip-link">
-        Skip to main content
-      </a>
-
-      {/* ── Navigation ──────────────────────────────────────────── */}
-      <nav className="site-nav" aria-label="Main navigation">
-        <a href="/" className="nav-logo" aria-label="Inkwellio home">
-          Inkwellio
-        </a>
-        <ul className="nav-links">
-          <li>
-            <a href="#essentials">Principles</a>
-          </li>
-          <li>
-            <a href="#editor-preview">Editor</a>
-          </li>
-          <li>
-            <a href="#reading-room">Reading</a>
-          </li>
-          <li>
-            <a href="#publishing">Publishing</a>
-          </li>
-        </ul>
-        <ThemeToggle />
-      </nav>
-
+    <SiteShell isHome>
       <main id="main-content">
         {/* ── Hero ────────────────────────────────────────────────── */}
         <div className="hero-stage-outer">
           <div className="hero-silk-backdrop" aria-hidden="true">
             <div className="hero-silk-fallback" />
-            <svg className="hero-silk-grain" width="100%" height="100%" aria-hidden="true">
-              <filter id="ink-silk-grain">
-                <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" stitchTiles="stitch" />
-                <feColorMatrix type="saturate" values="0" />
-              </filter>
-              <rect width="100%" height="100%" filter="url(#ink-silk-grain)" opacity="0.035" />
-            </svg>
           </div>
           <HeroSilkLoader />
           <section
@@ -68,25 +36,24 @@ export default function Home() {
             <div className="hero-copy">
               <p className="hero-eyebrow">
                 <span className="status-dot status-dot-live" aria-hidden="true" />
-                <span>Public preview. Sign-up opens soon.</span>
+                <span>Independent football publishing</span>
               </p>
 
-              <h1 className="hero-headline">
-                Independent football writing,{" "}
-                <span className="hero-headline-sweep">at your own link.</span>
+              <h1 className="hero-headline hero-headline-reveal">
+                <span className="hero-headline-line">Write the game.</span>{" "}
+                <span className="hero-headline-line hero-headline-sweep">Own the link.</span>
               </h1>
 
               <p className="hero-sub">
-                A quiet home for match analysis, club history, and long-form
-                football culture for independent writers. Your work. Your address.
+                A calm home for match analysis, club history and long-form football culture.
               </p>
 
               <div className="hero-cta-row">
-                <MagneticButton href="#editor-preview" className="btn-primary">
-                  See the planned editor
+                <MagneticButton href="/sign-up" className="btn-primary">
+                  Sign up
                 </MagneticButton>
-                <a href="#reading-room" className="btn-ghost">
-                  See a sample post
+                <a href="#post-life" className="btn-ghost">
+                  See how it works
                 </a>
               </div>
             </div>
@@ -117,104 +84,34 @@ export default function Home() {
           </section>
         </div>
 
-        {/* ── Essentials: Bento Feature Matrix ─────────────────────── */}
+        {/* ── Principles: Bento Feature Matrix ─────────────────────── */}
         <section
           id="essentials"
-          className="page-section section-entry"
+          className="page-section section-entry below-fold-section"
           aria-labelledby="essentials-heading"
         >
           <SectionHeader
-            heading={<span id="essentials-heading">Write. Publish. Keep it yours.</span>}
+            heading={<span id="essentials-heading" className="ink-reveal-heading">Write. Publish. Keep it yours.</span>}
             body="Inkwellio is built around the work, not the platform. No recommendation algorithm. No engagement score. Just your writing at a web address you control."
           />
 
           <InteractiveBento />
         </section>
 
-        {/* ── Editor preview ──────────────────────────────────────── */}
-        <section
-          id="editor-preview"
-          className="page-section section-entry"
-          aria-labelledby="editor-heading"
-        >
-          <SectionHeader
-            align="left"
-            heading={<span id="editor-heading">The planned editor</span>}
-            body="A draft view of what the writing environment will look like. No finished product yet — this is an honest preview."
-          />
+        {/* ── Signature Stage: A post's life ──────────────────────── */}
+        <PostLifeStage />
 
-          <div
-            className="editor-preview-wrap"
-            role="img"
-            aria-label="Preview of the planned editor interface showing a draft list and writing area"
-          >
-            <aside className="editor-sidebar">
-              <input
-                className="editor-search"
-                type="search"
-                placeholder="Search drafts…"
-                readOnly
-                aria-label="Search drafts (read-only preview)"
-              />
-              <ul className="draft-list" aria-label="Draft list">
-                <li>
-                  <div className="draft-item" aria-current="true">
-                    <span className="draft-avatar" aria-hidden="true">A</span>
-                    <span className="draft-name">City away leg</span>
-                  </div>
-                </li>
-                <li>
-                  <div className="draft-item">
-                    <span className="draft-avatar" aria-hidden="true">B</span>
-                    <span className="draft-name">Pressing shapes</span>
-                  </div>
-                </li>
-                <li>
-                  <div className="draft-item">
-                    <span className="draft-avatar" aria-hidden="true">C</span>
-                    <span className="draft-name">The long goodbye</span>
-                  </div>
-                </li>
-                <li>
-                  <div className="draft-item">
-                    <span className="draft-avatar" aria-hidden="true">D</span>
-                    <span className="draft-name">Cup final notes</span>
-                  </div>
-                </li>
-              </ul>
-            </aside>
-
-            <div className="editor-main">
-              <p className="editor-doc-title" aria-label="Document title preview">
-                City away leg
-              </p>
-              <div className="editor-doc-body" aria-hidden="true">
-                <div className="editor-line" style={{ width: "90%" }} />
-                <div className="editor-line" style={{ width: "75%" }} />
-                <div className="editor-line" style={{ width: "85%" }} />
-                <div className="editor-line" style={{ width: "60%" }} />
-                <div className="editor-line" style={{ width: "80%" }} />
-                <div className="editor-line" style={{ width: "70%" }} />
-                <div className="editor-line" style={{ width: "55%" }} />
-              </div>
-              <p className="editor-label">
-                Preview of the planned editor — not a finished product
-              </p>
-            </div>
-          </div>
-        </section>
-
-        {/* ── Reading Room Showcase ─────────────────────────────────── */}
+        {/* ── Reading Room Showcase ───────────────────────────────── */}
         <section
           id="reading-room"
-          className="page-section section-entry"
+          className="page-section section-entry below-fold-section"
           aria-labelledby="reading-heading"
           style={{ paddingBottom: 0, position: "relative", zIndex: 2 }}
         >
           <SectionHeader
             align="left"
             eyebrow="Reader mode"
-            heading={<span id="reading-heading">The Reading Room</span>}
+            heading={<span id="reading-heading" className="ink-reveal-heading">The Reading Room</span>}
             body="How your readers experience your writing. No banners, no pop-up overlays, no tracking scripts. Just print-grade typography on archival paper."
           />
 
@@ -303,7 +200,7 @@ export default function Home() {
         {/* ── Rhythm flip: Publishing / Principles ─────────────────── */}
         <section
           id="publishing"
-          className="section-flip section-full"
+          className="section-flip section-full below-fold-section"
           aria-labelledby="publishing-heading"
         >
           <div
@@ -315,9 +212,10 @@ export default function Home() {
           >
             <div className="publishing-grid">
               <div>
-                <Chip>For football writers</Chip>
+                <span className="chip flip-chip">For football writers</span>
                 <h2
                   id="publishing-heading"
+                  className="ink-reveal-heading"
                   style={{
                     fontSize: "clamp(2rem,4vw,3rem)",
                     fontWeight: 600,
@@ -338,10 +236,7 @@ export default function Home() {
                     margin: 0,
                   }}
                 >
-                  Match reports from non-league Saturdays. Long reads about
-                  tactics. Club histories that deserve more than a thread.
-                  Inkwellio gives each piece of writing a permanent home at a
-                  link with your name in it.
+                  Match reports from non-league Saturdays. Long reads about tactics. Club histories that deserve more than a thread. Inkwellio gives each piece of writing a permanent home at a link with your handle in it.
                 </p>
                 <p
                   style={{
@@ -352,9 +247,7 @@ export default function Home() {
                     margin: "1rem 0 0",
                   }}
                 >
-                  No tracking scripts. No engagement metrics. No algorithm
-                  deciding who reads you. Just honest publishing for people
-                  who care about the game.
+                  No tracking scripts. No engagement metrics. No algorithm deciding who reads you. Just honest publishing for people who care about the game.
                 </p>
               </div>
 
@@ -371,15 +264,15 @@ export default function Home() {
                 {[
                   {
                     title: "Your link",
-                    body: "Every writer gets an address at inkwellio.example/@yourname. Readers bookmark you, not the platform.",
+                    body: "Every writer owns a publication at inkwellio.example/@yourname. Articles resolve permanently at /@handle/slug and /p/@handle/slug.",
                   },
                   {
-                    title: "Honest only",
-                    body: "No invented numbers. No fake testimonials. The site will tell you exactly what exists and what is still being built.",
+                    title: "Draft safety & full export",
+                    body: "Every draft write checks its version number to stop stale tabs colliding, and you can export all your writing as JSON at any time.",
                   },
                   {
                     title: "Readable anywhere",
-                    body: "Pages load quickly on a slow connection and work without JavaScript. Accessibility is not an afterthought.",
+                    body: "Public publication and topic pages serve clean server HTML quickly on slow connections and work with keyboard navigation.",
                   },
                 ].map((item) => (
                   <li
@@ -418,7 +311,7 @@ export default function Home() {
 
         {/* ── Closing ─────────────────────────────────────────────── */}
         <section
-          className="closing-section"
+          className="closing-section below-fold-section"
           aria-labelledby="closing-heading"
           style={{ position: "relative", overflow: "hidden" }}
         >
@@ -443,6 +336,7 @@ export default function Home() {
 
             <h2
               id="closing-heading"
+              className="ink-reveal-heading"
               style={{
                 fontSize: "clamp(1.75rem,3.5vw,2.5rem)",
                 fontWeight: 600,
@@ -460,18 +354,20 @@ export default function Home() {
                 fontSize: "1.0625rem",
                 lineHeight: 1.65,
                 color: "var(--text-muted)",
-                maxWidth: "44ch",
+                maxWidth: "46ch",
                 margin: 0,
               }}
             >
-              We are building it carefully and honestly. Sign-up will open when
-              the editor is ready for real use.
+              Write in plain Markdown, organise under football topics, and publish cleanly at your own link.
             </p>
 
             <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", justifyContent: "center" }}>
-              <MagneticButton href="#editor-preview" className="btn-primary">
-                See the planned editor
+              <MagneticButton href="/sign-up" className="btn-primary">
+                Sign up
               </MagneticButton>
+              <Link href="/topics" prefetch={false} className="btn-ghost">
+                Browse topics
+              </Link>
             </div>
 
             <p
@@ -481,20 +377,13 @@ export default function Home() {
                 margin: 0,
               }}
             >
-              Public preview. No sign-up yet.
+              Version-checked studio drafts, curated topics, and JSON account export are live.
             </p>
           </div>
         </section>
       </main>
 
-      {/* ── Footer ──────────────────────────────────────────────── */}
-      <footer className="site-footer">
-        Inkwellio — 2026 — inkwellio.example
-      </footer>
-
       <ScrollChoreography />
-
-      <script src="/scripts/landing-runtime.js" defer />
-    </>
+    </SiteShell>
   );
 }

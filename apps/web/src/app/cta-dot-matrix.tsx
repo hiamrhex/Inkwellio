@@ -5,11 +5,14 @@ import { useEffect, useRef } from "react";
 const GRID_STEP = 22;
 const CURSOR_HALO_RADIUS = 260;
 
+interface SharedPointerWindow extends Window {
+  __inkwellioPointer?: { x: number; y: number; active: boolean };
+}
+
 /**
- * CtaDotMatrix — Phase 3 interactive 2D dot-matrix field behind the closing CTA.
- * Strictly isolated to the lower CTA section (never stacked on Hero WebGL).
- * Features a 22px monochrome grid, subtle orbital ring, 260px cursor halo,
- * offscreen IntersectionObserver pause, and reduced-motion static fallback.
+ * CtaDotMatrix — 2D dot-matrix field behind closing CTA.
+ * Caches host bounds in ResizeObserver + passive scroll (zero getBoundingClientRect
+ * inside rAF draw loop), reads shared window.__inkwellioPointer, and caps at 30 fps.
  */
 export function CtaDotMatrix() {
   const hostRef = useRef<HTMLDivElement>(null);
@@ -29,19 +32,22 @@ export function CtaDotMatrix() {
     let isTabVisible = !document.hidden;
     let rafId: number | null = null;
     const startTime = performance.now();
+    let lastDrawTime = 0;
+    const minFrameMs = 1000 / 30;
 
-    let pointerActive = false;
-    let targetX = -9999;
-    let targetY = -9999;
     let currentX = -9999;
     let currentY = -9999;
 
-    let cssW = 0;
-    let cssH = 0;
+    let cssW = 1;
+    let cssH = 1;
+    let hostLeft = 0;
+    let hostTop = 0;
 
-    const resize = () => {
+    const syncRect = () => {
       const rect = host.getBoundingClientRect();
       const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+      hostLeft = rect.left;
+      hostTop = rect.top;
       cssW = Math.max(1, rect.width);
       cssH = Math.max(1, rect.height);
       const pxW = Math.floor(cssW * dpr);
@@ -54,19 +60,37 @@ export function CtaDotMatrix() {
     };
 
     const draw = (timeSec: number) => {
-      resize();
       ctx.clearRect(0, 0, cssW, cssH);
 
       const isLight = document.documentElement.getAttribute("data-theme") === "light";
       const rgb = isLight ? "10, 10, 11" : "255, 255, 255";
 
+      const shared = (window as SharedPointerWindow).__inkwellioPointer;
+      let pointerNear = false;
+      if (!isReduced && shared && shared.active) {
+        const lx = shared.x - hostLeft;
+        const ly = shared.y - hostTop;
+        pointerNear =
+          lx >= -CURSOR_HALO_RADIUS &&
+          lx <= cssW + CURSOR_HALO_RADIUS &&
+          ly >= -CURSOR_HALO_RADIUS &&
+          ly <= cssH + CURSOR_HALO_RADIUS;
+        if (pointerNear) {
+          if (currentX < -5000) {
+            currentX = lx;
+            currentY = ly;
+          } else {
+            currentX += (lx - currentX) * 0.14;
+            currentY += (ly - currentY) * 0.14;
+          }
+        }
+      }
+
       const cx = cssW * 0.5;
       const cy = cssH * 0.5;
       const maxRadius = Math.max(160, Math.min(cssW, cssH) * 0.58);
       const orbitalBase = Math.min(cssW, cssH) * 0.34;
-      const orbitalRadius = isReduced
-        ? orbitalBase
-        : orbitalBase + Math.sin(timeSec * 0.7) * 14;
+      const orbitalRadius = isReduced ? orbitalBase : orbitalBase + Math.sin(timeSec * 0.7) * 14;
       const bandWidth = 42;
 
       const cols = Math.ceil(cssW / GRID_STEP);
@@ -80,18 +104,14 @@ export function CtaDotMatrix() {
           const x = offsetX + c * GRID_STEP;
           const distCenter = Math.hypot(x - cx, y - cy);
 
-          // Radial edge fade
           const edgeFade = Math.max(0, 1 - distCenter / maxRadius);
           if (edgeFade <= 0.02) continue;
 
-          // Subtle breathing orbital ring emphasis
           const ringDist = Math.abs(distCenter - orbitalRadius);
-          const ringBoost =
-            ringDist < bandWidth ? (1 - ringDist / bandWidth) * 0.22 : 0;
+          const ringBoost = ringDist < bandWidth ? (1 - ringDist / bandWidth) * 0.22 : 0;
 
-          // Crisp 260px cursor illumination halo
           let haloBoost = 0;
-          if (!isReduced && pointerActive) {
+          if (!isReduced && pointerNear) {
             const pDist = Math.hypot(x - currentX, y - currentY);
             if (pDist < CURSOR_HALO_RADIUS) {
               const t = 1 - pDist / CURSOR_HALO_RADIUS;
@@ -127,49 +147,23 @@ export function CtaDotMatrix() {
         return;
       }
 
-      if (pointerActive) {
-        currentX += (targetX - currentX) * 0.14;
-        currentY += (targetY - currentY) * 0.14;
+      if (now - lastDrawTime >= minFrameMs) {
+        lastDrawTime = now;
+        draw((now - startTime) * 0.001);
       }
-
-      draw((now - startTime) * 0.001);
       rafId = requestAnimationFrame(tick);
     };
 
     const syncRunState = () => {
       if (isReduced) {
         stopLoop();
-        draw(0); // Single static non-animated dot grid
+        draw(0);
         return;
       }
       if (isVisible && isTabVisible && rafId === null) {
         rafId = requestAnimationFrame(tick);
       } else if ((!isVisible || !isTabVisible) && rafId !== null) {
         stopLoop();
-      }
-    };
-
-    const handlePointerMove = (e: PointerEvent) => {
-      if (isReduced) return;
-      const rect = host.getBoundingClientRect();
-      const lx = e.clientX - rect.left;
-      const ly = e.clientY - rect.top;
-      const inside =
-        lx >= -CURSOR_HALO_RADIUS &&
-        lx <= rect.width + CURSOR_HALO_RADIUS &&
-        ly >= -CURSOR_HALO_RADIUS &&
-        ly <= rect.height + CURSOR_HALO_RADIUS;
-
-      if (inside) {
-        if (!pointerActive) {
-          currentX = lx;
-          currentY = ly;
-        }
-        pointerActive = true;
-        targetX = lx;
-        targetY = ly;
-      } else {
-        pointerActive = false;
       }
     };
 
@@ -191,6 +185,7 @@ export function CtaDotMatrix() {
     const ro =
       typeof ResizeObserver !== "undefined"
         ? new ResizeObserver(() => {
+            syncRect();
             if (isReduced) draw(0);
           })
         : null;
@@ -214,7 +209,8 @@ export function CtaDotMatrix() {
       attributeFilter: ["data-theme"],
     });
 
-    window.addEventListener("pointermove", handlePointerMove, { passive: true });
+    syncRect();
+    window.addEventListener("scroll", syncRect, { passive: true });
     document.addEventListener("visibilitychange", handleVisibility);
     reducedMotionQuery.addEventListener("change", handleMotion);
 
@@ -225,7 +221,7 @@ export function CtaDotMatrix() {
       io?.disconnect();
       ro?.disconnect();
       themeObserver.disconnect();
-      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("scroll", syncRect);
       document.removeEventListener("visibilitychange", handleVisibility);
       reducedMotionQuery.removeEventListener("change", handleMotion);
     };

@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import type { CSSProperties } from "react";
 import Link from "next/link";
+import { SiteShell } from "@/components/site-shell";
 import type { FeedCursor } from "@/modules/posts";
 import {
   SEARCH_QUERY_MAX_LENGTH,
@@ -16,7 +17,9 @@ const PAGE_STYLE: CSSProperties = {
   maxWidth: "44rem", // 704px
   marginInline: "auto",
   paddingInline: "clamp(1rem, 3vw, 1.5rem)",
-  paddingBlock: "3rem",
+  paddingTop: "5.75rem",
+  paddingBottom: "3.5rem",
+  flex: 1,
 };
 
 const FOCUS_RING =
@@ -31,7 +34,7 @@ function Breadcrumb() {
       <Link
         href="/"
         prefetch={false}
-        className={`hover:text-[var(--text-primary)] hover:underline ${FOCUS_RING}`}
+        className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center px-2 hover:text-[var(--text-primary)] hover:underline ${FOCUS_RING}`}
       >
         Home
       </Link>
@@ -39,12 +42,14 @@ function Breadcrumb() {
       <Link
         href="/topics"
         prefetch={false}
-        className={`hover:text-[var(--text-primary)] hover:underline ${FOCUS_RING}`}
+        className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center px-2 hover:text-[var(--text-primary)] hover:underline ${FOCUS_RING}`}
       >
         Topics
       </Link>
       <span aria-hidden="true">/</span>
-      <span aria-current="page">Search</span>
+      <span aria-current="page" className="text-[var(--text-primary)]">
+        Search
+      </span>
     </nav>
   );
 }
@@ -94,10 +99,13 @@ async function SearchResultsView({
   }
 
   return (
-    <main className="mx-auto max-w-2xl px-6 py-12" style={PAGE_STYLE}>
+    <main id="main-content" className="mx-auto max-w-2xl px-6 py-12" style={PAGE_STYLE}>
       <Breadcrumb />
-      <header className="mb-8 border-b border-zinc-200 pb-4 dark:border-zinc-800">
-        <h1 className="text-3xl font-semibold tracking-tight">Search</h1>
+      <header
+        className="mb-8 pb-6"
+        style={{ borderBottom: "1px solid var(--border-hairline)" }}
+      >
+        <h1 className="text-3xl font-semibold tracking-tight text-[var(--text-primary)]">Search</h1>
         <form method="GET" action="/search" className="mt-4 flex gap-2">
           <input
             type="search"
@@ -106,12 +114,21 @@ async function SearchResultsView({
             maxLength={SEARCH_QUERY_MAX_LENGTH}
             placeholder="Search published posts..."
             aria-label="Search published posts"
-            className="min-h-11 flex-1 rounded border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700"
+            className={`min-h-[44px] flex-1 rounded-md px-3.5 py-2 text-sm ${FOCUS_RING}`}
+            style={{
+              backgroundColor: "var(--bg-surface1)",
+              color: "var(--text-primary)",
+              border: "1px solid var(--border-hairline)",
+            }}
           />
           {topicSlug ? <input type="hidden" name="topic" value={topicSlug} /> : null}
           <button
             type="submit"
-            className={`min-h-11 rounded border border-zinc-300 px-4 py-2 text-sm font-medium hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900 ${FOCUS_RING}`}
+            className={`min-h-[44px] min-w-[44px] cursor-pointer rounded-md px-4 py-2 text-sm font-medium transition-opacity hover:opacity-90 ${FOCUS_RING}`}
+            style={{
+              backgroundColor: "var(--btn-primary-bg)",
+              color: "var(--btn-primary-text)",
+            }}
           >
             Search
           </button>
@@ -134,12 +151,13 @@ async function SearchResultsView({
             {results.items.map((item) => (
               <li
                 key={item.id}
-                className="border-b border-zinc-200 pb-4 dark:border-zinc-800"
+                className="pb-4"
+                style={{ borderBottom: "1px solid var(--border-hairline)" }}
               >
                 <Link
                   href={`/@${encodeURIComponent(item.publicationSlug)}/${encodeURIComponent(item.slug)}`}
                   prefetch={false}
-                  className={`text-xl font-medium hover:text-[var(--text-primary)] hover:underline ${FOCUS_RING}`}
+                  className={`inline-flex min-h-[44px] items-center text-xl font-medium text-[var(--text-primary)] hover:underline ${FOCUS_RING}`}
                 >
                   {item.title}
                 </Link>
@@ -156,7 +174,7 @@ async function SearchResultsView({
               <Link
                 href={`/search?q=${encodeURIComponent(results.query)}${topicSlug ? `&topic=${encodeURIComponent(topicSlug)}` : ""}&after=${encodeURIComponent(results.nextCursor.publishedAt.toISOString())}&afterId=${encodeURIComponent(results.nextCursor.postId)}`}
                 prefetch={false}
-                className={`text-sm font-medium hover:text-[var(--text-primary)] hover:underline ${FOCUS_RING}`}
+                className={`inline-flex min-h-[44px] items-center text-sm font-medium text-[var(--text-primary)] hover:underline ${FOCUS_RING}`}
               >
                 Next results →
               </Link>
@@ -179,14 +197,16 @@ export default function SearchPage({
   }>;
 }) {
   return (
-    <Suspense
-      fallback={
-        <main className="mx-auto max-w-2xl px-6 py-12" style={PAGE_STYLE}>
-          <p>Loading search...</p>
-        </main>
-      }
-    >
-      <SearchResultsView searchParams={searchParams} />
-    </Suspense>
+    <SiteShell>
+      <Suspense
+        fallback={
+          <main id="main-content" className="mx-auto max-w-2xl px-6 py-12" style={PAGE_STYLE}>
+            <p className="text-[var(--text-muted)]">Loading search...</p>
+          </main>
+        }
+      >
+        <SearchResultsView searchParams={searchParams} />
+      </Suspense>
+    </SiteShell>
   );
 }

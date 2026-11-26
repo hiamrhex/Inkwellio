@@ -1,7 +1,60 @@
 import { Suspense } from "react";
+import type { CSSProperties } from "react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { SiteShell } from "@/components/site-shell";
 import { getCachedPublicationFeed } from "@/modules/site";
+
+/** Same full-width constrained measure as /topics and /search. */
+const PAGE_STYLE: CSSProperties = {
+  width: "100%",
+  maxWidth: "44rem", // 704px
+  marginInline: "auto",
+  paddingInline: "clamp(1rem, 3vw, 1.5rem)",
+  paddingTop: "5.75rem",
+  paddingBottom: "3.5rem",
+  flex: 1,
+};
+
+const FOCUS_RING =
+  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)]";
+
+function PublicationBreadcrumb({ handle }: { handle: string }) {
+  return (
+    <nav
+      aria-label="Breadcrumb"
+      className="mb-6 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-[var(--text-muted)]"
+    >
+      <Link
+        href="/"
+        prefetch={false}
+        className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center px-2 hover:text-[var(--text-primary)] hover:underline ${FOCUS_RING}`}
+      >
+        Home
+      </Link>
+      <span aria-hidden="true">/</span>
+      <Link
+        href="/topics"
+        prefetch={false}
+        className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center px-2 hover:text-[var(--text-primary)] hover:underline ${FOCUS_RING}`}
+      >
+        Topics
+      </Link>
+      <span aria-hidden="true">/</span>
+      <Link
+        href="/search"
+        prefetch={false}
+        className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center px-2 hover:text-[var(--text-primary)] hover:underline ${FOCUS_RING}`}
+      >
+        Search
+      </Link>
+      <span aria-hidden="true">/</span>
+      <span aria-current="page" className="text-[var(--text-primary)]">
+        @{handle}
+      </span>
+    </nav>
+  );
+}
 
 async function PublicationFeedView({
   params,
@@ -20,16 +73,20 @@ async function PublicationFeedView({
 
   const { publication, feed } = result;
   return (
-    <main className="mx-auto max-w-2xl px-6 py-12">
-      <header className="mb-8 border-b border-zinc-200 pb-4 dark:border-zinc-800">
-        <h1 className="text-3xl font-semibold tracking-tight">
+    <main id="main-content" className="mx-auto max-w-2xl px-6 py-12" style={PAGE_STYLE}>
+      <PublicationBreadcrumb handle={publication.slug} />
+      <header
+        className="mb-8 pb-4"
+        style={{ borderBottom: "1px solid var(--border-hairline)" }}
+      >
+        <h1 className="text-3xl font-semibold tracking-tight text-[var(--text-primary)]">
           {publication.name}
         </h1>
-        <p className="mt-1 text-sm text-zinc-500">@{publication.slug}</p>
+        <p className="mt-1 font-mono text-sm text-[var(--text-faint)]">@{publication.slug}</p>
       </header>
 
       {feed.posts.length === 0 ? (
-        <p className="text-zinc-600 dark:text-zinc-400">
+        <p className="text-[var(--text-muted)]">
           No published posts yet.
         </p>
       ) : (
@@ -37,18 +94,19 @@ async function PublicationFeedView({
           {feed.posts.map((item) => (
             <li
               key={item.id}
-              className="border-b border-zinc-200 pb-4 dark:border-zinc-800"
+              className="pb-4"
+              style={{ borderBottom: "1px solid var(--border-hairline)" }}
             >
               <Link
                 href={`/@${encodeURIComponent(publication.slug)}/${encodeURIComponent(item.slug)}`}
                 prefetch={false}
-                className="text-xl font-medium hover:underline"
+                className={`inline-flex min-h-[44px] items-center text-xl font-medium text-[var(--text-primary)] hover:underline ${FOCUS_RING}`}
               >
                 {item.title}
               </Link>
               <time
                 dateTime={item.publishedAt.toISOString()}
-                className="mt-1 block text-xs text-zinc-500"
+                className="mt-1 block font-mono text-xs text-[var(--text-faint)]"
               >
                 {item.publishedAt.toISOString().slice(0, 10)}
               </time>
@@ -66,14 +124,16 @@ export default function PublicationPage({
   params: Promise<{ handle: string }>;
 }) {
   return (
-    <Suspense
-      fallback={
-        <main className="mx-auto max-w-2xl px-6 py-12">
-          <p>Loading publication...</p>
-        </main>
-      }
-    >
-      <PublicationFeedView params={params} />
-    </Suspense>
+    <SiteShell>
+      <Suspense
+        fallback={
+          <main id="main-content" className="mx-auto max-w-2xl px-6 py-12" style={PAGE_STYLE}>
+            <p className="text-[var(--text-muted)]">Loading publication...</p>
+          </main>
+        }
+      >
+        <PublicationFeedView params={params} />
+      </Suspense>
+    </SiteShell>
   );
 }
