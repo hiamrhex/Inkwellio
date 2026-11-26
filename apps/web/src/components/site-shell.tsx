@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { SquircleClipDef, ThemeToggle } from "@inkwellio/ui";
+import { InkwellioLogo, SquircleClipDef, ThemeToggle } from "@inkwellio/ui";
 import { SessionNavActions } from "./session-nav-actions";
 
 interface SiteHeaderProps {
@@ -33,7 +33,7 @@ export function SiteHeader({ isHome = false, minimalHeader = false }: SiteHeader
         >
           <div className="nav-zone-left">
             <Link href="/" className="nav-logo" aria-label="Inkwellio home">
-              <span className="status-dot status-dot-live" aria-hidden="true" />
+              <InkwellioLogo size={20} />
               <span>Inkwellio</span>
             </Link>
           </div>
@@ -68,7 +68,10 @@ export function SiteFooter() {
   return (
     <footer className="site-footer">
       <div className="site-footer-inner">
-        <span>Inkwellio — 2026 — inkwellio.example</span>
+        <span className="site-footer-brand">
+          <InkwellioLogo size={16} />
+          <span>Inkwellio — 2026 — inkwellio.example</span>
+        </span>
         <nav aria-label="Footer navigation" className="site-footer-links">
           <Link href="/topics" className="site-footer-link">
             Topics

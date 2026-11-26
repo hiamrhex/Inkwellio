@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { Chip } from "@inkwellio/ui";
 import { SiteShell } from "@/components/site-shell";
+import { AuthSpatialBackdrop } from "@/components/auth/auth-spatial-backdrop";
 import { safeRedirect } from "@/modules/identity";
 import { SignInForm } from "./sign-in-form";
 
@@ -50,7 +51,9 @@ export default function SignInPage({ searchParams }: SignInPageProps) {
   return (
     <SiteShell minimalHeader>
       <main id="main-content" className="auth-main">
-        <div className="auth-fluted-backdrop" aria-hidden="true" />
+        <div className="auth-fluted-backdrop" aria-hidden="true">
+          <AuthSpatialBackdrop />
+        </div>
         <section
           className="auth-card auth-monolith-card spotlight-card bento-specular-card"
           data-spotlight="true"

@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
+  <style>
+    .nib { fill: #0b0c10; }
+    .dot { fill: #0f766e; }
+    @media (prefers-color-scheme: dark) {
+      .nib { fill: #ffffff; }
+      .dot { fill: #10b981; }
+    }
+  </style>
+  <path
+    class="nib"
+    d="M11.4 2C10 6.5 7 9.6 5 13.6L8 18.6H16L19 13.6C17 9.6 14 6.5 12.6 2L12.32 2.85V11.6H11.68V2.85L11.4 2ZM7.6 19.8H16.4V21.6H7.6Z"
+  />
+  <circle class="dot" cx="12" cy="12.2" r="1.45" />
+</svg>

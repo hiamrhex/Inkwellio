@@ -7,6 +7,7 @@ import { MagneticButton } from "./magnetic-button";
 import { InteractiveBento } from "./interactive-bento";
 import { PostLifeStage } from "./post-life-stage";
 import { TopicMarquee } from "./topic-marquee";
+import { HeroRibbonMedia } from "./hero-ribbon-media";
 import { HeroRibbonLoader } from "./hero-ribbon-loader";
 import { CtaDotMatrixLoader } from "./cta-dot-matrix-loader";
 import { ScrollChoreography } from "./scroll-choreography";
@@ -48,6 +49,7 @@ export default function Home() {
         <div className="hero-stage-outer">
           <div className="hero-silk-backdrop" aria-hidden="true">
             <div className="hero-silk-fallback" />
+            <HeroRibbonMedia />
           </div>
           <HeroRibbonLoader />
           <section

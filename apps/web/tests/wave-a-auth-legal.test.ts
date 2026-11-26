@@ -83,9 +83,15 @@ describe("Wave A Phase A2 — Auth & Legal policy, shell, and accessibility", ()
     ] as const) {
       expect(authSrc, `${label} must use minimalHeader`).toContain("<SiteShell minimalHeader>");
       expect(authSrc, `${label} must render fluted backdrop`).toContain("auth-fluted-backdrop");
+      expect(authSrc, `${label} must mount lazy AuthSpatialBackdrop`).toContain("<AuthSpatialBackdrop");
       expect(authSrc, `${label} must use monolith rim-lit card`).toContain("auth-monolith-card");
     }
+    const spatialBackdropSrc = readSrc("apps/web/src/components/auth/auth-spatial-backdrop.tsx");
+    expect(spatialBackdropSrc).toContain('loading="lazy"');
+    expect(spatialBackdropSrc).toContain("spatial-monolith-dark.webp");
+    expect(spatialBackdropSrc).toContain("spatial-slab-light.webp");
     expect(cssSrc).toContain(".auth-fluted-backdrop");
+    expect(cssSrc).toContain(".auth-spatial-img");
     expect(cssSrc).toContain(".site-header-inner-minimal");
   });
 

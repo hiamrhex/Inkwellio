@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import { Chip } from "@inkwellio/ui";
 import { SiteShell } from "@/components/site-shell";
+import { AuthSpatialBackdrop } from "@/components/auth/auth-spatial-backdrop";
 import { ResetPasswordForm } from "./reset-password-form";
 
 export const metadata: Metadata = {
@@ -30,7 +31,9 @@ export default function ResetPasswordPage({ searchParams }: ResetPasswordPagePro
   return (
     <SiteShell minimalHeader>
       <main id="main-content" className="auth-main">
-        <div className="auth-fluted-backdrop" aria-hidden="true" />
+        <div className="auth-fluted-backdrop" aria-hidden="true">
+          <AuthSpatialBackdrop />
+        </div>
         <section
           className="auth-card auth-monolith-card spotlight-card bento-specular-card"
           data-spotlight="true"

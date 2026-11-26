@@ -25,6 +25,7 @@ import {
   Chip,
   SectionHeader,
   IconTile,
+  InkwellioLogo,
   SquircleClipDef,
   ThemeToggle,
 } from "@inkwellio/ui";
@@ -173,5 +174,19 @@ describe("useSpring & useSpring2D physics (G1)", () => {
     }
     const html = renderToStaticMarkup(createElement(Spring2DTestComponent));
     expect(html).toContain("10,-5");
+  });
+});
+
+/* ════════════════════════════════════════════════════════════════
+   U14: InkwellioLogo nib mark (< 0.6 KiB)
+   ════════════════════════════════════════════════════════════════ */
+describe("InkwellioLogo", () => {
+  it("U14: renders concise nib SVG (<= 614 B), zero outer circle, single emerald breather dot", () => {
+    const svg = renderToStaticMarkup(createElement(InkwellioLogo, { size: 20 }));
+    expect(Buffer.byteLength(svg, "utf8")).toBeLessThanOrEqual(614);
+    expect(svg).toContain("<svg");
+    expect(svg).toContain("<path");
+    expect(svg.match(/<circle/g)?.length).toBe(1);
+    expect(svg).toContain("#10b981");
   });
 });

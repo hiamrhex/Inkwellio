@@ -98,8 +98,11 @@ const ribbonCanvasSrc = readSrc("apps/web/src/app/hero-ribbon-canvas.tsx");
 const dotMatrixSrc = readSrc("apps/web/src/app/cta-dot-matrix.tsx");
 const scrollChoreoSrc = readSrc("apps/web/src/app/scroll-choreography.tsx");
 const ribbonLoaderSrc = readSrc("apps/web/src/app/hero-ribbon-loader.tsx");
+const ribbonMediaSrc = readSrc("apps/web/src/app/hero-ribbon-media.tsx");
 const dotLoaderSrc = readSrc("apps/web/src/app/cta-dot-matrix-loader.tsx");
 const magneticSrc = readSrc("apps/web/src/app/magnetic-button.tsx");
+const logoSrc = readSrc("packages/ui/src/inkwellio-logo.tsx");
+const iconSvgSrc = readSrc("apps/web/src/app/icon.svg");
 const runtimePath = path.join(root, "apps/web/public/scripts/landing-runtime.js");
 const landingRuntimeSrc = fs.readFileSync(runtimePath, "utf8");
 const themeJsSrc = readSrc("apps/web/public/scripts/theme.js");
@@ -279,6 +282,8 @@ describe("Shared Shell & Public Reading Routes", () => {
     expect(siteShellSrc).toContain("site-header-bar");
     expect(siteShellSrc).toContain("site-header-inner");
     expect(siteShellSrc).toContain("minimalHeader");
+    expect(siteShellSrc).toContain("<InkwellioLogo");
+    expect(siteShellSrc.match(/<InkwellioLogo/g)?.length).toBeGreaterThanOrEqual(2);
     expect(siteShellSrc).toContain("nav-zone-left");
     expect(siteShellSrc).toContain("nav-zone-right");
     expect(siteShellSrc).toContain("<ThemeToggle");
@@ -466,13 +471,40 @@ describe("Performance budgets, motion & hero sculpture assets", () => {
     expect(cssSrc).toMatch(/:root\[data-motion="paused"\][\s\S]*\.hero-headline-sweep/);
   });
 
-  it("replaces static hero images with lazy flowing HeroRibbonLoader on /", () => {
+  it("loads single active-theme hero 3D WebP with fetchpriority=high, srcset, sizes & byte caps alongside InkwellioLogo + icon.svg", () => {
+    expect(pageSrc).toContain("<HeroRibbonMedia");
     expect(pageSrc).toContain("<HeroRibbonLoader");
-    expect(pageSrc).not.toContain("HeroSculpture");
+    expect(themeJsSrc).toContain('link.rel = "preload"');
+    expect(themeJsSrc).toContain('fetchpriority", "high"');
+    expect(themeJsSrc).toContain("hero-ribbon-");
+    expect(themeJsSrc).toContain("-mobile.webp");
+    expect(ribbonMediaSrc).toContain('fetchPriority="high"');
+    expect(ribbonMediaSrc).toContain("srcSet=");
+    expect(ribbonMediaSrc).toContain("sizes=");
+    expect(ribbonMediaSrc).toContain("width={1280}");
+    expect(ribbonMediaSrc).toContain("height={714}");
+    expect(ribbonMediaSrc).toContain('alt=""');
     expect(themeJsSrc).not.toContain("hero-ink-dark.webp");
     expect(themeJsSrc).not.toContain("hero-ink-light.webp");
     expect(cssSrc).not.toContain("hero-ink-dark.webp");
     expect(cssSrc).not.toContain("hero-ink-light.webp");
+
+    for (const [rel, maxBytes] of [
+      ["apps/web/public/images/hero-ribbon-dark.webp", 45 * 1024],
+      ["apps/web/public/images/hero-ribbon-dark-mobile.webp", 22 * 1024],
+      ["apps/web/public/images/hero-ribbon-light.webp", 45 * 1024],
+      ["apps/web/public/images/hero-ribbon-light-mobile.webp", 22 * 1024],
+      ["apps/web/public/images/spatial-monolith-dark.webp", 38 * 1024],
+      ["apps/web/public/images/spatial-slab-light.webp", 38 * 1024],
+    ] as const) {
+      const sz = fs.statSync(path.join(root, rel)).size;
+      expect(sz, `${rel} exceeded ${maxBytes} B`).toBeLessThanOrEqual(maxBytes);
+    }
+
+    expect(logoSrc).toContain("<svg");
+    expect(logoSrc).toContain("#10b981");
+    expect(iconSvgSrc).toContain("prefers-color-scheme: dark");
+    expect(fs.existsSync(path.join(root, "apps/web/src/app/favicon.ico"))).toBe(true);
   });
 
   it("records design principles & local sculpture inventory without licence claims", () => {
