@@ -62,8 +62,13 @@ describe("tokens", () => {
     expect(tokens.dark.bgCanvas).toBe("#000000");
   });
 
-  it("U3: light.bgCanvas is archival off-white #fafafa", () => {
-    expect(tokens.light.bgCanvas).toBe("#fafafa");
+  it("U3: light.bgCanvas is crisp archival slate #f1f3f5 with accessible contrast", () => {
+    expect(tokens.light.bgCanvas).toBe("#f1f3f5");
+    expect(contrastRatio(tokens.light.textFaint, tokens.light.bgCanvas)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("mutation proof: degraded faint ink below 4.5:1 fails contrast threshold on #f1f3f5", () => {
+    expect(contrastRatio("#8a8f98", tokens.light.bgCanvas)).toBeLessThan(4.5);
   });
 
   it("U4: dark textPrimary on bgCanvas >= 7:1", () => {

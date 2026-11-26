@@ -3,9 +3,9 @@
  * Computed contrast values verified programmatically via wcag-contrast formula.
  *
  * Dark (Ink): true black base (#000000) with elevated surfaces.
- * Light (Paper): archival off-white base (#fafafa) with pure white (#ffffff) elevated surfaces.
+ * Light (Paper): crisp cool archival canvas (#f1f3f5) with pure white (#ffffff) elevated surfaces.
  * Strict monochrome interactive triggers (stark white/black); accent reserved
- * strictly for <= 6px functional status dots and :focus-visible rings.
+ * strictly for <= 6px status dots, subtle surface/headline sheens, and :focus-visible rings.
  */
 
 export const tokens = {
@@ -21,29 +21,31 @@ export const tokens = {
     // Strict monochrome buttons
     btnPrimaryBg:   '#ffffff',
     btnPrimaryText: '#000000',
-    // Functional status marks (<= 6px dots & focus ring only)
-    statusLive:     '#30d158',
+    // Functional status marks (<= 6px dots, whisper accent & focus ring only)
+    statusLive:     '#10b981',
     statusAmber:    '#ffd60a',
     accent:         '#0a84ff', // Focus rings & accessibility
     accentText:     '#000000',
+    accentPinch:    'rgba(16, 185, 129, 0.16)',
   },
   light: {
-    bgCanvas:       '#fafafa', // Archival off-white paper canvas
+    bgCanvas:       '#f1f3f5', // Cool archival slate paper canvas
     bgSurface1:     '#ffffff', // Pure white elevated card
     bgSurface2:     '#ffffff', // Pure white modal / floating card
-    bgSurface3:     '#f4f4f6', // Recessed well / badge
+    bgSurface3:     '#e7eaee', // Recessed well / badge
     textPrimary:    '#0a0a0b',
-    textMuted:      '#55555a',
-    textFaint:      '#707075',
-    borderHairline: 'rgba(0,0,0,0.08)',
+    textMuted:      '#4d515a',
+    textFaint:      '#60656e',
+    borderHairline: 'rgba(15,23,42,0.10)',
     // Strict monochrome buttons
     btnPrimaryBg:   '#0a0a0b',
     btnPrimaryText: '#ffffff',
-    // Functional status marks (<= 6px dots & focus ring only)
-    statusLive:     '#1a7f37',
+    // Functional status marks (<= 6px dots, whisper accent & focus ring only)
+    statusLive:     '#0f766e',
     statusAmber:    '#b45309',
     accent:         '#0066cc', // Focus rings & accessibility
     accentText:     '#ffffff',
+    accentPinch:    'rgba(16, 185, 129, 0.14)',
   },
 } as const;
 

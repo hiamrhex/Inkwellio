@@ -17,7 +17,9 @@ export function ScrollChoreography() {
       CSS.supports("animation-timeline", "view()");
     let rafPending = false;
 
-    const nav = document.querySelector<HTMLElement>(".site-nav");
+    const nav =
+      document.querySelector<HTMLElement>(".site-header-bar") ??
+      document.querySelector<HTMLElement>(".site-nav");
     const navAnchors = Array.from(
       document.querySelectorAll<HTMLAnchorElement>('.nav-links a[href^="#"], .nav-links a[href^="/#"]'),
     );
@@ -40,6 +42,7 @@ export function ScrollChoreography() {
     const readingFill = document.querySelector<HTMLElement>(".reading-progress-fill");
     const curtain = document.querySelector<HTMLElement>(".flip-curtain");
     const publishingSection = document.querySelector<HTMLElement>("#publishing");
+    const sideGlideSection = document.querySelector<HTMLElement>("#writer-reader");
     const postLifeSection = document.querySelector<HTMLElement>("#post-life");
     const bentoCards = Array.from(document.querySelectorAll<HTMLElement>(".bento-cell-reveal"));
 
@@ -114,6 +117,15 @@ export function ScrollChoreography() {
             const rect = publishingSection.getBoundingClientRect();
             const progress = clamp01((vh - rect.top) / (vh * 0.65));
             publishingSection.style.setProperty("--flip-scroll", progress.toFixed(4));
+          }
+        }
+        if (sideGlideSection) {
+          if (isReduced) {
+            sideGlideSection.style.setProperty("--glide-progress", "1");
+          } else {
+            const rect = sideGlideSection.getBoundingClientRect();
+            const progress = clamp01((vh * 0.92 - rect.top) / (vh * 0.45));
+            sideGlideSection.style.setProperty("--glide-progress", progress.toFixed(4));
           }
         }
       }

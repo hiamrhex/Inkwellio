@@ -103,7 +103,7 @@ export function SessionNavActions() {
     <div className="nav-auth-slot">
       {authState === "signed-in" ? (
         <>
-          <Link href="/dashboard" prefetch={false} className="nav-auth-link">
+          <Link href="/dashboard" className="nav-auth-link">
             Dashboard
           </Link>
           <button
@@ -117,10 +117,10 @@ export function SessionNavActions() {
         </>
       ) : (
         <>
-          <Link href="/sign-in" prefetch={false} className="nav-auth-link">
+          <Link href="/sign-in" className="nav-auth-link">
             Sign in
           </Link>
-          <Link href="/sign-up" prefetch={false} className="nav-auth-pill">
+          <Link href="/sign-up" className="nav-auth-pill">
             Sign up
           </Link>
         </>

@@ -70,21 +70,21 @@ export function PostLifeStage() {
                 <div className="post-life-card-head">
                   <span className="post-life-badge-row">
                     <span className="status-dot status-dot-amber" aria-hidden="true" />
-                    <span>Draft saved</span>
+                    <span>Draft saved · v3</span>
                   </span>
-                  <span className="post-life-meta">32 words</span>
+                  <span className="post-life-meta">218 words · 2 min</span>
                 </div>
-                <p className="post-life-card-title">Draft: City away leg</p>
+                <p className="post-life-card-title">Draft: City away leg — 64th-minute tactical switch</p>
                 <div className="post-life-draft-lines" aria-hidden="true">
                   <span className="post-life-type-line post-life-type-line-1">
-                    In the 64th minute, City inverted their right-back
+                    ## Half-space overloads on the far touchline
                   </span>
                   <span className="post-life-type-line post-life-type-line-2">
-                    to overload the inside midfield pivot.
+                    In the 64th minute, City inverted their right-back to lock the inside channel.
                     <span className="blinking-caret post-life-caret" />
                   </span>
                 </div>
-                <p className="post-life-card-foot">Illustration — Studio Markdown editor</p>
+                <p className="post-life-card-foot">Illustration — Studio Markdown editor · version-checked autosave</p>
               </article>
 
               {/* Panel 2 (25–45%): Choose topics & slug 3D stack (real Studio controls, no revisions) */}
@@ -94,22 +94,23 @@ export function PostLifeStage() {
                     <span className="status-dot status-dot-amber" aria-hidden="true" />
                     <span>Ready to publish</span>
                   </span>
-                  <span className="post-life-meta">Illustration</span>
+                  <span className="post-life-meta">Illustration · Studio inspector</span>
                 </div>
                 <div className="post-life-prep-stack">
                   <div className="post-life-prep-card post-life-prep-1">
-                    <span className="post-life-prep-label">Topics (2 / 3)</span>
+                    <span className="post-life-prep-label">Topics (2 / 3 selected)</span>
                     <strong>Tactics, Match Reports</strong>
                   </div>
                   <div className="post-life-prep-card post-life-prep-2">
-                    <span className="post-life-prep-label">URL slug</span>
+                    <span className="post-life-prep-label">Permanent URL slug</span>
                     <strong>/@handle/city-away-leg</strong>
                   </div>
                   <div className="post-life-prep-card post-life-prep-3">
-                    <span className="post-life-prep-label">Reading room preview</span>
-                    <strong>65ch archival measure ready</strong>
+                    <span className="post-life-prep-label">Reading room measure</span>
+                    <strong>65ch Newsreader serif preview</strong>
                   </div>
                 </div>
+                <p className="post-life-card-foot">Clean metadata — no ad tags or engagement trackers</p>
               </article>
 
               {/* Panel 3 (45–70%): Publish button press + 3D card flip -> green dot + typed link */}
@@ -117,9 +118,9 @@ export function PostLifeStage() {
                 <div className="post-life-flip-wrap">
                   <div className="post-life-flip-inner">
                     <div className="post-life-flip-face post-life-flip-front">
-                      <span className="post-life-meta">Final check</span>
-                      <p className="post-life-card-title">City away leg</p>
-                      <p className="post-life-meta">/@handle/city-away-leg</p>
+                      <span className="post-life-meta">Final publish check · Version 3</span>
+                      <p className="post-life-card-title">City away leg — How the inside pivot broke the press</p>
+                      <p className="post-life-meta">Destination: inkwellio.example/@handle/city-away-leg · 2 topics</p>
                       <span className="post-life-publish-pill" aria-hidden="true">
                         Publish post
                       </span>
@@ -130,11 +131,11 @@ export function PostLifeStage() {
                           <span className="status-dot status-dot-live" aria-hidden="true" />
                           <span>Published</span>
                         </span>
-                        <span className="post-life-meta">Illustration</span>
+                        <span className="post-life-meta">Illustration · Newsreader serif</span>
                       </div>
-                      <p className="post-life-serif-heading">City away leg</p>
+                      <p className="post-life-serif-heading">City away leg — How the inside pivot broke the press</p>
                       <p className="post-life-serif-sample">
-                        In the 64th minute, City inverted their right-back into the inside channel...
+                        In the 64th minute, City inverted their right-back into the inside channel, forcing the touchline winger to track inward and opening the diagonal pass into half-space...
                       </p>
                       <p className="post-life-address-bar" aria-hidden="true">
                         <span className="post-life-address-type">inkwellio.example/@handle/city-away-leg</span>
@@ -149,22 +150,22 @@ export function PostLifeStage() {
                 <div className="post-life-card-head">
                   <span className="post-life-badge-row">
                     <span className="status-dot status-dot-live" aria-hidden="true" />
-                    <span>Live feed</span>
+                    <span>Live feed · @handle</span>
                   </span>
-                  <span className="post-life-meta">Illustration</span>
+                  <span className="post-life-meta">Illustration · Matchday Notebook</span>
                 </div>
                 <ul className="post-life-feed-list">
                   <li className="post-life-feed-item post-life-feed-lead">
-                    <strong>City away leg</strong>
-                    <span>/@handle/city-away-leg · Served via /p/@handle/slug</span>
+                    <strong>City away leg — How the inside pivot broke the press</strong>
+                    <span>/@handle/city-away-leg · Tactics, Match Reports · 6 min read</span>
                   </li>
                   <li className="post-life-feed-item">
                     <strong>Placeholder entry: Matchday notebook</strong>
-                    <span>/@handle/matchday-notebook</span>
+                    <span>/@handle/matchday-notebook · Ground Culture · 4 min read</span>
                   </li>
                   <li className="post-life-feed-item">
                     <strong>Placeholder entry: Club history notes</strong>
-                    <span>/@handle/club-history-notes</span>
+                    <span>/@handle/club-history-notes · Club History · 7 min read</span>
                   </li>
                 </ul>
               </article>

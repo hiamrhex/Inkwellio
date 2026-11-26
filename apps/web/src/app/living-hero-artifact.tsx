@@ -24,7 +24,7 @@ export function LivingHeroArtifact() {
     };
   }, []);
 
-  // Auto-typing cadence starts after initial settle so hydration stays well under 50ms
+  // Gradual character-by-character live auto-typing cadence inside the hero editor
   useEffect(() => {
     if (mode !== "write" || isInteractive || isReduced) {
       return;
@@ -42,8 +42,8 @@ export function LivingHeroArtifact() {
           clearInterval(intervalId);
           intervalId = null;
         }
-      }, 46);
-    }, 320);
+      }, 36);
+    }, 180);
 
     return () => {
       clearTimeout(startTimer);
@@ -51,7 +51,7 @@ export function LivingHeroArtifact() {
     };
   }, [mode, isInteractive, isReduced]);
 
-  const handleEditorClick = () => {
+  const enterInteractiveMode = () => {
     if (!isInteractive) {
       setIsInteractive(true);
       setUserText(typedText || AUTO_TEXT);
@@ -158,10 +158,10 @@ export function LivingHeroArtifact() {
           borderRadius: "1.25rem",
           background:
             mode === "read"
-              ? "color-mix(in srgb, var(--bg-surface1) 86%, transparent)"
-              : "color-mix(in srgb, var(--bg-surface1) 78%, transparent)",
-          backdropFilter: "blur(16px) saturate(140%)",
-          WebkitBackdropFilter: "blur(16px) saturate(140%)",
+              ? "color-mix(in srgb, var(--bg-surface1) 88%, transparent)"
+              : "color-mix(in srgb, var(--bg-surface1) 82%, transparent)",
+          backdropFilter: "blur(18px) saturate(140%)",
+          WebkitBackdropFilter: "blur(18px) saturate(140%)",
           border: "1px solid var(--border-hairline)",
           boxShadow: "inset 0 1px 0 0 var(--rim-specular), var(--shadow-card)",
           padding: "1.25rem 1.375rem",
@@ -319,13 +319,18 @@ export function LivingHeroArtifact() {
             <span className="sr-only">{AUTO_TEXT}</span>
 
             <div
-              onClick={handleEditorClick}
+              onClick={enterInteractiveMode}
+              onFocus={enterInteractiveMode}
+              tabIndex={isInteractive ? -1 : 0}
+              role={isInteractive ? undefined : "button"}
+              aria-label={isInteractive ? undefined : "Click or focus to type your own draft preview"}
               style={{
                 flex: 1,
                 cursor: isInteractive ? "text" : "pointer",
                 position: "relative",
                 minHeight: "136px",
                 minWidth: 0,
+                borderRadius: "0.5rem",
               }}
             >
               {isInteractive ? (
@@ -352,6 +357,7 @@ export function LivingHeroArtifact() {
               ) : (
                 <div
                   aria-hidden="true"
+                  data-hero-typed-preview="true"
                   style={{
                     fontSize: "0.9375rem",
                     lineHeight: 1.65,
