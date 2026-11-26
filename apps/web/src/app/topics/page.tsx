@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import type { CSSProperties } from "react";
 import Link from "next/link";
+import { SiteShell } from "@/components/site-shell";
 import { withPublicDbTimeout } from "@/modules/search";
 import { listTopics } from "@/modules/topics";
 
@@ -15,7 +16,9 @@ const PAGE_STYLE: CSSProperties = {
   maxWidth: "44rem", // 704px
   marginInline: "auto",
   paddingInline: "clamp(1rem, 3vw, 1.5rem)",
-  paddingBlock: "3rem",
+  paddingTop: "5.75rem",
+  paddingBottom: "3.5rem",
+  flex: 1,
 };
 
 const TOPIC_ROW_STYLE: CSSProperties = {
@@ -23,6 +26,8 @@ const TOPIC_ROW_STYLE: CSSProperties = {
   alignItems: "baseline",
   justifyContent: "space-between",
   gap: "1rem",
+  borderBottom: "1px solid var(--border-hairline)",
+  paddingBottom: "0.75rem",
 };
 
 const TOPIC_LINK_STYLE: CSSProperties = {
@@ -49,7 +54,7 @@ function Breadcrumb() {
       <Link
         href="/"
         prefetch={false}
-        className={`hover:text-[var(--text-primary)] hover:underline ${FOCUS_RING}`}
+        className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center px-2 hover:text-[var(--text-primary)] hover:underline ${FOCUS_RING}`}
       >
         Home
       </Link>
@@ -57,12 +62,14 @@ function Breadcrumb() {
       <Link
         href="/search"
         prefetch={false}
-        className={`hover:text-[var(--text-primary)] hover:underline ${FOCUS_RING}`}
+        className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center px-2 hover:text-[var(--text-primary)] hover:underline ${FOCUS_RING}`}
       >
         Search
       </Link>
       <span aria-hidden="true">/</span>
-      <span aria-current="page">Topics</span>
+      <span aria-current="page" className="text-[var(--text-primary)]">
+        Topics
+      </span>
     </nav>
   );
 }
@@ -79,9 +86,9 @@ async function TopicsDirectoryView() {
 
   if (unavailable) {
     return (
-      <main className="mx-auto max-w-2xl px-6 py-12" style={PAGE_STYLE}>
+      <main id="main-content" className="mx-auto max-w-2xl px-6 py-12" style={PAGE_STYLE}>
         <Breadcrumb />
-        <h1 className="text-3xl font-semibold tracking-tight">Topics</h1>
+        <h1 className="text-3xl font-semibold tracking-tight text-[var(--text-primary)]">Topics</h1>
         <p className="mt-4 text-[var(--text-muted)]">
           Topics are temporarily unavailable. Please try again shortly.
         </p>
@@ -90,10 +97,13 @@ async function TopicsDirectoryView() {
   }
 
   return (
-    <main className="mx-auto max-w-2xl px-6 py-12" style={PAGE_STYLE}>
+    <main id="main-content" className="mx-auto max-w-2xl px-6 py-12" style={PAGE_STYLE}>
       <Breadcrumb />
-      <header className="mb-8 border-b border-zinc-200 pb-4 dark:border-zinc-800">
-        <h1 className="text-3xl font-semibold tracking-tight">Topics</h1>
+      <header
+        className="mb-8 pb-4"
+        style={{ borderBottom: "1px solid var(--border-hairline)" }}
+      >
+        <h1 className="text-3xl font-semibold tracking-tight text-[var(--text-primary)]">Topics</h1>
         <p className="mt-1 text-sm text-[var(--text-muted)]">
           Curated football writing channels
         </p>
@@ -104,15 +114,11 @@ async function TopicsDirectoryView() {
       ) : (
         <ul className="space-y-4">
           {topics.map((topic) => (
-            <li
-              key={topic.id}
-              className="flex items-baseline justify-between border-b border-zinc-200 pb-3 dark:border-zinc-800"
-              style={TOPIC_ROW_STYLE}
-            >
+            <li key={topic.id} style={TOPIC_ROW_STYLE}>
               <Link
                 href={`/topics/${encodeURIComponent(topic.slug)}`}
                 prefetch={false}
-                className={`text-lg font-medium hover:text-[var(--text-primary)] hover:underline ${FOCUS_RING}`}
+                className={`text-lg font-medium text-[var(--text-primary)] hover:underline ${FOCUS_RING}`}
                 style={TOPIC_LINK_STYLE}
               >
                 {topic.name}
@@ -133,14 +139,16 @@ async function TopicsDirectoryView() {
 
 export default function TopicsPage() {
   return (
-    <Suspense
-      fallback={
-        <main className="mx-auto max-w-2xl px-6 py-12" style={PAGE_STYLE}>
-          <p>Loading topics...</p>
-        </main>
-      }
-    >
-      <TopicsDirectoryView />
-    </Suspense>
+    <SiteShell>
+      <Suspense
+        fallback={
+          <main id="main-content" className="mx-auto max-w-2xl px-6 py-12" style={PAGE_STYLE}>
+            <p className="text-[var(--text-muted)]">Loading topics...</p>
+          </main>
+        }
+      >
+        <TopicsDirectoryView />
+      </Suspense>
+    </SiteShell>
   );
 }

@@ -14,9 +14,9 @@ interface NetworkInformationLike {
 
 /**
  * HeroSilkLoader — Strictly gated lazy loader for the WebGL2 silk shader.
- * The CSS gradient + SVG grain fallback is rendered in Server Component `page.tsx`;
- * WebGL2 mounts ONLY after window load + requestIdleCallback when fine pointer,
- * hardwareConcurrency >= 4, no saveData, and motion allowed all pass.
+ * Defers mount until window load + requestIdleCallback (minimum 450ms settle)
+ * and only activates on fine hover pointers with >= 4 CPU cores, no saveData,
+ * and motion allowed.
  */
 export function HeroSilkLoader() {
   const [enableWebGL, setEnableWebGL] = useState(false);
@@ -37,19 +37,23 @@ export function HeroSilkLoader() {
 
     const scheduleMount = () => {
       if (cancelled || !canRunShader()) return;
-      const ric = (
-        window as { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number }
-      ).requestIdleCallback;
+      timeoutId = setTimeout(() => {
+        if (cancelled || !canRunShader()) return;
+        const ric = (
+          window as { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number }
+        ).requestIdleCallback;
 
-      if (typeof ric === "function") {
-        idleId = ric(() => {
-          if (!cancelled && canRunShader()) setEnableWebGL(true);
-        }, { timeout: 1200 });
-      } else {
-        timeoutId = setTimeout(() => {
-          if (!cancelled && canRunShader()) setEnableWebGL(true);
-        }, 120);
-      }
+        if (typeof ric === "function") {
+          idleId = ric(
+            () => {
+              if (!cancelled && canRunShader()) setEnableWebGL(true);
+            },
+            { timeout: 1500 },
+          );
+        } else {
+          setEnableWebGL(true);
+        }
+      }, 450);
     };
 
     if (document.readyState === "complete") scheduleMount();
@@ -58,7 +62,11 @@ export function HeroSilkLoader() {
     return () => {
       cancelled = true;
       window.removeEventListener("load", scheduleMount);
-      if (idleId !== null && typeof (window as { cancelIdleCallback?: (id: number) => void }).cancelIdleCallback === "function") {
+      if (
+        idleId !== null &&
+        typeof (window as { cancelIdleCallback?: (id: number) => void }).cancelIdleCallback ===
+          "function"
+      ) {
         (window as { cancelIdleCallback: (id: number) => void }).cancelIdleCallback(idleId);
       }
       if (timeoutId !== null) clearTimeout(timeoutId);

@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import type { CSSProperties } from "react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { SiteShell } from "@/components/site-shell";
 import type { FeedCursor } from "@/modules/posts";
 import { withPublicDbTimeout } from "@/modules/search";
 import { fetchTopicPublishedPage, normalizeTopicSlug } from "@/modules/topics";
@@ -12,7 +13,9 @@ const PAGE_STYLE: CSSProperties = {
   maxWidth: "44rem", // 704px
   marginInline: "auto",
   paddingInline: "clamp(1rem, 3vw, 1.5rem)",
-  paddingBlock: "3rem",
+  paddingTop: "5.75rem",
+  paddingBottom: "3.5rem",
+  flex: 1,
 };
 
 const FOCUS_RING =
@@ -27,7 +30,7 @@ function Breadcrumb({ topicName }: { topicName?: string }) {
       <Link
         href="/"
         prefetch={false}
-        className={`hover:text-[var(--text-primary)] hover:underline ${FOCUS_RING}`}
+        className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center px-2 hover:text-[var(--text-primary)] hover:underline ${FOCUS_RING}`}
       >
         Home
       </Link>
@@ -35,7 +38,7 @@ function Breadcrumb({ topicName }: { topicName?: string }) {
       <Link
         href="/topics"
         prefetch={false}
-        className={`hover:text-[var(--text-primary)] hover:underline ${FOCUS_RING}`}
+        className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center px-2 hover:text-[var(--text-primary)] hover:underline ${FOCUS_RING}`}
       >
         Topics
       </Link>
@@ -43,14 +46,16 @@ function Breadcrumb({ topicName }: { topicName?: string }) {
       <Link
         href="/search"
         prefetch={false}
-        className={`hover:text-[var(--text-primary)] hover:underline ${FOCUS_RING}`}
+        className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center px-2 hover:text-[var(--text-primary)] hover:underline ${FOCUS_RING}`}
       >
         Search
       </Link>
       {topicName ? (
         <>
           <span aria-hidden="true">/</span>
-          <span aria-current="page">{topicName}</span>
+          <span aria-current="page" className="text-[var(--text-primary)]">
+            {topicName}
+          </span>
         </>
       ) : null}
     </nav>
@@ -93,7 +98,7 @@ async function TopicFeedView({
     );
   } catch {
     return (
-      <main className="mx-auto max-w-2xl px-6 py-12" style={PAGE_STYLE}>
+      <main id="main-content" className="mx-auto max-w-2xl px-6 py-12" style={PAGE_STYLE}>
         <Breadcrumb />
         <p className="text-[var(--text-muted)]">Topic feed is temporarily unavailable.</p>
       </main>
@@ -106,10 +111,15 @@ async function TopicFeedView({
 
   const { topic, posts, nextCursor } = page;
   return (
-    <main className="mx-auto max-w-2xl px-6 py-12" style={PAGE_STYLE}>
+    <main id="main-content" className="mx-auto max-w-2xl px-6 py-12" style={PAGE_STYLE}>
       <Breadcrumb topicName={topic.name} />
-      <header className="mb-8 border-b border-zinc-200 pb-4 dark:border-zinc-800">
-        <h1 className="text-3xl font-semibold tracking-tight">{topic.name}</h1>
+      <header
+        className="mb-8 pb-4"
+        style={{ borderBottom: "1px solid var(--border-hairline)" }}
+      >
+        <h1 className="text-3xl font-semibold tracking-tight text-[var(--text-primary)]">
+          {topic.name}
+        </h1>
       </header>
 
       {posts.length === 0 ? (
@@ -119,12 +129,13 @@ async function TopicFeedView({
           {posts.map((post) => (
             <li
               key={post.id}
-              className="border-b border-zinc-200 pb-4 dark:border-zinc-800"
+              className="pb-4"
+              style={{ borderBottom: "1px solid var(--border-hairline)" }}
             >
               <Link
                 href={`/@${encodeURIComponent(post.publicationSlug)}/${encodeURIComponent(post.slug)}`}
                 prefetch={false}
-                className={`text-xl font-medium hover:text-[var(--text-primary)] hover:underline ${FOCUS_RING}`}
+                className={`inline-flex min-h-[44px] items-center text-xl font-medium text-[var(--text-primary)] hover:underline ${FOCUS_RING}`}
               >
                 {post.title}
               </Link>
@@ -141,7 +152,7 @@ async function TopicFeedView({
           <Link
             href={`/topics/${encodeURIComponent(topic.slug)}?after=${encodeURIComponent(nextCursor.publishedAt.toISOString())}&afterId=${encodeURIComponent(nextCursor.postId)}`}
             prefetch={false}
-            className={`text-sm font-medium hover:text-[var(--text-primary)] hover:underline ${FOCUS_RING}`}
+            className={`inline-flex min-h-[44px] items-center text-sm font-medium text-[var(--text-primary)] hover:underline ${FOCUS_RING}`}
           >
             Older posts →
           </Link>
@@ -159,14 +170,16 @@ export default function TopicDetailPage({
   searchParams: Promise<{ after?: string; afterId?: string }>;
 }) {
   return (
-    <Suspense
-      fallback={
-        <main className="mx-auto max-w-2xl px-6 py-12" style={PAGE_STYLE}>
-          <p>Loading topic...</p>
-        </main>
-      }
-    >
-      <TopicFeedView params={params} searchParams={searchParams} />
-    </Suspense>
+    <SiteShell>
+      <Suspense
+        fallback={
+          <main id="main-content" className="mx-auto max-w-2xl px-6 py-12" style={PAGE_STYLE}>
+            <p className="text-[var(--text-muted)]">Loading topic...</p>
+          </main>
+        }
+      >
+        <TopicFeedView params={params} searchParams={searchParams} />
+      </Suspense>
+    </SiteShell>
   );
 }

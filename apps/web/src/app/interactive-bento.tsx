@@ -1,7 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { IconTile } from "@inkwellio/ui";
+
+const SAMPLE_TOPICS = ["Tactics", "Match Reports", "Club History", "Culture"] as const;
+const MAX_TOPICS = 3;
 
 export function InteractiveBento() {
   const [slugInput, setSlugInput] = useState("tactical-review");
@@ -13,28 +17,22 @@ export function InteractiveBento() {
     .replace(/^-|-$/g, "");
 
   const [editorView, setEditorView] = useState<"formatted" | "markdown">("formatted");
-
-  const [activeCheckpoint, setActiveCheckpoint] = useState<number>(0);
-  const revisions = [
-    {
-      time: "10:04 (Current)",
-      snippet:
-        "In the 64th minute, City inverted their right-back into the inside channel, instantly overloading the midfield pivot.",
-    },
-    {
-      time: "10:02",
-      snippet:
-        "In the second half, City shifted their defensive line higher, forcing the opposition winger to retreat deeper.",
-    },
-    {
-      time: "10:00",
-      snippet:
-        "Tactical observations from the first half: high defensive block and structured wing overloads.",
-    },
-  ];
+  const [selectedTopics, setSelectedTopics] = useState<string[]>(["Tactics", "Match Reports"]);
 
   const [fontFamily, setFontFamily] = useState<"serif" | "sans">("serif");
   const [fontSize, setFontSize] = useState<"17px" | "19px" | "21px">("19px");
+
+  const handleToggleTopic = (topic: string) => {
+    setSelectedTopics((prev) => {
+      if (prev.includes(topic)) {
+        return prev.length > 1 ? prev.filter((item) => item !== topic) : prev;
+      }
+      if (prev.length >= MAX_TOPICS) {
+        return [...prev.slice(1), topic];
+      }
+      return [...prev, topic];
+    });
+  };
 
   const handleSelectFont = (fam: "serif" | "sans") => {
     setFontFamily(fam);
@@ -81,8 +79,7 @@ export function InteractiveBento() {
         <div>
           <h3 className="essential-title" id="bento-link-title">Publish under your own link</h3>
           <p className="essential-body" style={{ marginTop: "0.5rem" }}>
-            Your writing lives at a web address with your name in it. Readers bookmark you directly,
-            subscribing to your publication instead of an algorithmic timeline.
+            Your writing lives at a permanent address with your handle in it. Readers open your publication page directly, without an algorithmic feed in between.
           </p>
         </div>
 
@@ -158,20 +155,20 @@ export function InteractiveBento() {
                 <path d="M3 14.5L14.5 3L17 5.5L5.5 17L3 17.5L3 14.5Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" fill="none" />
               </svg>
             </IconTile>
-            <span className="essential-num">02 / Craft</span>
+            <span className="essential-num">02 / Studio</span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
             <span className="status-dot status-dot-amber" aria-hidden="true" />
             <span style={{ fontSize: "0.75rem", fontFamily: "var(--font-geist-mono)", color: "var(--text-faint)" }}>
-              Autosave active
+              Version-checked saves
             </span>
           </div>
         </div>
 
         <div>
-          <h3 className="essential-title" id="bento-editor-title">Distraction-free editor</h3>
+          <h3 className="essential-title" id="bento-editor-title">Distraction-free Markdown studio</h3>
           <p className="essential-body" style={{ marginTop: "0.5rem" }}>
-            A quiet markdown environment built for long reads. Save drafts, preview tactical layouts, and format passages cleanly.
+            Draft in plain Markdown with live safe preview and optimistic version checks so two open tabs never silently overwrite each other.
           </p>
         </div>
 
@@ -260,32 +257,31 @@ export function InteractiveBento() {
         </div>
       </article>
 
-      {/* ── Cell 3: Automatic Revision History (Span 5) ───────────── */}
+      {/* ── Cell 3: Curated Topics (Real Built Feature — Span 5) ─── */}
       <article
         className="spotlight-card bento-specular-card essential-card bento-cell-5 bento-cell-reveal"
         data-spotlight="true"
-        aria-labelledby="bento-archive-title"
+        aria-labelledby="bento-topics-title"
       >
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
             <IconTile size={40}>
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
                 <rect x="3" y="4" width="14" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.4" />
-                <path d="M3 8h14" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-                <path d="M7 12h6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                <path d="M6.5 8.5h7M6.5 11.5h4.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
               </svg>
             </IconTile>
-            <span className="essential-num">03 / Revisions</span>
+            <span className="essential-num">03 / Topics</span>
           </div>
           <span style={{ fontSize: "0.75rem", fontFamily: "var(--font-geist-mono)", color: "var(--text-faint)" }}>
-            Minute checkpoints
+            {selectedTopics.length} / {MAX_TOPICS} selected
           </span>
         </div>
 
         <div>
-          <h3 className="essential-title" id="bento-archive-title">Automatic revision history</h3>
+          <h3 className="essential-title" id="bento-topics-title">Organise with curated topics</h3>
           <p className="essential-body" style={{ marginTop: "0.5rem" }}>
-            Every draft keeps its minute. Review earlier revisions with one click; nothing is ever overwritten by accident.
+            Assign up to three football channels when publishing, and export your full JSON archive whenever you choose.
           </p>
         </div>
 
@@ -302,42 +298,59 @@ export function InteractiveBento() {
           }}
         >
           <div style={{ display: "flex", gap: "0.375rem", flexWrap: "wrap" }}>
-            {revisions.map((rev, idx) => (
-              <button
-                key={rev.time}
-                type="button"
-                onClick={() => setActiveCheckpoint(idx)}
-                className="bento-pill-btn"
-                style={{
-                  minHeight: "45px",
-                  minWidth: "45px",
-                  padding: "0 12px",
-                  fontSize: "0.75rem",
-                  fontFamily: "var(--font-geist-mono)",
-                  borderRadius: "9999px",
-                  border: "1px solid var(--border-hairline)",
-                  cursor: "pointer",
-                  background: activeCheckpoint === idx ? "var(--btn-primary-bg)" : "var(--bg-surface3)",
-                  color: activeCheckpoint === idx ? "var(--btn-primary-text)" : "var(--text-muted)",
-                  transition: "background 0.15s ease, color 0.15s ease, transform 0.1s ease",
-                }}
-              >
-                {rev.time}
-              </button>
-            ))}
+            {SAMPLE_TOPICS.map((topic) => {
+              const active = selectedTopics.includes(topic);
+              return (
+                <button
+                  key={topic}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => handleToggleTopic(topic)}
+                  className="bento-pill-btn"
+                  style={{
+                    minHeight: "45px",
+                    minWidth: "45px",
+                    padding: "0 12px",
+                    fontSize: "0.75rem",
+                    fontFamily: "var(--font-geist-mono)",
+                    borderRadius: "9999px",
+                    border: "1px solid var(--border-hairline)",
+                    cursor: "pointer",
+                    background: active ? "var(--btn-primary-bg)" : "var(--bg-surface3)",
+                    color: active ? "var(--btn-primary-text)" : "var(--text-muted)",
+                  }}
+                >
+                  {topic}
+                </button>
+              );
+            })}
           </div>
-          <p
+          <div
             style={{
-              margin: 0,
-              fontSize: "0.875rem",
-              lineHeight: 1.55,
-              color: "var(--text-muted)",
-              fontFamily: "var(--font-editorial)",
-              fontStyle: "italic",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "0.5rem",
+              fontSize: "0.75rem",
+              fontFamily: "var(--font-geist-mono)",
+              color: "var(--text-faint)",
             }}
           >
-            &ldquo;{revisions[activeCheckpoint].snippet}&rdquo;
-          </p>
+            <span>Channels: {selectedTopics.join(", ")}</span>
+            <Link
+              href="/topics"
+              prefetch={false}
+              className="bento-pill-btn underline"
+              style={{
+                minHeight: "46px",
+                minWidth: "46px",
+                padding: "0 0.75rem",
+                color: "var(--text-primary)",
+              }}
+            >
+              Browse topics
+            </Link>
+          </div>
         </div>
       </article>
 

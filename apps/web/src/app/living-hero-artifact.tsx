@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
-import { useSpring2D } from "@inkwellio/ui/client";
+import { useEffect, useRef, useState } from "react";
 
 const AUTO_TEXT =
   "In the 64th minute, City inverted their right-back into the inside channel, instantly overloading the midfield pivot and forcing the defense into an uncomfortable choice.";
@@ -11,65 +10,46 @@ export function LivingHeroArtifact() {
   const [typedText, setTypedText] = useState("");
   const [isInteractive, setIsInteractive] = useState(false);
   const [userText, setUserText] = useState(AUTO_TEXT);
-  const [tiltTarget, setTiltTarget] = useState({ x: 0, y: 0 });
-
-  // Spring physics for 3D card tilt & parallax (max ±4° on fine pointers)
-  const springTilt = useSpring2D(tiltTarget, { stiffness: 120, damping: 18 });
-
-  const cardRef = useRef<HTMLDivElement>(null);
+  const [isReduced, setIsReduced] = useState(false);
   const charIndexRef = useRef(0);
 
-  // Auto-typing cadence in Write Mode
   useEffect(() => {
-    if (mode !== "write" || isInteractive) {
-      return;
-    }
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const syncReduced = () => setIsReduced(mq.matches);
+    const raf = requestAnimationFrame(syncReduced);
+    mq.addEventListener("change", syncReduced);
+    return () => {
+      cancelAnimationFrame(raf);
+      mq.removeEventListener("change", syncReduced);
+    };
+  }, []);
 
-    if (
-      typeof window !== "undefined" &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches
-    ) {
+  // Auto-typing cadence starts after initial settle so hydration stays well under 50ms
+  useEffect(() => {
+    if (mode !== "write" || isInteractive || isReduced) {
       return;
     }
 
     charIndexRef.current = 0;
+    let intervalId: ReturnType<typeof setInterval> | null = null;
 
-    const intervalId = setInterval(() => {
-      if (charIndexRef.current < AUTO_TEXT.length) {
-        charIndexRef.current++;
-        setTypedText(AUTO_TEXT.slice(0, charIndexRef.current));
-      } else {
-        clearInterval(intervalId);
-      }
-    }, 38);
+    const startTimer = setTimeout(() => {
+      intervalId = setInterval(() => {
+        if (charIndexRef.current < AUTO_TEXT.length) {
+          charIndexRef.current++;
+          setTypedText(AUTO_TEXT.slice(0, charIndexRef.current));
+        } else if (intervalId !== null) {
+          clearInterval(intervalId);
+          intervalId = null;
+        }
+      }, 46);
+    }, 320);
 
     return () => {
-      clearInterval(intervalId);
+      clearTimeout(startTimer);
+      if (intervalId !== null) clearInterval(intervalId);
     };
-  }, [mode, isInteractive]);
-
-  // Handle pointer tracking for 3D tilt (clamped to max ±4°, fine hover pointers only)
-  const handlePointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-    if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-
-    if (!cardRef.current) return;
-    const rect = cardRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    const mx = (x / rect.width - 0.5) * 2;
-    const my = (y / rect.height - 0.5) * 2;
-
-    const targetTiltX = Math.max(-4, Math.min(4, -my * 4));
-    const targetTiltY = Math.max(-4, Math.min(4, mx * 4));
-
-    setTiltTarget({ x: targetTiltX, y: targetTiltY });
-  }, []);
-
-  const handlePointerLeave = useCallback(() => {
-    setTiltTarget({ x: 0, y: 0 });
-  }, []);
+  }, [mode, isInteractive, isReduced]);
 
   const handleEditorClick = () => {
     if (!isInteractive) {
@@ -95,23 +75,15 @@ export function LivingHeroArtifact() {
     }
   };
 
-  const isReduced =
-    typeof window !== "undefined" &&
-    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
   const displayedTypedText = isReduced ? AUTO_TEXT : typedText;
   const activeContent = isInteractive ? userText : displayedTypedText;
-  const wordCount = activeContent.trim()
-    ? activeContent.trim().split(/\s+/).length
-    : 0;
+  const wordCount = activeContent.trim() ? activeContent.trim().split(/\s+/).length : 0;
   const readTimeMin = Math.max(1, Math.ceil(wordCount / 200));
 
   return (
     <div
-      ref={cardRef}
       className="hero-artifact-container"
-      onPointerMove={handlePointerMove}
-      onPointerLeave={handlePointerLeave}
+      data-tilt-hero="true"
       style={{
         position: "relative",
         width: "100%",
@@ -122,7 +94,7 @@ export function LivingHeroArtifact() {
         margin: "0 auto",
       }}
     >
-      {/* Subtle architectural hairline wireframe offset behind focal card */}
+      {/* Wireframe layer (-12px Z depth) */}
       <div
         className="hero-wireframe-frame"
         aria-hidden="true"
@@ -136,12 +108,10 @@ export function LivingHeroArtifact() {
           border: "1px solid var(--wireframe-hairline)",
           pointerEvents: "none",
           zIndex: 0,
-          transform: `translateZ(-12px) rotateX(${springTilt.x * 0.4}deg) rotateY(${springTilt.y * 0.4}deg)`,
-          transition: "transform 0.12s linear",
         }}
       />
 
-      {/* Compact Top-Left Floating Status Pill (positioned outside toolbar, <= 44px) */}
+      {/* Compact Top-Left Floating Status Pill (<= 44px height) */}
       <div
         className="hero-float-card hero-float-card-1"
         aria-hidden="true"
@@ -160,8 +130,6 @@ export function LivingHeroArtifact() {
           maxHeight: "40px",
           maxWidth: "100%",
           whiteSpace: "nowrap",
-          transform: `translate3d(${springTilt.y * -1.4}px, ${springTilt.x * 1.4}px, 24px)`,
-          transition: "transform 0.1s linear",
           background: "var(--bg-surface2)",
           border: "1px solid var(--border-hairline)",
           borderRadius: "9999px",
@@ -172,17 +140,16 @@ export function LivingHeroArtifact() {
         }}
       >
         <span className="status-dot status-dot-amber" />
-        <span style={{ color: "var(--text-faint)", fontWeight: 500 }}>Draft saved,</span>
+        <span style={{ color: "var(--text-faint)", fontWeight: 500 }}>Draft saved</span>
         <span style={{ color: "var(--text-primary)", fontWeight: 500, fontFamily: "var(--font-geist-mono)" }}>
-          2 min ago
+          v3 checked
         </span>
       </div>
 
-      {/* 3D Tilted Living Card Body */}
+      {/* Main 3D Tilted Card Body */}
       <div
         className="hero-form-body hero-living-card hero-scroll-card"
         style={{
-          transform: `rotateX(${springTilt.x}deg) rotateY(${springTilt.y}deg) translateY(calc(var(--hero-scroll, 0) * -14px)) scale(calc(1 - var(--hero-scroll, 0) * 0.02))`,
           transformStyle: "preserve-3d",
           position: "relative",
           zIndex: 2,
@@ -191,8 +158,8 @@ export function LivingHeroArtifact() {
           borderRadius: "1.25rem",
           background:
             mode === "read"
-              ? "color-mix(in srgb, var(--bg-surface1) 84%, transparent)"
-              : "color-mix(in srgb, var(--bg-surface1) 76%, transparent)",
+              ? "color-mix(in srgb, var(--bg-surface1) 86%, transparent)"
+              : "color-mix(in srgb, var(--bg-surface1) 78%, transparent)",
           backdropFilter: "blur(16px) saturate(140%)",
           WebkitBackdropFilter: "blur(16px) saturate(140%)",
           border: "1px solid var(--border-hairline)",
@@ -202,21 +169,10 @@ export function LivingHeroArtifact() {
           display: "flex",
           flexDirection: "column",
           gap: "0.875rem",
-          transition: "background 0.25s ease, border-color 0.25s ease",
         }}
       >
-        {/* Specular Highlight Layer */}
-        <div
-          className="hero-form-specular"
-          style={{
-            position: "absolute",
-            inset: 0,
-            borderRadius: "inherit",
-            pointerEvents: "none",
-            background: `radial-gradient(400px circle at ${50 + springTilt.y * 3}% ${50 - springTilt.x * 3}%, var(--rim-specular), transparent 70%)`,
-          }}
-          aria-hidden="true"
-        />
+        {/* Dynamic Specular Gradient Highlight */}
+        <div className="hero-form-specular" aria-hidden="true" />
 
         {/* Crisp 1px top-edge specular rim line */}
         <div
@@ -275,13 +231,14 @@ export function LivingHeroArtifact() {
                 color: "var(--text-muted)",
                 marginLeft: "0.2rem",
                 whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
               }}
             >
               Draft: City away leg
             </span>
           </div>
 
-          {/* Accessible Segmented Switcher (>= 44px height touch targets) */}
           <div
             role="tablist"
             aria-label="Editor view mode"
@@ -313,7 +270,6 @@ export function LivingHeroArtifact() {
                 cursor: "pointer",
                 background: mode === "write" ? "var(--btn-primary-bg)" : "transparent",
                 color: mode === "write" ? "var(--btn-primary-text)" : "var(--text-muted)",
-                transition: "background 0.15s ease, color 0.15s ease, transform 0.1s ease",
               }}
             >
               Write
@@ -337,7 +293,6 @@ export function LivingHeroArtifact() {
                 cursor: "pointer",
                 background: mode === "read" ? "var(--btn-primary-bg)" : "transparent",
                 color: mode === "read" ? "var(--btn-primary-text)" : "var(--text-muted)",
-                transition: "background 0.15s ease, color 0.15s ease, transform 0.1s ease",
               }}
             >
               Read
@@ -345,7 +300,7 @@ export function LivingHeroArtifact() {
           </div>
         </div>
 
-        {/* View Mode Panels */}
+        {/* Panels */}
         {mode === "write" ? (
           <div
             id="panel-write"
@@ -361,11 +316,8 @@ export function LivingHeroArtifact() {
               minWidth: 0,
             }}
           >
-            <span className="sr-only">
-              Interactive football article editor preview demonstrating live drafting cadence, autosave, and word count.
-            </span>
+            <span className="sr-only">{AUTO_TEXT}</span>
 
-            {/* Click-to-pause & Interactive Typing Area */}
             <div
               onClick={handleEditorClick}
               style={{
@@ -423,7 +375,6 @@ export function LivingHeroArtifact() {
               )}
             </div>
 
-            {/* Live Interactive Status & Metadata Bar */}
             <div
               style={{
                 display: "flex",
@@ -441,9 +392,7 @@ export function LivingHeroArtifact() {
             >
               <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                 <span className="status-dot status-dot-amber" />
-                <span>
-                  {isInteractive ? "Interactive mode, typing live" : "Auto-typing preview"}
-                </span>
+                <span>{isInteractive ? "Interactive mode" : "Illustration"}</span>
                 {isInteractive && (
                   <button
                     type="button"
@@ -545,7 +494,7 @@ export function LivingHeroArtifact() {
         )}
       </div>
 
-      {/* Compact Bottom-Right Floating Status Pill (positioned outside card body) */}
+      {/* Compact Bottom-Right Floating Status Pill */}
       <div
         className="hero-float-card hero-float-card-2"
         aria-hidden="true"
@@ -564,8 +513,6 @@ export function LivingHeroArtifact() {
           maxHeight: "40px",
           maxWidth: "100%",
           whiteSpace: "nowrap",
-          transform: `translate3d(${springTilt.y * -1.8}px, ${springTilt.x * 1.8}px, 36px)`,
-          transition: "transform 0.1s linear",
           background: "var(--bg-surface2)",
           border: "1px solid var(--border-hairline)",
           borderRadius: "9999px",
