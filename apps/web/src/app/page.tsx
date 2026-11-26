@@ -12,7 +12,7 @@ import { CtaDotMatrixLoader } from "./cta-dot-matrix-loader";
 import { ScrollChoreography } from "./scroll-choreography";
 
 export const metadata: Metadata = {
-  title: "Inkwellio — Write the game. Own the link.",
+  title: "Inkwellio — Publish football. Own it.",
   description:
     "A calm home for match analysis, club history and long-form football culture. Write in Markdown, organise by topics, and publish at your own address.",
 };
@@ -40,8 +40,8 @@ export default function Home() {
               </p>
 
               <h1 className="hero-headline hero-headline-reveal">
-                <span className="hero-headline-line">Write the game.</span>{" "}
-                <span className="hero-headline-line hero-headline-sweep">Own the link.</span>
+                <span className="hero-headline-line">Publish football.</span>{" "}
+                <span className="hero-headline-line hero-headline-sweep">Own it.</span>
               </h1>
 
               <p className="hero-sub">
@@ -100,6 +100,51 @@ export default function Home() {
 
         {/* ── Signature Stage: A post's life ──────────────────────── */}
         <PostLifeStage />
+
+        {/* ── Horizontal Side-Entrance Band: Writer & Reader ─────── */}
+        <section
+          id="writer-reader"
+          className="page-section below-fold-section side-glide-band"
+          aria-labelledby="writer-reader-heading"
+        >
+          <SectionHeader
+            eyebrow="Two crafts, one home"
+            heading={<span id="writer-reader-heading" className="ink-reveal-heading">Calm to write. Calm to read.</span>}
+            body="Every feature exists either to protect the writer at the keyboard or keep the reader immersed in prose."
+          />
+
+          <div className="side-glide-grid">
+            <article className="side-glide-card side-glide-left spotlight-card bento-specular-card">
+              <div className="side-glide-card-head">
+                <span className="chip">For the writer</span>
+                <span className="side-glide-mono">Markdown · Studio</span>
+              </div>
+              <h3 className="side-glide-title">Drafts guarded against stale overwrites</h3>
+              <p className="side-glide-copy">
+                Write in clean Markdown with live word count, assign up to three curated football topics, choose your slug, and publish with version-checked saves so open tabs never collide.
+              </p>
+              <div className="side-glide-foot">
+                <span>JSON export available any time</span>
+                <span>0% clutter</span>
+              </div>
+            </article>
+
+            <article className="side-glide-card side-glide-right spotlight-card bento-specular-card">
+              <div className="side-glide-card-head">
+                <span className="chip">For the reader</span>
+                <span className="side-glide-mono">Newsreader · 65ch</span>
+              </div>
+              <h3 className="side-glide-title">Archival typography without noise</h3>
+              <p className="side-glide-copy">
+                Public articles arrive as fast, semantic server HTML with dark obsidian or archival paper surfaces, crisp keyboard focus rings, and zero third-party ad or analytics scripts.
+              </p>
+              <div className="side-glide-foot">
+                <span>/@handle/slug &amp; /topics</span>
+                <span>0 trackers</span>
+              </div>
+            </article>
+          </div>
+        </section>
 
         {/* ── Reading Room Showcase ───────────────────────────────── */}
         <section
@@ -222,11 +267,23 @@ export default function Home() {
                     letterSpacing: "-0.03em",
                     lineHeight: 1.1,
                     color: "var(--flip-text-primary)",
-                    margin: "1rem 0 1.25rem",
+                    margin: "1rem 0 1rem",
+                  }}
+                >
+                  Write the game. Own the link.
+                </h2>
+                <p
+                  style={{
+                    fontSize: "1.125rem",
+                    fontWeight: 500,
+                    lineHeight: 1.5,
+                    color: "var(--flip-text-primary)",
+                    maxWidth: "44ch",
+                    margin: "0 0 0.75rem",
                   }}
                 >
                   Your words, your address, nothing else.
-                </h2>
+                </p>
                 <p
                   style={{
                     fontSize: "1.0625rem",
@@ -365,7 +422,7 @@ export default function Home() {
               <MagneticButton href="/sign-up" className="btn-primary">
                 Sign up
               </MagneticButton>
-              <Link href="/topics" prefetch={false} className="btn-ghost">
+              <Link href="/topics" className="btn-ghost">
                 Browse topics
               </Link>
             </div>

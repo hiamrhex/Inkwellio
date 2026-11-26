@@ -63,18 +63,22 @@ void main() {
   silkIntensity = clamp(silkIntensity, 0.0, 0.20);
 
   float vignette = smoothstep(1.35, 0.22, length((uv - 0.5) * vec2(1.15, 1.25)));
-  silkIntensity *= vignette;
+  float bottomFade = smoothstep(0.0, 0.24, uv.y);
+  silkIntensity *= vignette * bottomFade;
 
   float grain = (hash12(gl_FragCoord.xy + fract(u_time * 13.7) * 97.0) - 0.5) * 0.025;
 
   if (u_theme > 0.5) {
-    vec3 paperBase = vec3(0.9804, 0.9804, 0.9804);
-    vec3 inkTint = vec3(0.82, 0.825, 0.845);
-    vec3 col = mix(paperBase, inkTint, silkIntensity * 0.82) + grain * 0.45;
-    outColor = vec4(clamp(col, 0.0, 1.0), clamp(silkIntensity * 1.15 + 0.03, 0.0, 1.0));
+    vec3 inkTint = vec3(0.42, 0.46, 0.50);
+    vec3 accentTint = vec3(0.0627, 0.7255, 0.5059);
+    vec3 col = mix(inkTint, accentTint, 0.14) + grain * 0.12;
+    float alpha = clamp(silkIntensity * 0.85, 0.0, 0.35) * bottomFade;
+    outColor = vec4(clamp(col, 0.0, 1.0) * alpha, alpha);
   } else {
-    vec3 col = vec3(silkIntensity) + grain;
-    outColor = vec4(clamp(col, 0.0, 1.0), clamp(silkIntensity * 1.45 + 0.04, 0.0, 1.0));
+    vec3 accentSilk = mix(vec3(1.0), vec3(0.0627, 0.7255, 0.5059), 0.14);
+    vec3 col = accentSilk + grain;
+    float alpha = clamp(silkIntensity * 1.35, 0.0, 0.42) * bottomFade;
+    outColor = vec4(clamp(col, 0.0, 1.0) * alpha, alpha);
   }
 }
 `;

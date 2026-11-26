@@ -19,7 +19,6 @@ export function MagneticButton({
   return (
     <Link
       href={href}
-      prefetch={false}
       data-magnetic="true"
       className={`magnetic-btn ${className}`.trim()}
       {...props}

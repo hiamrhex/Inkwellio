@@ -124,7 +124,8 @@ export function InteractiveBento() {
               style={{
                 flex: 1,
                 minWidth: "120px",
-                minHeight: "44px",
+                minHeight: "46px",
+                height: "46px",
                 background: "var(--bg-surface3)",
                 border: "1px solid var(--border-hairline)",
                 borderRadius: "0.5rem",
@@ -339,7 +340,6 @@ export function InteractiveBento() {
             <span>Channels: {selectedTopics.join(", ")}</span>
             <Link
               href="/topics"
-              prefetch={false}
               className="bento-pill-btn underline"
               style={{
                 minHeight: "46px",

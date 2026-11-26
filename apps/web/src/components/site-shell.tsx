@@ -22,26 +22,35 @@ export function SiteHeader({ isHome = false }: SiteHeaderProps) {
         Skip to main content
       </a>
 
-      <nav className="site-nav" aria-label="Main navigation">
-        <Link href="/" prefetch={false} className="nav-logo" aria-label="Inkwellio home">
-          Inkwellio
-        </Link>
+      <header className="site-header-bar" aria-label="Main navigation">
+        <div className="site-header-grid">
+          <div className="nav-zone-left">
+            <Link href="/" className="nav-logo" aria-label="Inkwellio home">
+              <span className="status-dot status-dot-live" aria-hidden="true" />
+              <span>Inkwellio</span>
+            </Link>
+          </div>
 
-        <ul className="nav-links">
-          {NAV_ITEMS.map((item) => (
-            <li key={item.anchor}>
-              <Link href={isHome ? item.anchor : `/${item.anchor}`} prefetch={false}>
-                {item.label}
-              </Link>
-            </li>
-          ))}
-        </ul>
+          <nav className="site-nav nav-center-pill" aria-label="Primary sections">
+            <ul className="nav-links">
+              {NAV_ITEMS.map((item) => (
+                <li key={item.anchor}>
+                  <Link href={isHome ? item.anchor : `/${item.anchor}`}>
+                    {item.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
 
-        <div className="nav-utilities">
-          <ThemeToggle />
-          <SessionNavActions />
+          <div className="nav-zone-right">
+            <div className="nav-utilities">
+              <ThemeToggle />
+              <SessionNavActions />
+            </div>
+          </div>
         </div>
-      </nav>
+      </header>
     </>
   );
 }
@@ -52,16 +61,16 @@ export function SiteFooter() {
       <div className="site-footer-inner">
         <span>Inkwellio — 2026 — inkwellio.example</span>
         <nav aria-label="Footer navigation" className="site-footer-links">
-          <Link href="/topics" prefetch={false} className="site-footer-link">
+          <Link href="/topics" className="site-footer-link">
             Topics
           </Link>
-          <Link href="/search" prefetch={false} className="site-footer-link">
+          <Link href="/search" className="site-footer-link">
             Search
           </Link>
-          <Link href="/privacy" prefetch={false} className="site-footer-link">
+          <Link href="/privacy" className="site-footer-link">
             Privacy
           </Link>
-          <Link href="/terms" prefetch={false} className="site-footer-link">
+          <Link href="/terms" className="site-footer-link">
             Terms
           </Link>
         </nav>

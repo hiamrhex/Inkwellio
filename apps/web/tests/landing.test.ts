@@ -125,15 +125,22 @@ describe("Product name & honesty contract", () => {
     expect(bare.test(siteShellSrc)).toBe(false);
   });
 
-  it("enforces Wave A hero headline, subline, and CTAs", () => {
-    expect(pageSrc).toContain("Write the game.");
-    expect(pageSrc).toContain("Own the link.");
+  it("enforces Wave A hero headline, closing display line, subline, and CTAs", () => {
+    expect(pageSrc).toMatch(/<h1[^>]*hero-headline[\s\S]*?Publish football\.[\s\S]*?Own it\.[\s\S]*?<\/h1>/);
+    expect(pageSrc).toMatch(/id="publishing-heading"[\s\S]*?Write the game\. Own the link\./);
     expect(pageSrc).toContain(
       "A calm home for match analysis, club history and long-form football culture.",
     );
     expect(pageSrc).toContain('href="/sign-up"');
     expect(pageSrc).toContain('href="#post-life"');
     expect(pageSrc).toContain("See how it works");
+    expect(pageSrc).toContain("side-glide-left");
+    expect(pageSrc).toContain("side-glide-right");
+  });
+
+  it("mutation proof: updated headline assertion rejects old H1 ordering", () => {
+    const legacyHeroOnly = `<h1 className="hero-headline">Write the game. Own the link.</h1>`;
+    expect(legacyHeroOnly).not.toMatch(/<h1[^>]*hero-headline[\s\S]*?Publish football\.[\s\S]*?Own it\.[\s\S]*?<\/h1>/);
   });
 
   it("enforces honesty contract across landing, signature stage, bento, shell, and docs", () => {
@@ -265,16 +272,27 @@ describe("Touch targets, CSP & runtime budgets", () => {
    4. Shared Shell, Auth Island, Navigation Anchors & Subpages
    ════════════════════════════════════════════════════════════════ */
 describe("Shared Shell & Public Reading Routes", () => {
-  it("header exposes Inkwellio, Principles/Editor/Reading/Publishing nav, ThemeToggle, Sign in, Sign up", () => {
+  it("header exposes 3-zone Inkwellio layout, nav, ThemeToggle, Sign in, Sign up without prefetch={false}", () => {
     for (const label of ["Principles", "Editor", "Reading", "Publishing"]) {
       expect(siteShellSrc).toContain(label);
     }
+    expect(siteShellSrc).toContain("site-header-bar");
+    expect(siteShellSrc).toContain("site-header-grid");
+    expect(siteShellSrc).toContain("nav-zone-left");
+    expect(siteShellSrc).toContain("nav-center-pill");
+    expect(siteShellSrc).toContain("nav-zone-right");
     expect(siteShellSrc).toContain("<ThemeToggle");
     expect(siteShellSrc).toContain("<SessionNavActions");
     expect(siteShellSrc).toContain('href="#main-content"');
     expect(siteShellSrc).toContain('href="/privacy"');
     expect(siteShellSrc).toContain('href="/terms"');
     expect(cssSrc).toContain(".nav-auth-slot");
+    expect(cssSrc).toContain("rgb"); // tokens + emerald accents validated below
+    expect(cssSrc).toContain("#10b981");
+
+    for (const src of [siteShellSrc, sessionNavSrc, bentoSrc, magneticSrc, pageSrc]) {
+      expect(src).not.toContain("prefetch={false}");
+    }
   });
 
   it("SessionNavActions checks GET /api/auth/get-session after load + idle and swaps to Dashboard / Sign out", () => {
@@ -320,7 +338,7 @@ describe("Shared Shell & Public Reading Routes", () => {
    5. Signature Stage ("A post's life"), Honest Bento & Hero
    ════════════════════════════════════════════════════════════════ */
 describe("Signature stage, honest Bento & Hero artifact", () => {
-  it("mounts zero-client-JS PostLifeStage with Illustration label, CSS scroll-timeline, 3D flip & live /p/@handle/slug step", () => {
+  it("mounts zero-client-JS PostLifeStage with Illustration label, 280vh CSS scroll-timeline, horizontal side-glide, 3D flip & reduced-motion disablement", () => {
     expect(pageSrc).toContain("<PostLifeStage");
     expect(postLifeSrc).not.toMatch(/["']use client["']/);
     expect(postLifeSrc).toContain("A post&apos;s life");
@@ -332,9 +350,14 @@ describe("Signature stage, honest Bento & Hero artifact", () => {
     expect(postLifeSrc).toContain("Publish");
     expect(postLifeSrc).toContain('className="sr-only"');
     expect(cssSrc).toContain("--post-life-tl");
+    expect(cssSrc).toContain("height: 280vh;");
     expect(cssSrc).toContain("animation-timeline: view()");
     expect(cssSrc).toContain("rotateY(180deg)");
     expect(cssSrc).toContain("steps(");
+    expect(cssSrc).toContain(".side-glide-band");
+    expect(cssSrc).toContain("overflow-x: clip");
+    expect(cssSrc).toContain("side-glide-in-left");
+    expect(cssSrc).toContain("side-glide-in-right");
   });
 
   it("InteractiveBento replaces fake revisions with real curated football topics", () => {
