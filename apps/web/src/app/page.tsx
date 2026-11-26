@@ -3,11 +3,11 @@ import Link from "next/link";
 import { IconTile, SectionHeader } from "@inkwellio/ui";
 import { SiteShell } from "@/components/site-shell";
 import { LivingHeroArtifact } from "./living-hero-artifact";
-import { HeroSculpture } from "./hero-sculpture";
 import { MagneticButton } from "./magnetic-button";
 import { InteractiveBento } from "./interactive-bento";
 import { PostLifeStage } from "./post-life-stage";
-import { HeroSilkLoader } from "./hero-silk-loader";
+import { TopicMarquee } from "./topic-marquee";
+import { HeroRibbonLoader } from "./hero-ribbon-loader";
 import { CtaDotMatrixLoader } from "./cta-dot-matrix-loader";
 import { ScrollChoreography } from "./scroll-choreography";
 
@@ -16,6 +16,29 @@ export const metadata: Metadata = {
   description:
     "A calm home for match analysis, club history and long-form football culture. Write in Markdown, organise by topics, and publish at your own address.",
 };
+
+const CAPABILITIES = [
+  {
+    title: "Plain Markdown",
+    body: "Draft clean tactical analysis with live word counts and zero formatting clutter.",
+    icon: "M4 6h12M4 10h8M4 14h10",
+  },
+  {
+    title: "Version-checked drafts",
+    body: "Optimistic version checks stop stale browser tabs from silently overwriting work.",
+    icon: "M5 10l3 3 7-7",
+  },
+  {
+    title: "Curated channels",
+    body: "Assign up to three football topics so readers discover pieces without engagement feeds.",
+    icon: "M4 6h5v5H4zM11 6h5v5h-5zM4 13h5v5H4z",
+  },
+  {
+    title: "Full JSON export",
+    body: "Download every profile record, publication link, and post in JSON whenever you want.",
+    icon: "M10 3v9M6 8l4 4 4-4M4 15h12",
+  },
+] as const;
 
 export default function Home() {
   return (
@@ -26,7 +49,7 @@ export default function Home() {
           <div className="hero-silk-backdrop" aria-hidden="true">
             <div className="hero-silk-fallback" />
           </div>
-          <HeroSilkLoader />
+          <HeroRibbonLoader />
           <section
             aria-label="Introduction"
             className="hero-section hero-stage"
@@ -58,7 +81,7 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Right (5/12): 3D monochrome sculpture layered behind living artifact */}
+            {/* Right (5/12): thick edge-lit living editor framed by flowing ink ribbons */}
             <div
               className="hero-artifact-wrap"
               style={{
@@ -68,7 +91,6 @@ export default function Home() {
                 justifyContent: "center",
               }}
             >
-              <HeroSculpture />
               <div
                 style={{
                   position: "relative",
@@ -98,8 +120,46 @@ export default function Home() {
           <InteractiveBento />
         </section>
 
-        {/* ── Signature Stage: A post's life ──────────────────────── */}
+        {/* ── Curated Topics Marquee Strip ────────────────────────── */}
+        <TopicMarquee />
+
+        {/* ── Signature Stage: A post's life (300vh Horizontal Glide) ── */}
         <PostLifeStage />
+
+        {/* ── Borderless 4-Column Capability Strip ─────────────────── */}
+        <section
+          id="capabilities"
+          className="page-section below-fold-section capability-band"
+          aria-labelledby="capabilities-heading"
+        >
+          <h2 id="capabilities-heading" className="sr-only">
+            Core capabilities
+          </h2>
+          <ul className="capability-grid">
+            {CAPABILITIES.map((cap) => (
+              <li key={cap.title} className="capability-item">
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 20 20"
+                  fill="none"
+                  aria-hidden="true"
+                  className="capability-icon"
+                >
+                  <path
+                    d={cap.icon}
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+                <h3 className="capability-title">{cap.title}</h3>
+                <p className="capability-body">{cap.body}</p>
+              </li>
+            ))}
+          </ul>
+        </section>
 
         {/* ── Horizontal Side-Entrance Band: Writer & Reader ─────── */}
         <section
@@ -114,7 +174,10 @@ export default function Home() {
           />
 
           <div className="side-glide-grid">
-            <article className="side-glide-card side-glide-left spotlight-card bento-specular-card">
+            <article
+              className="side-glide-card side-glide-left spotlight-card bento-specular-card"
+              data-spotlight="true"
+            >
               <div className="side-glide-card-head">
                 <span className="chip">For the writer</span>
                 <span className="side-glide-mono">Markdown · Studio</span>
@@ -129,14 +192,17 @@ export default function Home() {
               </div>
             </article>
 
-            <article className="side-glide-card side-glide-right spotlight-card bento-specular-card">
+            <article
+              className="side-glide-card side-glide-right spotlight-card bento-specular-card"
+              data-spotlight="true"
+            >
               <div className="side-glide-card-head">
                 <span className="chip">For the reader</span>
                 <span className="side-glide-mono">Newsreader · 65ch</span>
               </div>
               <h3 className="side-glide-title">Archival typography without noise</h3>
               <p className="side-glide-copy">
-                Public articles arrive as fast, semantic server HTML with dark obsidian or archival paper surfaces, crisp keyboard focus rings, and zero third-party ad or analytics scripts.
+                Public articles arrive as semantic server HTML with deep black dark mode or cool-paper light surfaces, crisp keyboard focus rings, and zero third-party ad or analytics scripts.
               </p>
               <div className="side-glide-foot">
                 <span>/@handle/slug &amp; /topics</span>
@@ -146,33 +212,21 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ── Reading Room Showcase ───────────────────────────────── */}
+        {/* ── Reading Room Showcase (Melted Into Open Canvas) ─────── */}
         <section
           id="reading-room"
           className="page-section section-entry below-fold-section"
           aria-labelledby="reading-heading"
-          style={{ paddingBottom: 0, position: "relative", zIndex: 2 }}
+          style={{ position: "relative", zIndex: 2 }}
         >
           <SectionHeader
             align="left"
             eyebrow="Reader mode"
             heading={<span id="reading-heading" className="ink-reveal-heading">The Reading Room</span>}
-            body="How your readers experience your writing. No banners, no pop-up overlays, no tracking scripts. Just print-grade typography on archival paper."
+            body="How your readers experience your writing. No banners, no pop-up overlays, no tracking scripts. Just print-grade typography set directly onto the open reading surface."
           />
 
-          <div
-            className="reading-card"
-            style={{
-              position: "relative",
-              overflow: "hidden",
-              marginTop: "2rem",
-              padding: "clamp(2rem, 5vw, 3.5rem)",
-              background: "var(--bg-surface1)",
-              border: "1px solid var(--border-hairline)",
-              borderRadius: "1.25rem",
-              boxShadow: "var(--shadow-card)",
-            }}
-          >
+          <div className="reading-card reading-card-melted spotlight-card bento-specular-card" data-spotlight="true">
             <div className="reading-progress-track" aria-hidden="true">
               <div className="reading-progress-fill" />
             </div>
@@ -239,130 +293,53 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ── Scroll-scrubbed gradient curtain transition (280px) ───── */}
-        <div className="flip-curtain" aria-hidden="true" />
-
-        {/* ── Rhythm flip: Publishing / Principles ─────────────────── */}
+        {/* ── Publishing Showcase (Continuous Tonal World) ──────── */}
         <section
           id="publishing"
-          className="section-flip section-full below-fold-section"
+          className="page-section publishing-showcase below-fold-section"
           aria-labelledby="publishing-heading"
         >
-          <div
-            style={{
-              maxWidth: "1200px",
-              margin: "0 auto",
-              padding: "calc(var(--section-y) * 0.7) clamp(1.25rem, 4vw, 3rem)",
-            }}
-          >
-            <div className="publishing-grid">
-              <div>
-                <span className="chip flip-chip">For football writers</span>
-                <h2
-                  id="publishing-heading"
-                  className="ink-reveal-heading"
-                  style={{
-                    fontSize: "clamp(2rem,4vw,3rem)",
-                    fontWeight: 600,
-                    letterSpacing: "-0.03em",
-                    lineHeight: 1.1,
-                    color: "var(--flip-text-primary)",
-                    margin: "1rem 0 1rem",
-                  }}
-                >
-                  Write the game. Own the link.
-                </h2>
-                <p
-                  style={{
-                    fontSize: "1.125rem",
-                    fontWeight: 500,
-                    lineHeight: 1.5,
-                    color: "var(--flip-text-primary)",
-                    maxWidth: "44ch",
-                    margin: "0 0 0.75rem",
-                  }}
-                >
-                  Your words, your address, nothing else.
-                </p>
-                <p
-                  style={{
-                    fontSize: "1.0625rem",
-                    lineHeight: 1.65,
-                    color: "var(--flip-text-muted)",
-                    maxWidth: "44ch",
-                    margin: 0,
-                  }}
-                >
-                  Match reports from non-league Saturdays. Long reads about tactics. Club histories that deserve more than a thread. Inkwellio gives each piece of writing a permanent home at a link with your handle in it.
-                </p>
-                <p
-                  style={{
-                    fontSize: "1.0625rem",
-                    lineHeight: 1.65,
-                    color: "var(--flip-text-muted)",
-                    maxWidth: "44ch",
-                    margin: "1rem 0 0",
-                  }}
-                >
-                  No tracking scripts. No engagement metrics. No algorithm deciding who reads you. Just honest publishing for people who care about the game.
-                </p>
-              </div>
-
-              <ul
-                style={{
-                  listStyle: "none",
-                  margin: 0,
-                  padding: 0,
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "1.5rem",
-                }}
+          <div className="publishing-grid">
+            <div>
+              <span className="chip">For football writers</span>
+              <h2
+                id="publishing-heading"
+                className="ink-reveal-heading publishing-display-heading"
               >
-                {[
-                  {
-                    title: "Your link",
-                    body: "Every writer owns a publication at inkwellio.example/@yourname. Articles resolve permanently at /@handle/slug and /p/@handle/slug.",
-                  },
-                  {
-                    title: "Draft safety & full export",
-                    body: "Every draft write checks its version number to stop stale tabs colliding, and you can export all your writing as JSON at any time.",
-                  },
-                  {
-                    title: "Readable anywhere",
-                    body: "Public publication and topic pages serve clean server HTML quickly on slow connections and work with keyboard navigation.",
-                  },
-                ].map((item) => (
-                  <li
-                    key={item.title}
-                    style={{
-                      paddingLeft: "1rem",
-                      borderLeft: "2px solid var(--flip-border)",
-                    }}
-                  >
-                    <strong
-                      style={{
-                        display: "block",
-                        fontSize: "0.9375rem",
-                        fontWeight: 600,
-                        color: "var(--flip-text-primary)",
-                        marginBottom: "0.25rem",
-                      }}
-                    >
-                      {item.title}
-                    </strong>
-                    <span
-                      style={{
-                        fontSize: "0.9375rem",
-                        lineHeight: 1.6,
-                        color: "var(--flip-text-muted)",
-                      }}
-                    >
-                      {item.body}
-                    </span>
-                  </li>
-                ))}
-              </ul>
+                <span className="hero-headline-sweep">Write the game. Own the link.</span>
+              </h2>
+              <p className="publishing-lead">
+                Your words, your address, nothing else.
+              </p>
+              <p className="publishing-body">
+                Match reports from non-league Saturdays. Long reads about tactics. Club histories that deserve more than a thread. Inkwellio gives each piece of writing a permanent home at a link with your handle in it.
+              </p>
+              <p className="publishing-body" style={{ marginTop: "1rem" }}>
+                No tracking scripts. No engagement metrics. No algorithm deciding who reads you. Just honest publishing for people who care about the game.
+              </p>
             </div>
+
+            <ul className="publishing-points">
+              {[
+                {
+                  title: "Your link",
+                  body: "Every writer owns a publication at inkwellio.example/@yourname. Articles resolve permanently at /@handle/slug and /p/@handle/slug.",
+                },
+                {
+                  title: "Draft safety & full export",
+                  body: "Every draft write checks its version number to stop stale tabs colliding, and you can export all your writing as JSON at any time.",
+                },
+                {
+                  title: "Readable anywhere",
+                  body: "Public publication and topic pages serve semantic HTML on slow connections and support full keyboard navigation.",
+                },
+              ].map((item) => (
+                <li key={item.title} className="publishing-point">
+                  <strong className="publishing-point-title">{item.title}</strong>
+                  <span className="publishing-point-body">{item.body}</span>
+                </li>
+              ))}
+            </ul>
           </div>
         </section>
 

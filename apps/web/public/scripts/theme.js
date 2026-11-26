@@ -1,7 +1,7 @@
 /**
- * theme.js — zero-FOUC theme bootstrap.
+ * theme.js — zero-FOUC theme & motion preference bootstrap.
  * Loaded as a blocking <script> in <head> before first paint.
- * Sets data-theme on <html> and preloads only the active theme's hero sculpture on /.
+ * Sets data-theme and data-motion on <html> immediately.
  */
 (function () {
   try {
@@ -17,15 +17,7 @@
           : "light";
     d.setAttribute("data-theme", resolved);
 
-    if (window.location.pathname === "/") {
-      var imgUrl =
-        resolved === "light" ? "/images/hero-ink-light.webp" : "/images/hero-ink-dark.webp";
-      var l = document.createElement("link");
-      l.rel = "preload";
-      l.as = "image";
-      l.href = imgUrl;
-      l.setAttribute("fetchpriority", "high");
-      document.head.appendChild(l);
-    }
+    var paused = localStorage.getItem("inkwellio-motion-paused") === "1";
+    d.setAttribute("data-motion", paused ? "paused" : "active");
   } catch {}
 })();

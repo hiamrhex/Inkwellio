@@ -10,9 +10,14 @@ export const metadata: Metadata = {
 
 export default function ForgotPasswordPage() {
   return (
-    <SiteShell>
+    <SiteShell minimalHeader>
       <main id="main-content" className="auth-main">
-        <section className="auth-card spotlight-card" aria-labelledby="forgot-password-heading">
+        <div className="auth-fluted-backdrop" aria-hidden="true" />
+        <section
+          className="auth-card auth-monolith-card spotlight-card bento-specular-card"
+          data-spotlight="true"
+          aria-labelledby="forgot-password-heading"
+        >
           <div className="auth-card-head">
             <Chip>Account recovery</Chip>
             <h1 id="forgot-password-heading" className="auth-title">

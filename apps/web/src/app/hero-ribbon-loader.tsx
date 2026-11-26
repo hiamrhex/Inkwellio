@@ -3,8 +3,8 @@
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 
-const LazyHeroSilkCanvas = dynamic(
-  () => import("./hero-silk-canvas").then((m) => m.HeroSilkCanvas),
+const LazyHeroRibbonCanvas = dynamic(
+  () => import("./hero-ribbon-canvas").then((m) => m.HeroRibbonCanvas),
   { ssr: false },
 );
 
@@ -13,45 +13,41 @@ interface NetworkInformationLike {
 }
 
 /**
- * HeroSilkLoader — Strictly gated lazy loader for the WebGL2 silk shader.
+ * HeroRibbonLoader — Idle-deferred loader for the live mathematical ink-ribbon canvas.
  * Defers mount until window load + requestIdleCallback (minimum 450ms settle)
- * and only activates on fine hover pointers with >= 4 CPU cores, no saveData,
- * and motion allowed.
+ * and skips mounting if navigator.connection.saveData is active.
  */
-export function HeroSilkLoader() {
-  const [enableWebGL, setEnableWebGL] = useState(false);
+export function HeroRibbonLoader() {
+  const [mountCanvas, setMountCanvas] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     let idleId: number | null = null;
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
-    const canRunShader = (): boolean => {
-      if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) return false;
-      if ((navigator.hardwareConcurrency ?? 0) < 4) return false;
+    const shouldLoad = (): boolean => {
       const conn = (navigator as { connection?: NetworkInformationLike }).connection;
       if (conn?.saveData) return false;
-      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return false;
+      if ((navigator.hardwareConcurrency ?? 4) < 2) return false;
       return true;
     };
 
     const scheduleMount = () => {
-      if (cancelled || !canRunShader()) return;
+      if (cancelled || !shouldLoad()) return;
       timeoutId = setTimeout(() => {
-        if (cancelled || !canRunShader()) return;
+        if (cancelled || !shouldLoad()) return;
         const ric = (
           window as { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number }
         ).requestIdleCallback;
-
         if (typeof ric === "function") {
           idleId = ric(
             () => {
-              if (!cancelled && canRunShader()) setEnableWebGL(true);
+              if (!cancelled && shouldLoad()) setMountCanvas(true);
             },
-            { timeout: 1500 },
+            { timeout: 1400 },
           );
         } else {
-          setEnableWebGL(true);
+          setMountCanvas(true);
         }
       }, 450);
     };
@@ -73,6 +69,6 @@ export function HeroSilkLoader() {
     };
   }, []);
 
-  if (!enableWebGL) return null;
-  return <LazyHeroSilkCanvas />;
+  if (!mountCanvas) return null;
+  return <LazyHeroRibbonCanvas />;
 }

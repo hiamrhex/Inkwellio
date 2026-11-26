@@ -58,7 +58,7 @@ const authUtils = readSrc("apps/web/src/components/auth/auth-form-utils.ts");
 const cssSrc = readSrc("apps/web/src/app/globals.css");
 
 describe("Wave A Phase A2 — Auth & Legal policy, shell, and accessibility", () => {
-  it("declares sibling policy = 'public' and renders SiteShell + id='main-content' on every route", () => {
+  it("declares sibling policy = 'public' and renders SiteShell minimalHeader + fluted backdrop + monolith card", () => {
     for (const route of ROUTES) {
       const policySrc = readSrc(`apps/web/src/app/${route}/policy.ts`);
       const pageSrc = readSrc(`apps/web/src/app/${route}/page.tsx`);
@@ -67,6 +67,20 @@ describe("Wave A Phase A2 — Auth & Legal policy, shell, and accessibility", ()
       expect(pageSrc, `${route} page must render id="main-content"`).toContain('id="main-content"');
       expect(pageSrc, `${route} must ban the word elite`).not.toMatch(/\belite\b/i);
     }
+
+    for (const [label, authSrc] of [
+      ["/sign-in", signInPage],
+      ["/sign-up", signUpPage],
+      ["/verify-email", verifyEmailPage],
+      ["/forgot-password", forgotPage],
+      ["/reset-password", resetPage],
+    ] as const) {
+      expect(authSrc, `${label} must use minimalHeader`).toContain("<SiteShell minimalHeader>");
+      expect(authSrc, `${label} must render fluted backdrop`).toContain("auth-fluted-backdrop");
+      expect(authSrc, `${label} must use monolith rim-lit card`).toContain("auth-monolith-card");
+    }
+    expect(cssSrc).toContain(".auth-fluted-backdrop");
+    expect(cssSrc).toContain(".site-header-inner-minimal");
   });
 
   it("wraps searchParams / headers readers in <Suspense> for Next.js Cache Components compatibility", () => {

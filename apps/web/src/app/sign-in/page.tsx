@@ -48,9 +48,14 @@ async function SignInContent({ searchParams }: SignInPageProps) {
 
 export default function SignInPage({ searchParams }: SignInPageProps) {
   return (
-    <SiteShell>
+    <SiteShell minimalHeader>
       <main id="main-content" className="auth-main">
-        <section className="auth-card spotlight-card" aria-labelledby="sign-in-heading">
+        <div className="auth-fluted-backdrop" aria-hidden="true" />
+        <section
+          className="auth-card auth-monolith-card spotlight-card bento-specular-card"
+          data-spotlight="true"
+          aria-labelledby="sign-in-heading"
+        >
           <div className="auth-card-head">
             <Chip>Writer account</Chip>
             <h1 id="sign-in-heading" className="auth-title">

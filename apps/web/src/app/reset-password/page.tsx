@@ -28,9 +28,14 @@ async function ResetPasswordContent({ searchParams }: ResetPasswordPageProps) {
 
 export default function ResetPasswordPage({ searchParams }: ResetPasswordPageProps) {
   return (
-    <SiteShell>
+    <SiteShell minimalHeader>
       <main id="main-content" className="auth-main">
-        <section className="auth-card spotlight-card" aria-labelledby="reset-password-heading">
+        <div className="auth-fluted-backdrop" aria-hidden="true" />
+        <section
+          className="auth-card auth-monolith-card spotlight-card bento-specular-card"
+          data-spotlight="true"
+          aria-labelledby="reset-password-heading"
+        >
           <div className="auth-card-head">
             <Chip>Account recovery</Chip>
             <h1 id="reset-password-heading" className="auth-title">

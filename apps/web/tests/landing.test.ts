@@ -90,14 +90,14 @@ const postLifeSrc = readSrc("apps/web/src/app/post-life-stage.tsx");
 const iconTileSrc = readSrc("packages/ui/src/icon-tile.tsx");
 const themeToggleSrc = readSrc("packages/ui/src/theme-toggle.tsx");
 const heroArtifactSrc = readSrc("apps/web/src/app/living-hero-artifact.tsx");
-const heroSculptureSrc = readSrc("apps/web/src/app/hero-sculpture.tsx");
+const topicMarqueeSrc = readSrc("apps/web/src/app/topic-marquee.tsx");
 const bentoSrc = readSrc("apps/web/src/app/interactive-bento.tsx");
 const chipSrc = readSrc("packages/ui/src/chip.tsx");
 const sectionHeaderSrc = readSrc("packages/ui/src/section-header.tsx");
-const silkCanvasSrc = readSrc("apps/web/src/app/hero-silk-canvas.tsx");
+const ribbonCanvasSrc = readSrc("apps/web/src/app/hero-ribbon-canvas.tsx");
 const dotMatrixSrc = readSrc("apps/web/src/app/cta-dot-matrix.tsx");
 const scrollChoreoSrc = readSrc("apps/web/src/app/scroll-choreography.tsx");
-const silkLoaderSrc = readSrc("apps/web/src/app/hero-silk-loader.tsx");
+const ribbonLoaderSrc = readSrc("apps/web/src/app/hero-ribbon-loader.tsx");
 const dotLoaderSrc = readSrc("apps/web/src/app/cta-dot-matrix-loader.tsx");
 const magneticSrc = readSrc("apps/web/src/app/magnetic-button.tsx");
 const runtimePath = path.join(root, "apps/web/public/scripts/landing-runtime.js");
@@ -272,23 +272,31 @@ describe("Touch targets, CSP & runtime budgets", () => {
    4. Shared Shell, Auth Island, Navigation Anchors & Subpages
    ════════════════════════════════════════════════════════════════ */
 describe("Shared Shell & Public Reading Routes", () => {
-  it("header exposes 3-zone Inkwellio layout, nav, ThemeToggle, Sign in, Sign up without prefetch={false}", () => {
+  it("header renders unified single top bar, Pause motion footer toggle, and zero prefetch={false}", () => {
     for (const label of ["Principles", "Editor", "Reading", "Publishing"]) {
       expect(siteShellSrc).toContain(label);
     }
     expect(siteShellSrc).toContain("site-header-bar");
-    expect(siteShellSrc).toContain("site-header-grid");
+    expect(siteShellSrc).toContain("site-header-inner");
+    expect(siteShellSrc).toContain("minimalHeader");
     expect(siteShellSrc).toContain("nav-zone-left");
-    expect(siteShellSrc).toContain("nav-center-pill");
     expect(siteShellSrc).toContain("nav-zone-right");
     expect(siteShellSrc).toContain("<ThemeToggle");
     expect(siteShellSrc).toContain("<SessionNavActions");
+    expect(siteShellSrc).toContain('data-motion-toggle="true"');
+    expect(siteShellSrc).toContain("Pause motion");
+    expect(siteShellSrc).toContain("Resume motion");
     expect(siteShellSrc).toContain('href="#main-content"');
     expect(siteShellSrc).toContain('href="/privacy"');
     expect(siteShellSrc).toContain('href="/terms"');
     expect(cssSrc).toContain(".nav-auth-slot");
-    expect(cssSrc).toContain("rgb"); // tokens + emerald accents validated below
+    expect(cssSrc).toContain('[data-motion="paused"]');
     expect(cssSrc).toContain("#10b981");
+    expect(cssSrc).not.toContain(".section-flip");
+    expect(cssSrc).not.toContain(".flip-curtain");
+    expect(landingRuntimeSrc).toContain("data-motion-toggle");
+    expect(landingRuntimeSrc).toContain("inkwellio:motion-change");
+    expect(themeJsSrc).toContain("inkwellio-motion-paused");
 
     for (const src of [siteShellSrc, sessionNavSrc, bentoSrc, magneticSrc, pageSrc]) {
       expect(src).not.toContain("prefetch={false}");
@@ -338,9 +346,12 @@ describe("Shared Shell & Public Reading Routes", () => {
    5. Signature Stage ("A post's life"), Honest Bento & Hero
    ════════════════════════════════════════════════════════════════ */
 describe("Signature stage, honest Bento & Hero artifact", () => {
-  it("mounts zero-client-JS PostLifeStage with Illustration label, 280vh CSS scroll-timeline, horizontal side-glide, 3D flip & reduced-motion disablement", () => {
+  it("mounts zero-client-JS PostLifeStage (300vh horizontal), TopicMarquee, capability strip & side-glide", () => {
     expect(pageSrc).toContain("<PostLifeStage");
+    expect(pageSrc).toContain("<TopicMarquee");
+    expect(pageSrc).toContain("capability-grid");
     expect(postLifeSrc).not.toMatch(/["']use client["']/);
+    expect(topicMarqueeSrc).not.toMatch(/["']use client["']/);
     expect(postLifeSrc).toContain("A post&apos;s life");
     expect(postLifeSrc).toContain("<Chip>Illustration</Chip>");
     expect(postLifeSrc).toContain("/p/@handle/slug");
@@ -350,10 +361,13 @@ describe("Signature stage, honest Bento & Hero artifact", () => {
     expect(postLifeSrc).toContain("Publish");
     expect(postLifeSrc).toContain('className="sr-only"');
     expect(cssSrc).toContain("--post-life-tl");
-    expect(cssSrc).toContain("height: 280vh;");
+    expect(cssSrc).toContain("height: 300vh;");
+    expect(cssSrc).toContain("post-life-horizontal-glide");
     expect(cssSrc).toContain("animation-timeline: view()");
     expect(cssSrc).toContain("rotateY(180deg)");
     expect(cssSrc).toContain("steps(");
+    expect(cssSrc).toContain(".topic-marquee-track");
+    expect(cssSrc).toContain(".spotlight-card::after");
     expect(cssSrc).toContain(".side-glide-band");
     expect(cssSrc).toContain("overflow-x: clip");
     expect(cssSrc).toContain("side-glide-in-left");
@@ -393,54 +407,47 @@ describe("Performance budgets, motion & hero sculpture assets", () => {
     );
   });
 
-  it("enforces Part C motion gates, lazy loading, active-only sculpture & deferred fonts", () => {
-    expect(silkLoaderSrc).toContain("hardwareConcurrency");
-    expect(silkLoaderSrc).toContain("saveData");
-    expect(silkLoaderSrc).toContain("requestIdleCallback");
-    expect(silkLoaderSrc).toContain("dynamic(");
+  it("enforces Part C motion gates, lazy loading, live ink-ribbon <canvas>, DPR cap & deferred fonts", () => {
+    expect(ribbonLoaderSrc).toContain("saveData");
+    expect(ribbonLoaderSrc).toContain("requestIdleCallback");
+    expect(ribbonLoaderSrc).toContain("dynamic(");
     expect(dotLoaderSrc).toContain("dynamic(");
-    expect(silkCanvasSrc).toContain("1000 / 30");
-    expect(silkCanvasSrc).not.toContain('window.addEventListener("pointermove"');
+    expect(ribbonCanvasSrc).toContain("1000 / 30");
+    expect(ribbonCanvasSrc).toContain("devicePixelRatio || 1, 1.5");
+    expect(ribbonCanvasSrc).not.toContain('window.addEventListener("pointermove"');
     expect(dotMatrixSrc).not.toContain('window.addEventListener("pointermove"');
     expect(layoutSrc).toContain("preload: true");
     expect(layoutSrc).toContain("preload: false");
     expect(cssSrc).toContain("content-visibility: auto");
   });
 
-  it("isolates WebGL silk canvas from 2D CTA dot-matrix canvas and enforces reduced-motion stops", () => {
-    expect(silkCanvasSrc).toContain('getContext("webgl2"');
-    expect(silkCanvasSrc).not.toContain('getContext("2d"');
+  it("isolates HeroRibbonCanvas and CtaDotMatrix, supports Pause motion & enforces reduced-motion stops", () => {
+    expect(ribbonCanvasSrc).toContain('getContext("2d"');
     expect(dotMatrixSrc).toContain('getContext("2d"');
-    expect(dotMatrixSrc).not.toContain('getContext("webgl2"');
+    expect(dotMatrixSrc).toContain("scanPosY");
+    expect(heroArtifactSrc).not.toContain("backdropFilter");
 
-    for (const src of [silkCanvasSrc, dotMatrixSrc]) {
+    for (const src of [ribbonCanvasSrc, dotMatrixSrc]) {
       expect(src).toContain("prefers-reduced-motion: reduce");
       expect(src).toContain("IntersectionObserver");
       expect(src).toContain("visibilitychange");
+      expect(src).toContain("inkwellio:motion-change");
     }
     expect(scrollChoreoSrc).toContain("prefers-reduced-motion: reduce");
+    expect(scrollChoreoSrc).toContain("inkwellio:motion-change");
     expect(scrollChoreoSrc).toContain("passive: true");
     expect(cssSrc).toMatch(/@media\s*\(prefers-reduced-motion:\s*reduce\)[\s\S]*\.hero-headline-sweep/);
     expect(cssSrc).toMatch(/@media\s*\(prefers-reduced-motion:\s*reduce\)[\s\S]*\.post-life-flip-inner/);
+    expect(cssSrc).toMatch(/:root\[data-motion="paused"\][\s\S]*\.hero-headline-sweep/);
   });
 
-  it("includes <= 80 KiB hero WebPs with explicit dims, eager load, sizes & fetchPriority=high", () => {
-    const darkPath = path.join(root, "apps/web/public/images/hero-ink-dark.webp");
-    const lightPath = path.join(root, "apps/web/public/images/hero-ink-light.webp");
-    expect(fs.existsSync(darkPath)).toBe(true);
-    expect(fs.existsSync(lightPath)).toBe(true);
-    expect(fs.statSync(darkPath).size).toBeLessThanOrEqual(81920);
-    expect(fs.statSync(lightPath).size).toBeLessThanOrEqual(81920);
-
-    expect(pageSrc).toContain("<HeroSculpture");
-    expect(heroSculptureSrc).not.toMatch(/["']use client["']/);
-    expect(heroSculptureSrc).toContain("hero-sculpture-media");
-    expect(heroSculptureSrc).toContain('aria-hidden="true"');
-    expect(themeJsSrc).toContain("fetchpriority");
-    expect(cssSrc).toContain("hero-ink-dark.webp");
-    expect(cssSrc).toContain("hero-ink-light.webp");
-    expect(cssSrc).toContain("mix-blend-mode: screen");
-    expect(cssSrc).toContain("mix-blend-mode: multiply");
+  it("replaces static hero images with lazy flowing HeroRibbonLoader on /", () => {
+    expect(pageSrc).toContain("<HeroRibbonLoader");
+    expect(pageSrc).not.toContain("HeroSculpture");
+    expect(themeJsSrc).not.toContain("hero-ink-dark.webp");
+    expect(themeJsSrc).not.toContain("hero-ink-light.webp");
+    expect(cssSrc).not.toContain("hero-ink-dark.webp");
+    expect(cssSrc).not.toContain("hero-ink-light.webp");
   });
 
   it("records design principles & local sculpture inventory without licence claims", () => {
