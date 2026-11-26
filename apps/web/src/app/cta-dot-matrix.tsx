@@ -27,7 +27,7 @@ export function CtaDotMatrix() {
     if (!ctx) return;
 
     const reducedMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
-    let isReduced = reducedMotionQuery.matches;
+    const finePointerQuery = window.matchMedia("(hover: hover) and (pointer: fine)");
     let isVisible = true;
     let isTabVisible = !document.hidden;
     let rafId: number | null = null;
@@ -37,6 +37,10 @@ export function CtaDotMatrix() {
 
     let currentX = -9999;
     let currentY = -9999;
+
+    const isFrozen = () =>
+      reducedMotionQuery.matches ||
+      document.documentElement.getAttribute("data-motion") === "paused";
 
     let cssW = 1;
     let cssH = 1;
@@ -60,14 +64,16 @@ export function CtaDotMatrix() {
     };
 
     const draw = (timeSec: number) => {
+      const frozen = isFrozen();
       ctx.clearRect(0, 0, cssW, cssH);
 
       const isLight = document.documentElement.getAttribute("data-theme") === "light";
-      const rgb = isLight ? "10, 10, 11" : "255, 255, 255";
+      const rgb = isLight ? "15, 23, 42" : "255, 255, 255";
+      const emeraldRgb = isLight ? "15, 118, 110" : "16, 185, 129";
 
       const shared = (window as SharedPointerWindow).__inkwellioPointer;
       let pointerNear = false;
-      if (!isReduced && shared && shared.active) {
+      if (!frozen && finePointerQuery.matches && shared && shared.active) {
         const lx = shared.x - hostLeft;
         const ly = shared.y - hostTop;
         pointerNear =
@@ -80,18 +86,21 @@ export function CtaDotMatrix() {
             currentX = lx;
             currentY = ly;
           } else {
-            currentX += (lx - currentX) * 0.14;
-            currentY += (ly - currentY) * 0.14;
+            currentX += (lx - currentX) * 0.1;
+            currentY += (ly - currentY) * 0.1;
           }
         }
       }
 
       const cx = cssW * 0.5;
       const cy = cssH * 0.5;
-      const maxRadius = Math.max(160, Math.min(cssW, cssH) * 0.58);
+      const maxRadius = Math.max(160, Math.min(cssW, cssH) * 0.62);
       const orbitalBase = Math.min(cssW, cssH) * 0.34;
-      const orbitalRadius = isReduced ? orbitalBase : orbitalBase + Math.sin(timeSec * 0.7) * 14;
+      const orbitalRadius = frozen ? orbitalBase : orbitalBase + Math.sin(timeSec * 0.7) * 14;
       const bandWidth = 42;
+      // Subtle horizontal glowing scanline sweeping smoothly top -> bottom
+      const scanPosY = frozen ? cy : ((timeSec * 52) % (cssH + 140)) - 70;
+      const scanSpread = 76;
 
       const cols = Math.ceil(cssW / GRID_STEP);
       const rows = Math.ceil(cssH / GRID_STEP);
@@ -100,6 +109,9 @@ export function CtaDotMatrix() {
 
       for (let r = 0; r < rows; r++) {
         const y = offsetY + r * GRID_STEP;
+        const scanDist = Math.abs(y - scanPosY);
+        const scanFactor = scanDist < scanSpread ? Math.pow(1 - scanDist / scanSpread, 2) : 0;
+
         for (let c = 0; c < cols; c++) {
           const x = offsetX + c * GRID_STEP;
           const distCenter = Math.hypot(x - cx, y - cy);
@@ -108,10 +120,12 @@ export function CtaDotMatrix() {
           if (edgeFade <= 0.02) continue;
 
           const ringDist = Math.abs(distCenter - orbitalRadius);
-          const ringBoost = ringDist < bandWidth ? (1 - ringDist / bandWidth) * 0.22 : 0;
+          const ringBoost = ringDist < bandWidth ? (1 - ringDist / bandWidth) * 0.2 : 0;
+          const rippleX = frozen ? 1 : 0.75 + 0.25 * Math.sin(x * 0.015 - timeSec * 1.4);
+          const scanBoost = scanFactor * 0.34 * rippleX;
 
           let haloBoost = 0;
-          if (!isReduced && pointerNear) {
+          if (!frozen && pointerNear) {
             const pDist = Math.hypot(x - currentX, y - currentY);
             if (pDist < CURSOR_HALO_RADIUS) {
               const t = 1 - pDist / CURSOR_HALO_RADIUS;
@@ -121,12 +135,13 @@ export function CtaDotMatrix() {
 
           const baseAlpha = isLight ? 0.08 : 0.09;
           const alpha = Math.min(
-            0.72,
-            (baseAlpha + ringBoost + haloBoost) * (0.35 + 0.65 * edgeFade),
+            0.78,
+            (baseAlpha + ringBoost + haloBoost + scanBoost) * (0.35 + 0.65 * edgeFade),
           );
-          const radius = 1.05 + haloBoost * 1.45 + ringBoost * 0.8;
+          const radius = 1.05 + haloBoost * 1.45 + ringBoost * 0.7 + scanBoost * 1.25;
+          const useEmerald = scanBoost + haloBoost > 0.16;
 
-          ctx.fillStyle = `rgba(${rgb}, ${alpha.toFixed(3)})`;
+          ctx.fillStyle = `rgba(${useEmerald ? emeraldRgb : rgb}, ${alpha.toFixed(3)})`;
           ctx.beginPath();
           ctx.arc(x, y, radius, 0, Math.PI * 2);
           ctx.fill();
@@ -142,7 +157,7 @@ export function CtaDotMatrix() {
     };
 
     const tick = (now: number) => {
-      if (!isVisible || !isTabVisible || isReduced) {
+      if (!isVisible || !isTabVisible || isFrozen()) {
         rafId = null;
         return;
       }
@@ -155,7 +170,7 @@ export function CtaDotMatrix() {
     };
 
     const syncRunState = () => {
-      if (isReduced) {
+      if (isFrozen()) {
         stopLoop();
         draw(0);
         return;
@@ -186,7 +201,7 @@ export function CtaDotMatrix() {
       typeof ResizeObserver !== "undefined"
         ? new ResizeObserver(() => {
             syncRect();
-            if (isReduced) draw(0);
+            if (isFrozen()) draw(0);
           })
         : null;
     ro?.observe(host);
@@ -196,23 +211,19 @@ export function CtaDotMatrix() {
       syncRunState();
     };
 
-    const handleMotion = (e: MediaQueryListEvent) => {
-      isReduced = e.matches;
-      syncRunState();
-    };
-
     const themeObserver = new MutationObserver(() => {
-      if (isReduced) draw(0);
+      syncRunState();
     });
     themeObserver.observe(document.documentElement, {
       attributes: true,
-      attributeFilter: ["data-theme"],
+      attributeFilter: ["data-theme", "data-motion"],
     });
 
     syncRect();
     window.addEventListener("scroll", syncRect, { passive: true });
     document.addEventListener("visibilitychange", handleVisibility);
-    reducedMotionQuery.addEventListener("change", handleMotion);
+    reducedMotionQuery.addEventListener("change", syncRunState);
+    window.addEventListener("inkwellio:motion-change", syncRunState);
 
     syncRunState();
 
@@ -223,7 +234,8 @@ export function CtaDotMatrix() {
       themeObserver.disconnect();
       window.removeEventListener("scroll", syncRect);
       document.removeEventListener("visibilitychange", handleVisibility);
-      reducedMotionQuery.removeEventListener("change", handleMotion);
+      reducedMotionQuery.removeEventListener("change", syncRunState);
+      window.removeEventListener("inkwellio:motion-change", syncRunState);
     };
   }, []);
 

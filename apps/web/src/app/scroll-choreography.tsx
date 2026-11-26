@@ -3,10 +3,10 @@
 import { useEffect } from "react";
 
 /**
- * ScrollChoreography — Lightweight passive scroll driver (zero sync layout during mount,
- * zero scroll-jacking). Defers scroll CSS custom properties for fallback engines when
- * CSS animation-timeline: view() is unsupported, maintains nav compact + cached scroll-spy,
- * and activates deferred Newsreader fonts on idle when approaching reading sections.
+ * ScrollChoreography — Passive scroll driver (zero sync layout during mount, zero scroll-jacking).
+ * Maintains sticky header hairline border > 64px, cached scroll-spy, horizontal progress for
+ * #post-life, fallback reveal variables when CSS animation-timeline: view() is unavailable,
+ * and idle Newsreader font activation. Respects both prefers-reduced-motion and [data-motion="paused"].
  */
 export function ScrollChoreography() {
   useEffect(() => {
@@ -40,19 +40,32 @@ export function ScrollChoreography() {
     const heroStage = document.querySelector<HTMLElement>(".hero-stage");
     const readingSection = document.querySelector<HTMLElement>("#reading-room");
     const readingFill = document.querySelector<HTMLElement>(".reading-progress-fill");
-    const curtain = document.querySelector<HTMLElement>(".flip-curtain");
-    const publishingSection = document.querySelector<HTMLElement>("#publishing");
     const sideGlideSection = document.querySelector<HTMLElement>("#writer-reader");
     const postLifeSection = document.querySelector<HTMLElement>("#post-life");
+    const postLifeTrack = document.querySelector<HTMLElement>(".post-life-track");
     const bentoCards = Array.from(document.querySelectorAll<HTMLElement>(".bento-cell-reveal"));
 
     let heroHeight = 760;
+    let postLifeTop = 0;
+    let postLifeTravel = 1;
+
+    const isMotionFrozen = () =>
+      reducedQuery.matches ||
+      document.documentElement.getAttribute("data-motion") === "paused";
 
     const refreshCachedOffsets = () => {
       for (const item of spyItems) {
         item.top = item.el.offsetTop;
       }
-      heroHeight = Math.max(1, (heroOuter?.offsetHeight || heroStage?.offsetHeight || window.innerHeight) * 0.9);
+      heroHeight = Math.max(
+        1,
+        (heroOuter?.offsetHeight || heroStage?.offsetHeight || window.innerHeight) * 0.9,
+      );
+      if (postLifeTrack && postLifeSection) {
+        postLifeTop = postLifeSection.offsetTop;
+        const vh = window.innerHeight || 900;
+        postLifeTravel = Math.max(1, postLifeTrack.offsetHeight - vh);
+      }
     };
 
     const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
@@ -61,9 +74,9 @@ export function ScrollChoreography() {
       rafPending = false;
       const scrollY = window.scrollY || window.pageYOffset || 0;
       const vh = window.innerHeight || 1;
-      const isReduced = reducedQuery.matches;
+      const frozen = isMotionFrozen();
 
-      // 1. Sticky nav compact > 64px + scroll-spy using cached offsets (zero forced reflow)
+      // 1. Sticky unified bar hairline > 64px + scroll-spy using cached offsets
       if (nav) {
         nav.classList.toggle("is-scrolled", scrollY > 64);
       }
@@ -84,15 +97,20 @@ export function ScrollChoreography() {
         }
       }
 
-      // 2. Hero exit depth
-      const heroVal = isReduced ? "0" : clamp01(scrollY / heroHeight).toFixed(4);
+      // 2. Hero exit twist variable + horizontal post-life progress
+      const heroVal = frozen ? "0" : clamp01(scrollY / heroHeight).toFixed(4);
       heroStage?.style.setProperty("--hero-scroll", heroVal);
       heroOuter?.style.setProperty("--hero-scroll", heroVal);
 
-      // 3. Fallback JS scroll progress only when native CSS view() timeline is unsupported or reduced
-      if (!supportsTimeline || isReduced) {
+      if (postLifeSection) {
+        const pVal = frozen ? "0" : clamp01((scrollY - postLifeTop) / postLifeTravel).toFixed(4);
+        postLifeSection.style.setProperty("--post-life-p", pVal);
+      }
+
+      // 3. Fallback progress when CSS animation-timeline: view() is unsupported or frozen
+      if (!supportsTimeline || frozen) {
         if (readingSection && readingFill) {
-          if (isReduced) {
+          if (frozen) {
             readingFill.style.transform = "scaleX(1)";
           } else {
             const rect = readingSection.getBoundingClientRect();
@@ -101,26 +119,8 @@ export function ScrollChoreography() {
             readingFill.style.transform = `scaleX(${progress.toFixed(4)})`;
           }
         }
-        if (curtain) {
-          if (isReduced) {
-            curtain.style.setProperty("--curtain-progress", "1");
-          } else {
-            const rect = curtain.getBoundingClientRect();
-            const progress = clamp01((vh - rect.top) / Math.max(1, rect.height + vh * 0.25));
-            curtain.style.setProperty("--curtain-progress", progress.toFixed(4));
-          }
-        }
-        if (publishingSection) {
-          if (isReduced) {
-            publishingSection.style.setProperty("--flip-scroll", "1");
-          } else {
-            const rect = publishingSection.getBoundingClientRect();
-            const progress = clamp01((vh - rect.top) / (vh * 0.65));
-            publishingSection.style.setProperty("--flip-scroll", progress.toFixed(4));
-          }
-        }
         if (sideGlideSection) {
-          if (isReduced) {
+          if (frozen) {
             sideGlideSection.style.setProperty("--glide-progress", "1");
           } else {
             const rect = sideGlideSection.getBoundingClientRect();
@@ -144,9 +144,7 @@ export function ScrollChoreography() {
             scheduleUpdate();
           })
         : null;
-    if (ro) {
-      ro.observe(document.body);
-    }
+    ro?.observe(document.body);
 
     let bentoIo: IntersectionObserver | null = null;
     if (typeof IntersectionObserver !== "undefined" && bentoCards.length > 0) {
@@ -167,8 +165,10 @@ export function ScrollChoreography() {
       });
     }
 
-    // Defer Newsreader serif activation until approaching #post-life or #reading-room
+    // Activate deferred Newsreader serif on idle / approach
     let fontIo: IntersectionObserver | null = null;
+    const activateFonts = () => document.documentElement.classList.add("editorial-font-ready");
+    const ric = (window as { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number }).requestIdleCallback;
     const targets = [postLifeSection, readingSection].filter(
       (el): el is HTMLElement => el !== null,
     );
@@ -176,24 +176,23 @@ export function ScrollChoreography() {
       fontIo = new IntersectionObserver(
         (entries) => {
           if (entries.some((e) => e.isIntersecting)) {
-            const activate = () => document.documentElement.classList.add("editorial-font-ready");
-            const ric = (window as { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number }).requestIdleCallback;
-            if (typeof ric === "function") {
-              ric(activate, { timeout: 600 });
-            } else {
-              requestAnimationFrame(activate);
-            }
+            if (typeof ric === "function") ric(activateFonts, { timeout: 600 });
+            else requestAnimationFrame(activateFonts);
             fontIo?.disconnect();
           }
         },
-        { rootMargin: "240px" },
+        { rootMargin: "420px" },
       );
       for (const target of targets) {
         fontIo.observe(target);
       }
+    } else if (typeof ric === "function") {
+      ric(activateFonts, { timeout: 900 });
     }
 
-    // Initial geometry refresh queued outside synchronous useEffect commit
+    const mo = new MutationObserver(() => scheduleUpdate());
+    mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-motion"] });
+
     const initRaf = requestAnimationFrame(() => {
       refreshCachedOffsets();
       updateScrollMetrics();
@@ -202,12 +201,15 @@ export function ScrollChoreography() {
     window.addEventListener("scroll", scheduleUpdate, { passive: true });
     window.addEventListener("resize", refreshCachedOffsets, { passive: true });
     reducedQuery.addEventListener("change", scheduleUpdate);
+    window.addEventListener("inkwellio:motion-change", scheduleUpdate);
 
     return () => {
       cancelAnimationFrame(initRaf);
+      mo.disconnect();
       window.removeEventListener("scroll", scheduleUpdate);
       window.removeEventListener("resize", refreshCachedOffsets);
       reducedQuery.removeEventListener("change", scheduleUpdate);
+      window.removeEventListener("inkwellio:motion-change", scheduleUpdate);
       ro?.disconnect();
       bentoIo?.disconnect();
       fontIo?.disconnect();

@@ -58,8 +58,11 @@ describe("tokens", () => {
     expect(tokens).toHaveProperty("light");
   });
 
-  it("U2: dark.bgCanvas is true black #000000", () => {
+  it("U2: dark.bgCanvas is true black #000000 and dark.bgSurface1 is #0a0b0e", () => {
     expect(tokens.dark.bgCanvas).toBe("#000000");
+    expect(tokens.dark.bgSurface1).toBe("#0a0b0e");
+    expect(contrastRatio(tokens.dark.textPrimary, tokens.dark.bgSurface1)).toBeGreaterThanOrEqual(7);
+    expect(contrastRatio(tokens.dark.textMuted, tokens.dark.bgSurface1)).toBeGreaterThanOrEqual(4.5);
   });
 
   it("U3: light.bgCanvas is crisp archival slate #f1f3f5 with accessible contrast", () => {

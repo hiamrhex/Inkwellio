@@ -18,15 +18,43 @@
     } catch {}
   }
 
+  function applyMotionPaused(paused) {
+    try {
+      var d = document.documentElement;
+      d.setAttribute("data-motion", paused ? "paused" : "active");
+      localStorage.setItem("inkwellio-motion-paused", paused ? "1" : "0");
+      var toggles = document.querySelectorAll("[data-motion-toggle]");
+      for (var i = 0; i < toggles.length; i++) {
+        toggles[i].setAttribute("aria-pressed", paused ? "true" : "false");
+      }
+      window.dispatchEvent(new Event("inkwellio:motion-change"));
+    } catch {}
+  }
+
+  function syncMotionButton() {
+    var paused = document.documentElement.getAttribute("data-motion") === "paused";
+    var toggles = document.querySelectorAll("[data-motion-toggle]");
+    for (var i = 0; i < toggles.length; i++) {
+      toggles[i].setAttribute("aria-pressed", paused ? "true" : "false");
+    }
+  }
+
   document.addEventListener("click", function (e) {
-    var btn = e.target && e.target.closest ? e.target.closest("[data-theme-toggle]") : null;
-    if (btn) {
+    var themeBtn = e.target && e.target.closest ? e.target.closest("[data-theme-toggle]") : null;
+    if (themeBtn) {
       var cur = document.documentElement.getAttribute("data-theme");
       applyTheme(cur === "dark" ? "light" : "dark");
+      return;
+    }
+    var motionBtn = e.target && e.target.closest ? e.target.closest("[data-motion-toggle]") : null;
+    if (motionBtn) {
+      var isPaused = document.documentElement.getAttribute("data-motion") === "paused";
+      applyMotionPaused(!isPaused);
     }
   });
 
   function initSharedPointer() {
+    syncMotionButton();
     var fine = window.matchMedia("(hover: hover) and (pointer: fine)");
     var reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
     var stage = document.querySelector(".hero-stage");
@@ -86,9 +114,13 @@
       }
     }
 
+    function isMotionFrozen() {
+      return reduced.matches || document.documentElement.getAttribute("data-motion") === "paused";
+    }
+
     function applyFrame() {
       rafId = 0;
-      if (!fine.matches || reduced.matches) {
+      if (!fine.matches || isMotionFrozen()) {
         pointerState.active = false;
         resetTransforms();
         return;
@@ -163,7 +195,7 @@
     document.addEventListener(
       "pointermove",
       function (e) {
-        if (!fine.matches || reduced.matches) return;
+        if (!fine.matches || isMotionFrozen()) return;
         pointerState.x = e.clientX;
         pointerState.y = e.clientY;
         pointerState.active = true;
@@ -171,6 +203,13 @@
       },
       { passive: true }
     );
+
+    window.addEventListener("inkwellio:motion-change", function () {
+      if (isMotionFrozen()) {
+        pointerState.active = false;
+        resetTransforms();
+      }
+    });
 
     document.addEventListener(
       "pointerleave",

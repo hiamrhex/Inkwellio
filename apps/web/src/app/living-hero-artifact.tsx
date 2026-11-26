@@ -15,12 +15,20 @@ export function LivingHeroArtifact() {
 
   useEffect(() => {
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const syncReduced = () => setIsReduced(mq.matches);
-    const raf = requestAnimationFrame(syncReduced);
-    mq.addEventListener("change", syncReduced);
+    const syncFrozen = () => {
+      const paused = document.documentElement.getAttribute("data-motion") === "paused";
+      setIsReduced(mq.matches || paused);
+    };
+    const raf = requestAnimationFrame(syncFrozen);
+    const mo = new MutationObserver(syncFrozen);
+    mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-motion"] });
+    mq.addEventListener("change", syncFrozen);
+    window.addEventListener("inkwellio:motion-change", syncFrozen);
     return () => {
       cancelAnimationFrame(raf);
-      mq.removeEventListener("change", syncReduced);
+      mo.disconnect();
+      mq.removeEventListener("change", syncFrozen);
+      window.removeEventListener("inkwellio:motion-change", syncFrozen);
     };
   }, []);
 
@@ -146,7 +154,7 @@ export function LivingHeroArtifact() {
         </span>
       </div>
 
-      {/* Main 3D Tilted Card Body */}
+      {/* Main 3D Tilted Monolith Card Body (thick surface, no heavy backdrop-filter over animating canvas) */}
       <div
         className="hero-form-body hero-living-card hero-scroll-card"
         style={{
@@ -156,12 +164,7 @@ export function LivingHeroArtifact() {
           width: "100%",
           maxWidth: "100%",
           borderRadius: "1.25rem",
-          background:
-            mode === "read"
-              ? "color-mix(in srgb, var(--bg-surface1) 88%, transparent)"
-              : "color-mix(in srgb, var(--bg-surface1) 82%, transparent)",
-          backdropFilter: "blur(18px) saturate(140%)",
-          WebkitBackdropFilter: "blur(18px) saturate(140%)",
+          background: "var(--hero-card-bg, var(--bg-surface1))",
           border: "1px solid var(--border-hairline)",
           boxShadow: "inset 0 1px 0 0 var(--rim-specular), var(--shadow-card)",
           padding: "1.25rem 1.375rem",

@@ -30,9 +30,14 @@ async function VerifyEmailContent({ searchParams }: VerifyEmailPageProps) {
 
 export default function VerifyEmailPage({ searchParams }: VerifyEmailPageProps) {
   return (
-    <SiteShell>
+    <SiteShell minimalHeader>
       <main id="main-content" className="auth-main">
-        <section className="auth-card spotlight-card" aria-labelledby="verify-email-heading">
+        <div className="auth-fluted-backdrop" aria-hidden="true" />
+        <section
+          className="auth-card auth-monolith-card spotlight-card bento-specular-card"
+          data-spotlight="true"
+          aria-labelledby="verify-email-heading"
+        >
           <div className="auth-card-head">
             <Chip>Email verification</Chip>
             <h1 id="verify-email-heading" className="auth-title">

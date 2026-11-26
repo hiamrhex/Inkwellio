@@ -11,9 +11,9 @@
 export const tokens = {
   dark: {
     bgCanvas:       '#000000',
-    bgSurface1:     '#0c0c0d',
-    bgSurface2:     '#141416',
-    bgSurface3:     '#1c1c1f',
+    bgSurface1:     '#0a0b0e',
+    bgSurface2:     '#121318',
+    bgSurface3:     '#191b22',
     textPrimary:    '#fafafa',
     textMuted:      '#a1a1a6',
     textFaint:      '#7c7c82',
@@ -45,7 +45,7 @@ export const tokens = {
     statusAmber:    '#b45309',
     accent:         '#0066cc', // Focus rings & accessibility
     accentText:     '#ffffff',
-    accentPinch:    'rgba(16, 185, 129, 0.14)',
+    accentPinch:    'rgba(15, 118, 110, 0.14)',
   },
 } as const;
 

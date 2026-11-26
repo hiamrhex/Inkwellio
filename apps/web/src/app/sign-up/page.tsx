@@ -10,9 +10,14 @@ export const metadata: Metadata = {
 
 export default function SignUpPage() {
   return (
-    <SiteShell>
+    <SiteShell minimalHeader>
       <main id="main-content" className="auth-main">
-        <section className="auth-card spotlight-card" aria-labelledby="sign-up-heading">
+        <div className="auth-fluted-backdrop" aria-hidden="true" />
+        <section
+          className="auth-card auth-monolith-card spotlight-card bento-specular-card"
+          data-spotlight="true"
+          aria-labelledby="sign-up-heading"
+        >
           <div className="auth-card-head">
             <Chip>Independent publishing</Chip>
             <h1 id="sign-up-heading" className="auth-title">
