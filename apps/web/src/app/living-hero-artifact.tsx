@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 const AUTO_TEXT =
-  "In the 64th minute, City inverted their right-back into the inside channel, instantly overloading the midfield pivot and forcing the defense into an uncomfortable choice.";
+  "In the 64th minute, City tucked their right-back inside. That move broke the press and opened the middle lane.";
 
 export function LivingHeroArtifact() {
   const [mode, setMode] = useState<"write" | "read">("write");
@@ -150,7 +150,7 @@ export function LivingHeroArtifact() {
         <span className="status-dot status-dot-amber" />
         <span style={{ color: "var(--text-faint)", fontWeight: 500 }}>Draft saved</span>
         <span style={{ color: "var(--text-primary)", fontWeight: 500, fontFamily: "var(--font-geist-mono)" }}>
-          v3 checked
+          v3 safe
         </span>
       </div>
 
@@ -496,8 +496,8 @@ export function LivingHeroArtifact() {
                 gap: "0.5rem",
               }}
             >
-              <span>Newsreader serif, 65ch measure</span>
-              <span>Clean reader ergonomics</span>
+              <span>Newsreader serif, 65ch width</span>
+              <span>Quiet reading view</span>
             </div>
           </div>
         )}

@@ -42,7 +42,7 @@ export default function ResetPasswordPage({ searchParams }: ResetPasswordPagePro
               Choose a new password
             </h1>
             <p className="auth-subtitle">
-              Pick a strong password of 8 to 128 characters. Setting a new password signs out any existing sessions.
+              Pick a password between 8 and 128 characters. Updating it signs out other sessions.
             </p>
           </div>
 

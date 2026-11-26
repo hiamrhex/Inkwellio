@@ -3,6 +3,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
 import {
+  EMAIL_FAILED_MESSAGE,
   focusFirstInvalidField,
   isValidEmailFormat,
   parseAuthError,
@@ -104,7 +105,7 @@ export function VerifyEmailClient({
       if (!response.ok) {
         const err = await parseAuthError(
           response,
-          "We could not send a verification link right now.",
+          EMAIL_FAILED_MESSAGE,
           "verify-email",
         );
         setResendError(err.message);

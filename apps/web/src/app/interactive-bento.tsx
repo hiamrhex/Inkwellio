@@ -79,7 +79,7 @@ export function InteractiveBento() {
         <div>
           <h3 className="essential-title" id="bento-link-title">Publish under your own link</h3>
           <p className="essential-body" style={{ marginTop: "0.5rem" }}>
-            Your writing lives at a permanent address with your handle in it. Readers open your publication page directly, without an algorithmic feed in between.
+            Your stories live at a lasting web address. Readers open your page directly, without a feed in between.
           </p>
         </div>
 
@@ -161,15 +161,15 @@ export function InteractiveBento() {
           <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
             <span className="status-dot status-dot-amber" aria-hidden="true" />
             <span style={{ fontSize: "0.75rem", fontFamily: "var(--font-geist-mono)", color: "var(--text-faint)" }}>
-              Version-checked saves
+              Safe draft saves
             </span>
           </div>
         </div>
 
         <div>
-          <h3 className="essential-title" id="bento-editor-title">Distraction-free Markdown studio</h3>
+          <h3 className="essential-title" id="bento-editor-title">Distraction-free Markdown editor</h3>
           <p className="essential-body" style={{ marginTop: "0.5rem" }}>
-            Draft in plain Markdown with live safe preview and optimistic version checks so two open tabs never silently overwrite each other.
+            Write in plain Markdown and check how it reads. Open browser tabs never overwrite each other.
           </p>
         </div>
 
@@ -280,9 +280,9 @@ export function InteractiveBento() {
         </div>
 
         <div>
-          <h3 className="essential-title" id="bento-topics-title">Organise with curated topics</h3>
+          <h3 className="essential-title" id="bento-topics-title">Organise by football topics</h3>
           <p className="essential-body" style={{ marginTop: "0.5rem" }}>
-            Assign up to three football channels when publishing, and export your full JSON archive whenever you choose.
+            Pick up to three football topics before you publish. Download your full archive as JSON any time.
           </p>
         </div>
 
@@ -368,7 +368,7 @@ export function InteractiveBento() {
                 <path d="M8 7h4M10 7v6M8 13h4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
               </svg>
             </IconTile>
-            <span className="essential-num">04 / Comfort</span>
+            <span className="essential-num">04 / Reading</span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
             <div
@@ -454,9 +454,9 @@ export function InteractiveBento() {
         </div>
 
         <div>
-          <h3 className="essential-title" id="bento-reading-title">Editorial reading comfort</h3>
+          <h3 className="essential-title" id="bento-reading-title">Clean reading with no glare</h3>
           <p className="essential-body" style={{ marginTop: "0.5rem" }}>
-            Calibrated for 3,000-word tactical deep-dives. Balanced contrast prevents optical glare on dark screens, with generous line-height and reader-first typography.
+            Easy on the eyes for long pieces. Switch typeface or text size to test the page.
           </p>
         </div>
 
@@ -479,7 +479,7 @@ export function InteractiveBento() {
               maxWidth: "65ch",
             }}
           >
-            Tactical analysis requires optical patience. Readers absorb every minute detail when the typeface and measure respect their focus.
+            Good match writing takes patience. Readers follow every move when the page stays calm.
           </p>
         </div>
       </article>

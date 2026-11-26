@@ -24,7 +24,7 @@ export default function ForgotPasswordPage() {
               Reset your password
             </h1>
             <p className="auth-subtitle">
-              Enter the email linked to your account. If an account exists, we will send a single-use reset link valid for 15 minutes.
+              Enter your email address. We will send a 15-minute reset link if it matches.
             </p>
           </div>
 

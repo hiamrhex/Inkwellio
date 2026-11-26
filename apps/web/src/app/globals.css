@@ -129,6 +129,13 @@
       0 22px 44px -14px rgba(15, 23, 42, 0.07);
     --shadow-nav: 0 1px 0 var(--border-hairline);
   }
+
+  :root:not([data-theme]) .auth-input {
+    background: #ffffff;
+    color: #0f172a;
+    caret-color: #0f172a;
+    border: 1px solid rgba(15, 23, 42, 0.16);
+  }
 }
 
 @theme inline {
@@ -1863,17 +1870,86 @@ body {
   padding: 0.625rem 0.875rem;
   border-radius: 0.625rem;
   border: 1px solid var(--border-hairline);
-  background: var(--bg-surface2);
+  background: #0d0f14;
   color: var(--text-primary);
+  caret-color: var(--text-primary);
   font-size: 1rem;
   line-height: 1.4;
   transition: border-color var(--duration-hover) ease, box-shadow var(--duration-hover) ease;
+}
+
+.auth-input:-webkit-autofill,
+.auth-input:-webkit-autofill:hover,
+.auth-input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px #0d0f14 inset;
+  box-shadow: 0 0 0 1000px #0d0f14 inset;
+  -webkit-text-fill-color: #fafafa;
+  caret-color: #fafafa;
+  transition: background-color 9999s ease-out;
+}
+
+[data-theme="light"] .auth-input {
+  background: #ffffff;
+  color: #0f172a;
+  caret-color: #0f172a;
+  border: 1px solid rgba(15, 23, 42, 0.16);
+}
+
+[data-theme="light"] .auth-input:-webkit-autofill,
+[data-theme="light"] .auth-input:-webkit-autofill:hover,
+[data-theme="light"] .auth-input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px #ffffff inset;
+  box-shadow: 0 0 0 1000px #ffffff inset;
+  -webkit-text-fill-color: #0f172a;
+  caret-color: #0f172a;
+  transition: background-color 9999s ease-out;
 }
 
 .auth-input:focus-visible {
   outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
   border-color: var(--focus-ring);
+}
+
+.auth-password-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.auth-input-password {
+  padding-right: 3.125rem;
+}
+
+.auth-password-toggle {
+  position: absolute;
+  right: 0.125rem;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: none;
+  border-radius: 0.5rem;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color var(--duration-hover) ease;
+}
+
+.auth-password-toggle:hover {
+  color: var(--text-primary);
+}
+
+.auth-password-toggle:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
 }
 
 .auth-hint {

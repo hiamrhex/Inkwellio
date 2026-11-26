@@ -18,12 +18,18 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { renderToStaticMarkup } from "react-dom/server";
+import { createElement } from "react";
 import { describe, expect, it } from "vitest";
 import {
+  EMAIL_FAILED_MESSAGE,
+  INVALID_CREDENTIALS_MESSAGE,
   isValidEmailFormat,
   parseAuthError,
   RATE_LIMIT_MESSAGE,
+  VALIDATION_MESSAGE,
 } from "../src/components/auth/auth-form-utils";
+import { getPasswordVisibilityState, PasswordField } from "../src/components/auth/password-field";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, "../../..");
@@ -142,23 +148,105 @@ describe("Wave A Phase A2 — Auth & Legal policy, shell, and accessibility", ()
       expect(formSrc).toContain("parseAuthError");
     }
 
-    expect(cssSrc).toMatch(/\.auth-input\s*\{[^}]*min-height:\s*44px/);
-    expect(cssSrc).toMatch(/\.auth-text-link[^{]*\{[^}]*min-height:\s*44px/);
+    expect(cssSrc).toMatch(/\.auth-input\s*\{[^}]*background:\s*#0d0f14/);
+    expect(cssSrc).toContain(".auth-input:-webkit-autofill");
+    expect(cssSrc).toContain("0 0 0 1000px #0d0f14 inset");
+    expect(cssSrc).toContain("transition: background-color 9999s");
+    expect(cssSrc).toMatch(/\[data-theme="light"\]\s*\.auth-input\s*\{[^}]*background:\s*#ffffff/);
+    expect(cssSrc).toMatch(/\.auth-password-toggle\s*\{[^}]*min-width:\s*44px[^}]*min-height:\s*44px/);
   });
 
-  it("parseAuthError maps 429 strictly to calm retry wording and avoids account enumeration", async () => {
+  it("PasswordField renders Show password button (type=button), spellcheck=false, and reusable across all 3 forms", () => {
+    const html = renderToStaticMarkup(
+      createElement(PasswordField, {
+        id: "pw-test",
+        name: "password",
+        autoComplete: "current-password",
+        value: "",
+        onChange: () => {},
+      }),
+    );
+    expect(html).toContain('type="password"');
+    expect(html).toMatch(/spellcheck="false"/i);
+    expect(html).toContain('type="button"');
+    expect(html).toContain('aria-label="Show password"');
+    expect(html).toContain('aria-pressed="false"');
+    expect(html).not.toContain('type="submit"');
+
+    const hiddenState = getPasswordVisibilityState(false);
+    const shownState = getPasswordVisibilityState(true);
+    expect(hiddenState).toEqual({
+      inputType: "password",
+      ariaLabel: "Show password",
+      ariaPressed: false,
+      buttonType: "button",
+    });
+    expect(shownState).toEqual({
+      inputType: "text",
+      ariaLabel: "Show password",
+      ariaPressed: true,
+      buttonType: "button",
+    });
+
+    const pwComponent = readSrc("apps/web/src/components/auth/password-field.tsx");
+    expect(pwComponent).toContain("aria-label={state.ariaLabel}");
+    expect(pwComponent).toContain("aria-pressed={state.ariaPressed}");
+    expect(pwComponent).toContain("spellCheck={false}");
+
+    expect(signInForm).toContain("<PasswordField");
+    expect(signUpForm).toContain("<PasswordField");
+    expect(resetForm).toContain("<PasswordField");
+  });
+
+  it("parseAuthError maps 429, wrong creds, validation, invalid origin, and 500 email failure distinctly without enumeration", async () => {
     const rateLimited = new Response("rate limited", { status: 429 });
     const parsed429 = await parseAuthError(rateLimited, "fallback", "sign-in");
     expect(parsed429.message).toBe(RATE_LIMIT_MESSAGE);
     expect(parsed429.message).toBe("Too many attempts. Try again in a few minutes.");
+
+    const ba429 = new Response(JSON.stringify({ message: "Too many requests. Please try again later." }), {
+      status: 429,
+      headers: { "content-type": "application/json" },
+    });
+    expect((await parseAuthError(ba429, "fallback", "sign-up")).message).toBe(RATE_LIMIT_MESSAGE);
 
     const invalidLogin = new Response(JSON.stringify({ code: "INVALID_EMAIL_OR_PASSWORD" }), {
       status: 401,
       headers: { "content-type": "application/json" },
     });
     const parsed401 = await parseAuthError(invalidLogin, "fallback", "sign-in");
+    expect(parsed401.message).toBe(INVALID_CREDENTIALS_MESSAGE);
     expect(parsed401.message).toContain("could not sign you in");
     expect(parsed401.message).not.toMatch(/user\s+not\s+found|already\s+exists/i);
+
+    const unverifiedLogin = new Response(JSON.stringify({ code: "EMAIL_NOT_VERIFIED", message: "Email not verified" }), {
+      status: 403,
+      headers: { "content-type": "application/json" },
+    });
+    expect((await parseAuthError(unverifiedLogin, "fallback", "sign-in")).code).toBe("EMAIL_NOT_VERIFIED");
+
+    const badOrigin = new Response(JSON.stringify({ code: "INVALID_ORIGIN", message: "Invalid origin" }), {
+      status: 403,
+      headers: { "content-type": "application/json" },
+    });
+    expect((await parseAuthError(badOrigin, "fallback", "sign-in")).code).toBe("INVALID_ORIGIN");
+
+    const email500 = new Response(null, { status: 500 });
+    const parsedVerify500 = await parseAuthError(email500, "fallback", "verify-email");
+    expect(parsedVerify500.message).toBe(EMAIL_FAILED_MESSAGE);
+    expect(parsedVerify500.message).toBe("We could not send the email. Try again shortly.");
+
+    const validation400 = new Response(JSON.stringify({ code: "VALIDATION_ERROR", message: "bad field" }), {
+      status: 400,
+      headers: { "content-type": "application/json" },
+    });
+    expect((await parseAuthError(validation400, "fallback", "sign-up")).message).toBe(VALIDATION_MESSAGE);
+
+    const badEmail400 = new Response(JSON.stringify({ code: "VALIDATION_ERROR", message: "[body.email] Invalid email address" }), {
+      status: 400,
+      headers: { "content-type": "application/json" },
+    });
+    expect((await parseAuthError(badEmail400, "fallback", "sign-up")).message).toBe("Enter a valid email address.");
 
     const expiredReset = new Response(JSON.stringify({ code: "INVALID_TOKEN" }), {
       status: 400,

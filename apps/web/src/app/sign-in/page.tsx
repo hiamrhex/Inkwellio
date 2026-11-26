@@ -62,7 +62,7 @@ export default function SignInPage({ searchParams }: SignInPageProps) {
               Sign in to Inkwellio
             </h1>
             <p className="auth-subtitle">
-              Open your dashboard, draft new pieces, or manage your publication link.
+              Open your dashboard and manage your drafts.
             </p>
           </div>
 

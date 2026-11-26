@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import {
+  EMAIL_FAILED_MESSAGE,
   focusFirstInvalidField,
   isValidEmailFormat,
   parseAuthError,
@@ -45,7 +46,7 @@ export function ForgotPasswordForm() {
       if (!response.ok) {
         const err = await parseAuthError(
           response,
-          "We could not start a password reset right now. Please try again shortly.",
+          EMAIL_FAILED_MESSAGE,
           "forgot-password",
         );
         setFormError(err.message);

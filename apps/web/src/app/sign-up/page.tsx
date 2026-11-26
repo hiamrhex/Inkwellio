@@ -24,7 +24,7 @@ export default function SignUpPage() {
               Create your writer account
             </h1>
             <p className="auth-subtitle">
-              Claim your handle, draft in Markdown, and publish long-form football writing under your own link.
+              Pick a handle, write in Markdown, and publish at your own link.
             </p>
           </div>
 

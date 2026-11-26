@@ -376,9 +376,34 @@ describe("Signature stage, honest Bento & Hero artifact", () => {
 
   it("InteractiveBento replaces fake revisions with real curated football topics", () => {
     expect(bentoSrc).toContain("03 / Topics");
-    expect(bentoSrc).toContain("Organise with curated topics");
+    expect(bentoSrc).toContain("Organise by football topics");
     expect(bentoSrc).toContain('href="/topics"');
     expect(bentoSrc).toContain("inkwellio.example/@");
+  });
+
+  it("enforces plain everyday copy across landing sections (short <= 16-word sentences)", () => {
+    expect(pageSrc).toContain("Your drafts never overwrite each other");
+    expect(pageSrc).toContain("Clean reading with no distractions");
+    expect(postLifeSrc).toContain("Write cleanly with a live word count and autosave.");
+    for (const staleJargon of [
+      "Optimistic version checks",
+      "Archival typography",
+      "semantic server HTML",
+      "optical patience",
+      "ergonomics",
+    ]) {
+      expect(pageSrc).not.toContain(staleJargon);
+      expect(bentoSrc).not.toContain(staleJargon);
+      expect(heroArtifactSrc).not.toContain(staleJargon);
+    }
+    const checkShort = (s: string) =>
+      s
+        .split(/[.!?]+/)
+        .map((part) => part.trim())
+        .filter(Boolean)
+        .every((sent) => sent.split(/\s+/).length <= 16);
+    expect(checkShort("Write cleanly with a live word count and autosave.")).toBe(true);
+    expect(checkShort("One two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen.")).toBe(false);
   });
 
   it("Hero artifact uses shared pointer tilt and segmented Write/Read tabs", () => {

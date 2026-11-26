@@ -44,7 +44,7 @@ export default function VerifyEmailPage({ searchParams }: VerifyEmailPageProps) 
               Verify your email address
             </h1>
             <p className="auth-subtitle">
-              We verify writer addresses before opening studio access or publishing.
+              Verify your email before opening the studio or publishing posts.
             </p>
           </div>
 

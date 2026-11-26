@@ -7,6 +7,7 @@ import {
   isValidEmailFormat,
   parseAuthError,
 } from "@/components/auth/auth-form-utils";
+import { PasswordField } from "@/components/auth/password-field";
 
 interface SignInFormProps {
   readonly redirectTo: string;
@@ -151,17 +152,15 @@ export function SignInForm({
             Forgot password?
           </Link>
         </div>
-        <input
+        <PasswordField
           id="sign-in-password"
           name="password"
-          type="password"
           autoComplete="current-password"
           required
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          onChange={setPassword}
           aria-invalid={passwordError ? "true" : undefined}
           aria-describedby={passwordError ? "sign-in-password-error" : undefined}
-          className="auth-input"
           placeholder="••••••••"
         />
         {passwordError ? (

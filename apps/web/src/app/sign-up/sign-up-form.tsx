@@ -9,6 +9,7 @@ import {
   MIN_PASSWORD_LENGTH,
   parseAuthError,
 } from "@/components/auth/auth-form-utils";
+import { PasswordField } from "@/components/auth/password-field";
 
 export function SignUpForm() {
   const [name, setName] = useState("");
@@ -101,7 +102,7 @@ export function SignUpForm() {
           <span>Check your email</span>
         </div>
         <p className="auth-copy">
-          If this email is eligible for registration, we have sent a verification link. Open the link in your inbox before signing in.
+          Check your inbox for a verification link before signing in.
         </p>
         <div className="auth-actions-stack">
           <Link href="/verify-email" className="btn-primary auth-submit">
@@ -176,21 +177,19 @@ export function SignUpForm() {
         <label htmlFor="sign-up-password" className="auth-label">
           Password
         </label>
-        <input
+        <PasswordField
           id="sign-up-password"
           name="password"
-          type="password"
           autoComplete="new-password"
           minLength={MIN_PASSWORD_LENGTH}
           maxLength={MAX_PASSWORD_LENGTH}
           required
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          onChange={setPassword}
           aria-invalid={passwordError ? "true" : undefined}
           aria-describedby={
             passwordError ? "sign-up-password-hint sign-up-password-error" : "sign-up-password-hint"
           }
-          className="auth-input"
           placeholder="At least 8 characters"
         />
         <p id="sign-up-password-hint" className="auth-hint">

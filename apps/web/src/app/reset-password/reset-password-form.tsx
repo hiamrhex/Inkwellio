@@ -8,6 +8,7 @@ import {
   MIN_PASSWORD_LENGTH,
   parseAuthError,
 } from "@/components/auth/auth-form-utils";
+import { PasswordField } from "@/components/auth/password-field";
 
 interface ResetPasswordFormProps {
   readonly token?: string;
@@ -142,21 +143,19 @@ export function ResetPasswordForm({
         <label htmlFor="reset-new-password" className="auth-label">
           New password
         </label>
-        <input
+        <PasswordField
           id="reset-new-password"
           name="newPassword"
-          type="password"
           autoComplete="new-password"
           minLength={MIN_PASSWORD_LENGTH}
           maxLength={MAX_PASSWORD_LENGTH}
           required
           value={newPassword}
-          onChange={(e) => setNewPassword(e.target.value)}
+          onChange={setNewPassword}
           aria-invalid={passwordError ? "true" : undefined}
           aria-describedby={
             passwordError ? "reset-password-hint reset-new-password-error" : "reset-password-hint"
           }
-          className="auth-input"
           placeholder="At least 8 characters"
         />
         <p id="reset-password-hint" className="auth-hint">
@@ -173,19 +172,17 @@ export function ResetPasswordForm({
         <label htmlFor="reset-confirm-password" className="auth-label">
           Confirm new password
         </label>
-        <input
+        <PasswordField
           id="reset-confirm-password"
           name="confirmPassword"
-          type="password"
           autoComplete="new-password"
           minLength={MIN_PASSWORD_LENGTH}
           maxLength={MAX_PASSWORD_LENGTH}
           required
           value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
+          onChange={setConfirmPassword}
           aria-invalid={confirmError ? "true" : undefined}
           aria-describedby={confirmError ? "reset-confirm-password-error" : undefined}
-          className="auth-input"
           placeholder="Re-enter your new password"
         />
         {confirmError ? (
