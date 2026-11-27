@@ -92,6 +92,7 @@ const themeToggleSrc = readSrc("packages/ui/src/theme-toggle.tsx");
 const heroArtifactSrc = readSrc("apps/web/src/app/living-hero-artifact.tsx");
 const topicMarqueeSrc = readSrc("apps/web/src/app/topic-marquee.tsx");
 const bentoSrc = readSrc("apps/web/src/app/interactive-bento.tsx");
+const bentoControlsSrc = readSrc("apps/web/src/app/bento-controls.tsx");
 const chipSrc = readSrc("packages/ui/src/chip.tsx");
 const sectionHeaderSrc = readSrc("packages/ui/src/section-header.tsx");
 const ribbonCanvasSrc = readSrc("apps/web/src/app/hero-ribbon-canvas.tsx");
@@ -151,6 +152,7 @@ describe("Product name & honesty contract", () => {
       ["page.tsx", pageSrc],
       ["post-life-stage.tsx", postLifeSrc],
       ["interactive-bento.tsx", bentoSrc],
+      ["bento-controls.tsx", bentoControlsSrc],
       ["living-hero-artifact.tsx", heroArtifactSrc],
       ["site-shell.tsx", siteShellSrc],
       ["principles.md", principlesSrc],
@@ -303,7 +305,7 @@ describe("Shared Shell & Public Reading Routes", () => {
     expect(landingRuntimeSrc).toContain("inkwellio:motion-change");
     expect(themeJsSrc).toContain("inkwellio-motion-paused");
 
-    for (const src of [siteShellSrc, sessionNavSrc, bentoSrc, magneticSrc, pageSrc]) {
+    for (const src of [siteShellSrc, sessionNavSrc, bentoSrc, bentoControlsSrc, magneticSrc, pageSrc]) {
       expect(src).not.toContain("prefetch={false}");
     }
   });
@@ -505,6 +507,8 @@ describe("Performance budgets, motion & hero sculpture assets", () => {
     expect(ribbonMediaSrc).toContain("width={1280}");
     expect(ribbonMediaSrc).toContain("height={714}");
     expect(ribbonMediaSrc).toContain('alt=""');
+    expect(themeJsSrc).toContain("bindRibbon");
+    expect(bentoSrc).not.toMatch(/["']use client["']/);
     expect(themeJsSrc).not.toContain("hero-ink-dark.webp");
     expect(themeJsSrc).not.toContain("hero-ink-light.webp");
     expect(cssSrc).not.toContain("hero-ink-dark.webp");

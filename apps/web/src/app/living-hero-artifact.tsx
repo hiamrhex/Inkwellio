@@ -50,8 +50,8 @@ export function LivingHeroArtifact() {
           clearInterval(intervalId);
           intervalId = null;
         }
-      }, 36);
-    }, 180);
+      }, 42);
+    }, 520);
 
     return () => {
       clearTimeout(startTimer);

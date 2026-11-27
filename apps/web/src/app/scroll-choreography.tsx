@@ -172,7 +172,16 @@ export function ScrollChoreography() {
       }
     };
 
+    let offsetsReady = false;
+    const ensureOffsets = () => {
+      if (!offsetsReady) {
+        offsetsReady = true;
+        refreshCachedOffsets();
+      }
+    };
+
     const scheduleUpdate = () => {
+      ensureOffsets();
       if (rafPending) return;
       rafPending = true;
       requestAnimationFrame(() => updateScrollMetrics(true));
@@ -182,6 +191,7 @@ export function ScrollChoreography() {
       typeof ResizeObserver !== "undefined"
         ? new ResizeObserver(() => {
             refreshCachedOffsets();
+            offsetsReady = true;
             updateScrollMetrics(false);
           })
         : null;
@@ -233,10 +243,19 @@ export function ScrollChoreography() {
     const mo = new MutationObserver(() => scheduleUpdate());
     mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-motion"] });
 
-    const initRaf = requestAnimationFrame(() => {
-      refreshCachedOffsets();
+    let initIdleId: number | null = null;
+    let initRaf = 0;
+    const bootScrollMetrics = () => {
+      ensureOffsets();
       updateScrollMetrics(false);
-    });
+    };
+    if ((window.scrollY || 0) > 0) {
+      initRaf = requestAnimationFrame(bootScrollMetrics);
+    } else if (typeof ric === "function") {
+      initIdleId = ric(bootScrollMetrics, { timeout: 900 });
+    } else {
+      initRaf = requestAnimationFrame(bootScrollMetrics);
+    }
 
     window.addEventListener("scroll", scheduleUpdate, { passive: true });
     window.addEventListener("resize", refreshCachedOffsets, { passive: true });
@@ -245,6 +264,13 @@ export function ScrollChoreography() {
 
     return () => {
       cancelAnimationFrame(initRaf);
+      if (
+        initIdleId !== null &&
+        typeof (window as { cancelIdleCallback?: (id: number) => void }).cancelIdleCallback ===
+          "function"
+      ) {
+        (window as { cancelIdleCallback: (id: number) => void }).cancelIdleCallback(initIdleId);
+      }
       if (marqueeResetTimer !== null) clearTimeout(marqueeResetTimer);
       mo.disconnect();
       window.removeEventListener("scroll", scheduleUpdate);

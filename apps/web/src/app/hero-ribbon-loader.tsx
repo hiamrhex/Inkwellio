@@ -44,12 +44,12 @@ export function HeroRibbonLoader() {
             () => {
               if (!cancelled && shouldLoad()) setMountCanvas(true);
             },
-            { timeout: 1400 },
+            { timeout: 1800 },
           );
         } else {
           setMountCanvas(true);
         }
-      }, 450);
+      }, 700);
     };
 
     if (document.readyState === "complete") scheduleMount();
