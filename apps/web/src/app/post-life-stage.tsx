@@ -1,10 +1,17 @@
 import { Chip } from "@inkwellio/ui";
 
+const STAGE_DOTS = [
+  "Write draft",
+  "Choose topics and link",
+  "Publish story",
+  "Live publication page",
+] as const;
+
 /**
- * PostLifeStage — Zero-client-JS horizontal scroll-driven signature stage ("A post's life").
- * Uses a generous 300vh desktop sticky runway gliding 4 editorial cards right-to-left
- * via CSS scroll-driven animation / passive scroll var with overflow-x: clip.
- * Stacks statically in order on < 768px, prefers-reduced-motion: reduce, or [data-motion="paused"].
+ * PostLifeStage — Pure Server Component horizontal scroll-driven signature stage ("A post's life").
+ * Desktop (>= 768px) uses a 360vh pinned runway with 4 dwell plateaus across >= 1,100px horizontal
+ * travel, clickable step dots, and active center focus (scale 1 + emerald highlight vs 0.94 neighbours).
+ * Stacks statically below 768px, under reduced motion, or when paused.
  */
 export function PostLifeStage() {
   return (
@@ -31,7 +38,7 @@ export function PostLifeStage() {
           </p>
 
           <ol className="post-life-steps" aria-label="Post lifecycle stages">
-            <li className="post-life-step post-life-step-1">
+            <li className="post-life-step post-life-step-1" data-stage-active="true">
               <span className="post-life-step-index">01</span>
               <div>
                 <strong>Write draft</strong>
@@ -67,6 +74,9 @@ export function PostLifeStage() {
               <article
                 className="post-life-panel post-life-panel-1 spotlight-card bento-specular-card"
                 data-spotlight="true"
+                data-post-life-panel="0"
+                data-stage-active="true"
+                tabIndex={0}
                 aria-label="Step 1: Write draft illustration"
               >
                 <div className="post-life-card-head">
@@ -93,6 +103,8 @@ export function PostLifeStage() {
               <article
                 className="post-life-panel post-life-panel-2 spotlight-card bento-specular-card"
                 data-spotlight="true"
+                data-post-life-panel="1"
+                tabIndex={0}
                 aria-label="Step 2: Choose topics and slug illustration"
               >
                 <div className="post-life-card-head">
@@ -123,6 +135,8 @@ export function PostLifeStage() {
               <article
                 className="post-life-panel post-life-panel-3 spotlight-card bento-specular-card"
                 data-spotlight="true"
+                data-post-life-panel="2"
+                tabIndex={0}
                 aria-label="Step 3: Publish and live link illustration"
               >
                 <div className="post-life-flip-wrap">
@@ -159,6 +173,8 @@ export function PostLifeStage() {
               <article
                 className="post-life-panel post-life-panel-4 spotlight-card bento-specular-card"
                 data-spotlight="true"
+                data-post-life-panel="3"
+                tabIndex={0}
                 aria-label="Step 4: Live publication feed illustration"
               >
                 <div className="post-life-card-head">
@@ -184,6 +200,22 @@ export function PostLifeStage() {
                 </ul>
               </article>
             </div>
+          </div>
+
+          <div className="post-life-dots" role="group" aria-label="Jump to stage">
+            {STAGE_DOTS.map((label, idx) => (
+              <button
+                key={label}
+                type="button"
+                className="post-life-dot"
+                data-post-life-dot={idx}
+                aria-pressed={idx === 0 ? "true" : "false"}
+                aria-label={`Stage ${idx + 1}: ${label}`}
+                title={`Stage ${idx + 1}: ${label}`}
+              >
+                <span className="post-life-dot-pip" aria-hidden="true" />
+              </button>
+            ))}
           </div>
         </div>
       </div>

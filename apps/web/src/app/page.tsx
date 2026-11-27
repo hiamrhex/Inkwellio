@@ -126,7 +126,7 @@ export default function Home() {
         {/* ── Borderless 4-Column Capability Strip ─────────────────── */}
         <section
           id="capabilities"
-          className="page-section below-fold-section capability-band"
+          className="page-section section-entry below-fold-section capability-band"
           aria-labelledby="capabilities-heading"
         >
           <h2 id="capabilities-heading" className="sr-only">
@@ -161,7 +161,7 @@ export default function Home() {
         {/* ── Horizontal Side-Entrance Band: Writer & Reader ─────── */}
         <section
           id="writer-reader"
-          className="page-section below-fold-section side-glide-band"
+          className="page-section section-entry below-fold-section side-glide-band"
           aria-labelledby="writer-reader-heading"
         >
           <SectionHeader
@@ -293,7 +293,7 @@ export default function Home() {
         {/* ── Publishing Showcase (Continuous Tonal World) ──────── */}
         <section
           id="publishing"
-          className="page-section publishing-showcase below-fold-section"
+          className="page-section section-entry publishing-showcase below-fold-section"
           aria-labelledby="publishing-heading"
           style={{ position: "relative" }}
         >
@@ -344,7 +344,7 @@ export default function Home() {
 
         {/* ── Closing ─────────────────────────────────────────────── */}
         <section
-          className="closing-section below-fold-section"
+          className="section-entry closing-section below-fold-section"
           aria-labelledby="closing-heading"
           style={{ position: "relative", overflow: "hidden" }}
         >

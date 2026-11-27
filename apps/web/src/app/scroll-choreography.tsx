@@ -1,12 +1,15 @@
 "use client";
 
 import { useEffect } from "react";
+import { motionConfig } from "@inkwellio/ui";
+
+const STAGE_CENTRE_PROGRESS = [0.09, 0.36, 0.63, 0.91] as const;
 
 /**
- * ScrollChoreography — Passive scroll driver (zero sync layout during mount, zero scroll-jacking).
- * Maintains sticky header hairline border > 64px, cached scroll-spy, horizontal dwell plateau
- * progress for #post-life, fallback reveal variables when CSS animation-timeline: view() is
- * unavailable, velocity-reactive TopicMarquee pace shift (no idle rAF), and Newsreader warmup.
+ * ScrollChoreography — Passive scroll driver (zero scroll-jacking).
+ * Maintains sticky header hairline, scroll progress bar, cached scroll-spy, hero exit
+ * (scrollY 0 -> 500), #post-life horizontal plateau glide + clickable step dots + keyboard focus sync,
+ * #writer-reader fallback scrubbing, marquee velocity boost, and Newsreader warmup.
  */
 export function ScrollChoreography() {
   useEffect(() => {
@@ -19,6 +22,7 @@ export function ScrollChoreography() {
     let lastScrollY = window.scrollY || 0;
     let lastScrollTs = performance.now();
     let marqueeResetTimer: ReturnType<typeof setTimeout> | null = null;
+    let lastActiveStage = -1;
 
     const nav =
       document.querySelector<HTMLElement>(".site-header-bar") ??
@@ -46,43 +50,60 @@ export function ScrollChoreography() {
     const sideGlideSection = document.querySelector<HTMLElement>("#writer-reader");
     const postLifeSection = document.querySelector<HTMLElement>("#post-life");
     const postLifeTrack = document.querySelector<HTMLElement>(".post-life-track");
+    const postLifeSteps = Array.from(document.querySelectorAll<HTMLElement>(".post-life-step"));
+    const postLifePanels = Array.from(document.querySelectorAll<HTMLElement>(".post-life-panel"));
+    const postLifeDots = Array.from(document.querySelectorAll<HTMLButtonElement>("[data-post-life-dot]"));
     const marqueeTrack = document.querySelector<HTMLElement>(".topic-marquee-track");
     const bentoCards = Array.from(document.querySelectorAll<HTMLElement>(".bento-cell-reveal"));
 
-    let heroHeight = 760;
+    let maxDocScroll = 1;
     let postLifeTop = 0;
     let postLifeTravel = 1;
 
-    const isMotionFrozen = () =>
-      reducedQuery.matches ||
-      document.documentElement.getAttribute("data-motion") === "paused";
+    const isMotionFrozen = () => {
+      const attr = document.documentElement.getAttribute("data-motion");
+      return attr === "paused" || (attr !== "active" && reducedQuery.matches);
+    };
 
     const refreshCachedOffsets = () => {
       for (const item of spyItems) {
         item.top = item.el.offsetTop;
       }
-      heroHeight = Math.max(
-        1,
-        (heroOuter?.offsetHeight || heroStage?.offsetHeight || window.innerHeight) * 0.9,
-      );
+      const vh = window.innerHeight || 900;
+      maxDocScroll = Math.max(1, document.documentElement.scrollHeight - vh);
       if (postLifeTrack && postLifeSection) {
-        postLifeTop = postLifeSection.offsetTop;
-        const vh = window.innerHeight || 900;
+        postLifeTop = Math.round(postLifeTrack.getBoundingClientRect().top + (window.scrollY || 0));
         postLifeTravel = Math.max(1, postLifeTrack.offsetHeight - vh);
       }
     };
 
     const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
 
-    // Piecewise plateau curve matching @keyframes post-life-horizontal-glide (fallback / JS inspection)
-    const mapPlateauProgress = (p: number): number => {
-      if (p <= 0.18) return 0;
-      if (p < 0.28) return ((p - 0.18) / 0.1) * 0.34;
-      if (p <= 0.46) return 0.34;
-      if (p < 0.56) return 0.34 + ((p - 0.46) / 0.1) * 0.34;
-      if (p <= 0.74) return 0.68;
-      if (p < 0.82) return 0.68 + ((p - 0.74) / 0.08) * 0.32;
-      return 1;
+    // Piecewise dwell curve matching @keyframes post-life-horizontal-glide (returns 0..3 stage index float)
+    const mapPlateauStage = (p: number): number => {
+      if (p <= 0.19) return 0;
+      if (p < 0.27) return (p - 0.19) / 0.08;
+      if (p <= 0.46) return 1;
+      if (p < 0.54) return 1 + (p - 0.46) / 0.08;
+      if (p <= 0.73) return 2;
+      if (p < 0.81) return 2 + (p - 0.73) / 0.08;
+      return 3;
+    };
+
+    const setActiveStageUi = (idx: number) => {
+      if (idx === lastActiveStage) return;
+      lastActiveStage = idx;
+      for (let i = 0; i < postLifePanels.length; i++) {
+        if (i === idx) postLifePanels[i].setAttribute("data-stage-active", "true");
+        else postLifePanels[i].removeAttribute("data-stage-active");
+      }
+      for (let i = 0; i < postLifeSteps.length; i++) {
+        if (i === idx) postLifeSteps[i].setAttribute("data-stage-active", "true");
+        else postLifeSteps[i].removeAttribute("data-stage-active");
+      }
+      for (let i = 0; i < postLifeDots.length; i++) {
+        postLifeDots[i].setAttribute("aria-pressed", i === idx ? "true" : "false");
+      }
     };
 
     const updateMarqueePace = (scrollY: number, frozen: boolean) => {
@@ -95,10 +116,13 @@ export function ScrollChoreography() {
       }
       const now = performance.now();
       const dt = Math.max(16, now - lastScrollTs);
-      const velocity = Math.abs(scrollY - lastScrollY) / dt; // px / ms
+      const velocity = Math.abs(scrollY - lastScrollY) / dt;
       lastScrollY = scrollY;
       lastScrollTs = now;
-      const boostRate = Math.max(1, Math.min(2.6, 1 + velocity * 0.85));
+      const boostRate = Math.max(
+        1,
+        Math.min(3.0, 1 + velocity * motionConfig.scroll.marqueeVelocityGain * motionConfig.motionGain),
+      );
       for (const anim of anims) {
         anim.playbackRate = boostRate;
       }
@@ -118,6 +142,11 @@ export function ScrollChoreography() {
       if (nav) {
         nav.classList.toggle("is-scrolled", scrollY > 64);
       }
+      document.documentElement.style.setProperty(
+        "--scroll-progress",
+        frozen ? "0" : clamp01(scrollY / maxDocScroll).toFixed(4),
+      );
+
       if (spyItems.length > 0) {
         const probeY = scrollY + 140;
         let currentId = "";
@@ -127,11 +156,8 @@ export function ScrollChoreography() {
           }
         }
         for (const item of spyItems) {
-          if (item.id === currentId) {
-            item.anchor.setAttribute("data-active", "true");
-          } else {
-            item.anchor.removeAttribute("data-active");
-          }
+          if (item.id === currentId) item.anchor.setAttribute("data-active", "true");
+          else item.anchor.removeAttribute("data-active");
         }
       }
 
@@ -139,17 +165,19 @@ export function ScrollChoreography() {
         updateMarqueePace(scrollY, frozen);
       }
 
-      const heroVal = frozen ? "0" : clamp01(scrollY / heroHeight).toFixed(4);
+      const heroExitPx = Math.max(1, motionConfig.scroll.heroExitScrollPx);
+      const heroVal = frozen ? "0" : clamp01(scrollY / heroExitPx).toFixed(4);
       heroStage?.style.setProperty("--hero-scroll", heroVal);
       heroOuter?.style.setProperty("--hero-scroll", heroVal);
 
       if (postLifeSection) {
         const rawP = clamp01((scrollY - postLifeTop) / postLifeTravel);
-        const mappedP = frozen ? 0 : mapPlateauProgress(rawP);
-        postLifeSection.style.setProperty("--post-life-p", mappedP.toFixed(4));
+        const stagePos = frozen ? 0 : mapPlateauStage(rawP);
+        postLifeSection.style.setProperty("--post-life-stage", stagePos.toFixed(4));
+        setActiveStageUi(frozen ? 0 : Math.max(0, Math.min(3, Math.round(stagePos))));
       }
 
-      if (!supportsTimeline || frozen) {
+      if (!supportsTimeline || frozen || document.documentElement.getAttribute("data-motion") === "active") {
         if (readingSection && readingFill) {
           if (frozen) {
             readingFill.style.transform = "scaleX(1)";
@@ -179,6 +207,28 @@ export function ScrollChoreography() {
         refreshCachedOffsets();
       }
     };
+
+    const scrollToStage = (stageIdx: number) => {
+      ensureOffsets();
+      const targetP = STAGE_CENTRE_PROGRESS[Math.max(0, Math.min(3, stageIdx))] ?? 0;
+      const top = Math.round(postLifeTop + targetP * postLifeTravel);
+      window.scrollTo({ top, behavior: isMotionFrozen() ? "auto" : "smooth" });
+    };
+
+    const onDotClick = (ev: Event) => {
+      const btn = (ev.currentTarget as HTMLButtonElement) || null;
+      const idx = Number(btn?.getAttribute("data-post-life-dot"));
+      if (Number.isInteger(idx)) scrollToStage(idx);
+    };
+    const onPanelFocus = (ev: Event) => {
+      if (isMotionFrozen() || (window.innerWidth || 1440) < 768) return;
+      const panel = ev.currentTarget as HTMLElement;
+      const idx = Number(panel?.getAttribute("data-post-life-panel"));
+      if (Number.isInteger(idx) && idx !== lastActiveStage) scrollToStage(idx);
+    };
+
+    for (const dot of postLifeDots) dot.addEventListener("click", onDotClick);
+    for (const panel of postLifePanels) panel.addEventListener("focus", onPanelFocus);
 
     const scheduleUpdate = () => {
       ensureOffsets();
@@ -272,6 +322,8 @@ export function ScrollChoreography() {
         (window as { cancelIdleCallback: (id: number) => void }).cancelIdleCallback(initIdleId);
       }
       if (marqueeResetTimer !== null) clearTimeout(marqueeResetTimer);
+      for (const dot of postLifeDots) dot.removeEventListener("click", onDotClick);
+      for (const panel of postLifePanels) panel.removeEventListener("focus", onPanelFocus);
       mo.disconnect();
       window.removeEventListener("scroll", scheduleUpdate);
       window.removeEventListener("resize", refreshCachedOffsets);

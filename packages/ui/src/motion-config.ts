@@ -92,7 +92,7 @@ export const motionConfig: MotionConfig = {
     hitTargetMoveLimitPx: 1.5,
   },
   scroll: {
-    heroExitScrollPx: 520,
+    heroExitScrollPx: 500,
     heroHeadlineExitPx: 48,
     heroCardExitPx: 90,
     heroCardExitDeg: 6,

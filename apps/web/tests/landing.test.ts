@@ -407,11 +407,12 @@ describe("Signature stage, honest Bento & Hero artifact", () => {
     expect(postLifeSrc).toContain("Publish");
     expect(postLifeSrc).toContain('className="sr-only"');
     expect(cssSrc).toContain("--post-life-tl");
-    expect(cssSrc).toContain("height: 350vh;");
+    expect(cssSrc).toContain("height: var(--post-life-runway, 360vh);");
     expect(cssSrc).toContain("post-life-horizontal-glide");
     expect(cssSrc).toContain("animation-timeline: view()");
     expect(cssSrc).toContain("rotateY(180deg)");
     expect(cssSrc).toContain("steps(");
+    expect(cssSrc).toContain(".post-life-dots");
     expect(cssSrc).toContain(".topic-marquee-track");
     expect(cssSrc).toContain(".spotlight-card::after");
     expect(cssSrc).toContain(".hero-cursor-spotlight");
@@ -422,8 +423,9 @@ describe("Signature stage, honest Bento & Hero artifact", () => {
     expect(cssSrc).toContain("overflow-x: clip");
     expect(cssSrc).toContain("side-glide-in-left");
     expect(cssSrc).toContain("side-glide-in-right");
-    expect(cssSrc).toContain("rotateY(6deg) scale(0.94)");
-    expect(cssSrc).toContain("rotateY(-6deg) scale(0.94)");
+    expect(cssSrc).toContain("var(--side-glide-deg, 10deg)");
+    expect(cssSrc).toContain("calc(var(--side-glide-deg, 10deg) * -1)");
+    expect(cssSrc).toContain("var(--side-glide-scale, 0.9)");
   });
 
   it("InteractiveBento replaces fake revisions with real curated football topics", () => {
