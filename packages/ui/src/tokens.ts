@@ -1,56 +1,64 @@
 /**
- * Ink & Paper design tokens — Inkwellio (WP7)
- * Computed contrast values verified programmatically via wcag-contrast formula.
+ * Ink & Paper design tokens — Inkwellio (WP7 Phase 1C: 60 / 35 / 5 colour system).
+ * Computed contrast values verified programmatically via WCAG 2.1 formula.
  *
- * Dark (Ink): true black base (#000000) with elevated surfaces.
- * Light (Paper): crisp cool archival canvas (#f1f3f5) with pure white (#ffffff) elevated surfaces.
- * Strict monochrome interactive triggers (stark white/black); accent reserved
- * strictly for <= 6px status dots, subtle surface/headline sheens, and :focus-visible rings.
+ * Dark (Ink): 60% pure black (#000000), 35% elevated #08090c cards + #ffffff ink,
+ *   5% whisper-light floaty emerald (#10b981) mist, glints, dots, and focus marks.
+ * Light (Paper): 60% crisp bright white (#fafafa) canvas + pure #ffffff floating cards,
+ *   35% #050608 primary ink + two-layer elevation shadows,
+ *   5% subtle emerald (#0f766e / #059669) mist + glints.
  */
 
 export const tokens = {
   dark: {
     bgCanvas:       '#000000',
-    bgSurface1:     '#0a0b0e',
-    bgSurface2:     '#121318',
-    bgSurface3:     '#191b22',
-    textPrimary:    '#fafafa',
-    textMuted:      '#a1a1a6',
-    textFaint:      '#7c7c82',
-    borderHairline: 'rgba(255,255,255,0.08)',
-    // Strict monochrome buttons
+    bgSurface1:     '#08090c',
+    bgSurface2:     '#101218',
+    bgSurface3:     '#171a22',
+    textPrimary:    '#ffffff',
+    textMuted:      '#b4b9c2',
+    textFaint:      '#969ca8',
+    borderHairline: 'rgba(255,255,255,0.10)',
     btnPrimaryBg:   '#ffffff',
     btnPrimaryText: '#000000',
-    // Functional status marks (<= 6px dots, nib breather dot & focus rings only)
     statusLive:     '#10b981',
     statusAmber:    '#ffd60a',
-    accent:         '#0a84ff', // Focus rings & accessibility
+    accent:         '#10b981',
     accentText:     '#000000',
-    accentPinch:    'rgba(226, 232, 240, 0.095)',
+    accentPinch:    'rgba(16, 185, 129, 0.075)',
+    washSpec: {
+      silverRgb:       [226, 232, 240] as const,
+      silverMaxAlpha:  0.08,
+      emeraldRgb:      [16, 185, 129] as const,
+      emeraldMaxAlpha: 0.08,
+    },
   },
   light: {
-    bgCanvas:       '#f1f3f5', // Cool archival slate paper canvas
-    bgSurface1:     '#ffffff', // Pure white elevated card
-    bgSurface2:     '#ffffff', // Pure white modal / floating card
-    bgSurface3:     '#e7eaee', // Recessed well / badge
-    textPrimary:    '#0a0a0b',
-    textMuted:      '#4d515a',
-    textFaint:      '#60656e',
-    borderHairline: 'rgba(15,23,42,0.10)',
-    // Strict monochrome buttons
-    btnPrimaryBg:   '#0a0a0b',
+    bgCanvas:       '#fafafa',
+    bgSurface1:     '#ffffff',
+    bgSurface2:     '#ffffff',
+    bgSurface3:     '#f1f4f7',
+    textPrimary:    '#050608',
+    textMuted:      '#3f4451',
+    textFaint:      '#505663',
+    borderHairline: 'rgba(9,11,16,0.12)',
+    btnPrimaryBg:   '#050608',
     btnPrimaryText: '#ffffff',
-    // Functional status marks (<= 6px dots, nib breather dot & focus rings only)
     statusLive:     '#0f766e',
     statusAmber:    '#b45309',
-    accent:         '#0066cc', // Focus rings & accessibility
+    accent:         '#0f766e',
     accentText:     '#ffffff',
-    accentPinch:    'rgba(15, 23, 42, 0.06)',
+    accentPinch:    'rgba(5, 150, 105, 0.065)',
+    washSpec: {
+      silverRgb:       [148, 163, 184] as const,
+      silverMaxAlpha:  0.07,
+      emeraldRgb:      [5, 150, 105] as const,
+      emeraldMaxAlpha: 0.07,
+    },
   },
 } as const;
 
 export type ColorMode = keyof typeof tokens;
 export type TokenKey = keyof typeof tokens.dark;
 
-// Legacy flat export — kept for backward-compat with existing tests
 export const UI_PACKAGE_NAME = '@inkwellio/ui' as const;

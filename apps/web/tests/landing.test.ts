@@ -353,13 +353,13 @@ describe("Shared Shell & Public Reading Routes", () => {
    5. Signature Stage ("A post's life"), Honest Bento & Hero
    ════════════════════════════════════════════════════════════════ */
 describe("Signature stage, honest Bento & Hero artifact", () => {
-  it("enforces monochrome surfaces with zero green/teal washes or hover glow lines > 6px", () => {
+  it("enforces 60/35/5 palette with subtle bounded emerald glints and clean hero framing", () => {
+    expect(cssSrc).toContain("--bg-canvas:   #000000");
+    expect(cssSrc).toContain("--bg-surface1: #08090c");
     expect(cssSrc).toContain("--status-live:      #10b981");
-    expect(cssSrc).not.toMatch(/\.hero-form-specular[\s\S]{0,400}16,\s*185,\s*129/);
-    expect(cssSrc).not.toMatch(/\.bento-specular-card::before[\s\S]{0,400}16,\s*185,\s*129/);
-    expect(cssSrc).not.toMatch(/\.auth-fluted-backdrop[\s\S]{0,400}16,\s*185,\s*129/);
-    expect(dotMatrixSrc).not.toContain("16, 185, 129");
-    expect(ribbonCanvasSrc).not.toContain("16, 185, 129");
+    expect(cssSrc).toContain("--bg-canvas:   #fafafa");
+    expect(tokens.dark.washSpec.emeraldMaxAlpha).toBeLessThanOrEqual(0.08);
+    expect(tokens.light.washSpec.emeraldMaxAlpha).toBeLessThanOrEqual(0.07);
     expect(heroArtifactSrc).not.toContain("hero-wireframe-frame");
     expect(cssSrc).not.toContain(".hero-wireframe-frame");
   });
@@ -387,7 +387,7 @@ describe("Signature stage, honest Bento & Hero artifact", () => {
     expect(cssSrc).toContain(".topic-marquee-track");
     expect(cssSrc).toContain(".spotlight-card::after");
     expect(cssSrc).toContain(".hero-cursor-spotlight");
-    expect(cssSrc).toContain("520px circle");
+    expect(cssSrc).toContain("580px");
     expect(cssSrc).toContain("scale(0.97)");
     expect(cssSrc).toContain("translateY(-5px)");
     expect(cssSrc).toContain(".side-glide-band");
