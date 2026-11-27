@@ -11,6 +11,7 @@ import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 import { getDb } from "@/kernel/db";
 import { env } from "@/kernel/env";
 import { logEvent } from "@/kernel/log";
+import { after } from "next/server";
 import {
   AppError,
   ConflictError,
@@ -204,9 +205,7 @@ export function getAuth() {
       },
       backgroundTasks: {
         handler: (promise) => {
-          promise.catch((error) => {
-            logEvent("error", "background_task_failed", { error: String(error) });
-          });
+          trackIdentityBackgroundTask(promise);
         },
       },
     },
@@ -339,6 +338,33 @@ export async function readIdentityJsonObject(request: Request): Promise<Record<s
     throw new ValidationError("A JSON object body is required");
   }
   return parsed as Record<string, unknown>;
+}
+
+/**
+ * Register Better Auth's background work with the platform request lifecycle.
+ *
+ * Better Auth sends the verification email in a background promise. Without
+ * `after`, a serverless invocation can freeze as soon as the response is sent:
+ * the browser gets 200, no error is logged and no message leaves the process.
+ * `after` keeps the invocation alive until the callback settles on Vercel.
+ *
+ * The rejection handler is attached before registration, so a failed send is
+ * logged with safe metadata only (error name, never a message that could carry
+ * a token or an address). Outside a Next request scope `after` throws; the
+ * fallback still holds the promise, which keeps unit tests and scripts working.
+ */
+export function trackIdentityBackgroundTask(promise: Promise<unknown>): void {
+  const tracked = promise.catch((error: unknown) => {
+    logEvent("error", "background_task_failed", {
+      error: error instanceof Error ? error.name : typeof error,
+    });
+  });
+  try {
+    after(() => tracked);
+  } catch {
+    // No request scope (unit test, script, or a non-Next host).
+    void tracked;
+  }
 }
 
 /**

@@ -143,3 +143,13 @@ Vercel Preview Comments pass 0
 The Phase 2 contract note is `docs/handoffs/phase2-api-ready.md`; it records
 that `/history` has neither a screen nor a revisions/trash API route on this
 branch, so that contract remains `Unverified`.
+
+## J. Vercel background-email lifecycle fix (same PR)
+
+| ID | Command / source | Trimmed result |
+| --- | --- | --- |
+| E-050 | `apps/web/src/modules/identity/index.ts:356-366` | `trackIdentityBackgroundTask` attaches the redacting rejection handler, registers `after(() => tracked)`, and falls back to `void tracked` when no request scope exists; the Better Auth handler at line 208 calls it |
+| E-051 | `vitest run apps/web/tests/wp8-background-tasks.test.ts` | `Tests 3 passed` — platform callback registered and awaited, rejection logged as `{error:"Error"}` with no token/address/password in the log, and no throw when `after` throws |
+| E-052 | disable the `after(...)` registration in that helper, rerun, restore | `Tests 2 failed | 1 passed (3)` (`expected [] to have a length of 1 but got +0`) |
+| E-053 | `pnpm check` after the fix | lint, typecheck, build, `Test Files 62 passed (62)`, `Tests 614 passed (614)`, boundaries green |
+| E-054 | post-gate cleanup | `rateLimitCountersDeleted:94`, all `remaining` values `0`, `pass:true` |
