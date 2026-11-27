@@ -1,100 +1,109 @@
-# E-053: Gate lock cleanup for stale locks
+# EVIDENCE LEDGER — WP8 BREAK + RAISE
 
-**What:** The gate lock must never block pushes forever. A machine crash, killed process, or power failure can leave a stale lock file.
+**Unverified.** Every entry below names the exact command or file that produced
+it. Claims without a command or `file:line` are not evidence and are not made
+here. Live-provider behaviour is `Unverified`.
 
-**How verified:** `apps/web/tests/gate-lock.test.ts` tests that the lock manager removes a stale lock when the owner is dead.
+## A. Commits and scope
 
-**Source:** tools/gate.mjs, apps/web/tests/gate-lock.test.ts.
+| ID | Command / source | Trimmed result |
+| --- | --- | --- |
+| E-001 | `git log -n 3 --oneline` | `c821d5d test(routes): enforce the API guard matrix and pin fallback behaviour`; `59bc30a fix(identity): close the three logged backend defects plus the health-check client leak`; `28914a5 Merge pull request #35 ...` |
+| E-002 | `git diff --name-only origin/main..HEAD` | checked in Milestone D; must contain only `apps/web/src/{kernel,modules,app/api}/**`, `apps/web/tests/**`, `docs/**` |
+| E-003 | `git status --short` at handoff | 9 modified files, no untracked secret or dependency file |
 
-**Date:** 2026-11-19.
+## B. Fixed defects
 
-**Status:** Confirmed.
+| ID | Source | Evidence |
+| --- | --- | --- |
+| E-010 | `apps/web/src/modules/identity/index.ts:74` | `trustedOrigins: Array.from(new Set([baseURL, ...(env.BETTER_AUTH_TRUSTED_ORIGINS ?? [])]))` — was `[baseURL]` |
+| E-011 | `apps/web/src/modules/identity/index.ts:183` | `rateLimit: { enabled: false }` with the reason recorded in the comment; Better Auth's shared `no-trusted-ip` bucket can no longer answer before the app limiter |
+| E-012 | `apps/web/src/modules/identity/limiter.ts:74-130` | `resolveClientIp` returns `{trusted, ip, source}`; `x-forwarded-for` used only when `TRUST_PROXY_HEADERS=1` |
+| E-013 | `apps/web/src/modules/identity/limiter.ts:154-210, 264-360` | per-IP or global-backstop dimension plus per-email dimension; store outage returns `status: 503, reason: "store_unavailable"` |
+| E-014 | `apps/web/src/kernel/errors.ts:147-154` | `RateLimitError` carries `retryAfterSeconds`, clamped to ≥ 1 |
+| E-015 | `apps/web/src/app/api/_lib/respond.ts:73-78` | 429 response sets `retry-after` and keeps `requestId` in the body |
+| E-016 | `apps/web/src/modules/identity/email.ts:131-135, 152-175` | missing credentials and SMTP failure both throw `EmailUnavailableError` (`UNAVAILABLE`, 503) with no credential/recipient/token in the log |
+| E-017 | `apps/web/src/modules/identity/email.ts:196-238` | `EMAIL_TRANSPORT` selects `auto`/`smtp`/`capture`; capture logs `email_transport_capture_mode` once; `isEmailTransportReady` refuses email-only routes when SMTP is configured without credentials |
+| E-018 | `apps/web/src/app/api/health/route.ts:14-45` | client acquired first, `client.release()` in `finally`, pool injectable for tests |
+| E-019 | `apps/web/src/kernel/env.ts` | `BETTER_AUTH_TRUSTED_ORIGINS` parsed to ≤ 10 absolute http(s) origins with no `*` and no path/query/hash |
 
-**Details:**
-- The lock manager reads the owner's pid from `owner.json` and checks if the process is alive.
-- If the process is dead, the lock is removed and the gate proceeds.
-- If the process is alive, the gate waits and retries.
-- If waiting exceeds 15 minutes, the gate fails with a clear message.
-- The test creates a fake stale lock with a dead pid (99999) and verifies that the lock is removed.
+## C. Quality gate
 
-**Note on the original "Test failed" flake:** The log was truncated, so the original cause of the flaky gate cannot be proven. The race was reproduced with two simultaneous `pnpm check` runs, and the fix (per-worktree lock) is correct. The gate lock cleanup test ensures that a stale lock never blocks pushes forever.
+| ID | Command | Trimmed result |
+| --- | --- | --- |
+| E-020 | `REQUIRE_DB=1 DATABASE_URL=... BETTER_AUTH_SECRET=... BETTER_AUTH_URL=... pnpm check` (Milestone A) | `gate: lint`, `gate: typecheck`, `gate: build`, `gate: test`, `gate: boundaries`; `Test Files  58 passed (58)`, `Tests  584 passed (584)`; `✔ no dependency violations found (176 modules, 333 dependencies cruised)`; exit 0 |
+| E-021 | same command (Milestone B) | `Test Files  59 passed (59)`, `Tests  598 passed (598)`, all five steps green |
+| E-022 | `git push` after Milestone B | `59bc30a..c821d5d wp8-backend-break-resilience -> wp8-backend-break-resilience` |
 
+## D. Live drills
 
----
+| ID | Command | Trimmed result |
+| --- | --- | --- |
+| E-004 | `node apps/web/tests/manual/red-team-drills.mjs` (first run) | `{"id":"SUMMARY","total":12,"passed":11,"failed":["D7-xss"]}` — the failure was an over-broad substring check on JSON; triaged in `docs/RED_TEAM.md` D7-xss |
+| E-005 | `node apps/web/tests/manual/red-team-drills.mjs` (final run) | `{"id":"SUMMARY","total":17,"passed":17,"failed":[]}` |
+| E-006 | `node apps/web/tests/manual/red-team-drills.mjs --cleanup` | `{"id":"CLEAN","rateLimitCountersDeleted":28,"authRateRowsDeleted":0,"usersDeleted":0,"remaining":{"users":0,"sessions":0,"accounts":0,"verifications":0,"posts":0,"publications":0,"audit_events":0,"rate_limit_counters":0,"rate_limits":0},"pass":true}` |
+| E-007 | `node apps/web/tests/manual/db-count.mjs` after cleanup | `wp8drill users: 0` |
+| E-008 | post-gate cleanup (the DB-enabled gate creates counter rows again) | `rateLimitCountersDeleted: 11`, all `remaining` values `0`, `pass: true` |
 
-# Evidence Table: WP2a Gates G1 to G9 (E-100 to E-125)
+All drill rows (hypothesis, steps, expected, actual, severity, disposition) are
+in `docs/RED_TEAM.md`. No external host was contacted.
 
-| Evidence ID | Gate | Focus / Description | Test File & Name | Command Run | Key Output Line | Status |
-| --- | --- | --- | --- | --- | --- | --- |
-| E-100 | G1 | Lowercase email normalization | `apps/web/tests/sign-up.test.ts` > "normalizes email to lowercase before inserting user" | `npx vitest run apps/web/tests/sign-up.test.ts` | `✓ normalizes email to lowercase before inserting user` | Proven |
-| E-101 | G1 | Password hashing (not stored plaintext) | `apps/web/tests/sign-up.test.ts` > "hashes password so that stored credential never equals plain text" | `npx vitest run apps/web/tests/sign-up.test.ts` | `✓ hashes password so that stored credential never equals plain text` | Proven |
-| E-102 | G1 | Sequential duplicate sign-up conflict | `apps/web/tests/sign-up.test.ts` > "returns a clean conflict error on duplicate sequential sign-up" | `npx vitest run apps/web/tests/sign-up.test.ts` | `✓ returns a clean conflict error on duplicate sequential sign-up` | Proven |
-| E-103 | G1 | SQLSTATE 23505 mapping to 409 Conflict | `apps/web/tests/b1-b2.test.ts` > "B2: mapAuthError maps SQLSTATE 23505 to ConflictError with public code CONFLICT" | `npx vitest run apps/web/tests/b1-b2.test.ts` | `✓ B2: mapAuthError maps SQLSTATE 23505 to ConflictError with public code CONFLICT` | Proven |
-| E-104 | G1 | Concurrent 10x duplicate sign-up isolation | `apps/web/tests/sign-up.test.ts` > "10 simultaneous duplicate sign-ups produce exactly 1 user row and clean conflict errors" | `npx vitest run apps/web/tests/sign-up.test.ts` | `(Postgres 17 live test in CI run #7)` | Proven in CI |
-| E-105 | G2 | Session cookie security flags (`__Host-`, Secure, HttpOnly, SameSite=Lax, Path=/) | `apps/web/tests/cookie-attributes.test.ts` > "sets __Host- prefix, HttpOnly, Secure, SameSite=Lax, Path=/ and no Domain in production" | `npx vitest run apps/web/tests/cookie-attributes.test.ts` | `✓ sets __Host- prefix, HttpOnly, Secure, SameSite=Lax, Path=/ and no Domain in production` | Proven |
-| E-106 | G2 | Replay of signed-out session rejected | `apps/web/tests/cookie-attributes.test.ts` > "rejects old session cookie after sign-out" | `npx vitest run apps/web/tests/cookie-attributes.test.ts` | `✓ rejects old session cookie after sign-out` | Proven |
-| E-107 | G2 | No session cookie set on error responses (400, 401, 429) | `apps/web/tests/cookie-attributes.test.ts` > "does not set session cookies on 400, 401, or 429 error responses" | `npx vitest run apps/web/tests/cookie-attributes.test.ts` | `✓ does not set session cookies on 400, 401, or 429 error responses` | Proven |
-| E-108 | G3 | Sibling `policy.ts` inventory enforcement | `apps/web/tests/route-inventory.test.ts` > "every page and route has a valid sibling policy.ts file" | `npx vitest run apps/web/tests/route-inventory.test.ts` | `✓ every page and route has a valid sibling policy.ts file` | Proven |
-| E-109 | G3 | Route inventory rejects missing/illegal policy exports | `apps/web/tests/route-inventory.test.ts` > "inventory check fails when a policy file is missing or invalid" | `npx vitest run apps/web/tests/route-inventory.test.ts` | `✓ inventory check fails when a policy file is missing or invalid` | Proven |
-| E-110 | G4 | Full authorization matrix (all actors, own vs other's resources) | `apps/web/tests/auth-matrix.test.ts` > "authorizes matrix of entry points and resources" | `npx vitest run apps/web/tests/auth-matrix.test.ts` | `✓ 43 tests passed` | Proven |
-| E-111 | G4 | B1 ownership check on account export/delete | `apps/web/tests/b1-b2.test.ts` > "B1: authorize checks resource.userId === actor.id for account export and delete" | `npx vitest run apps/web/tests/b1-b2.test.ts` | `✓ B1: authorize checks resource.userId === actor.id for account export and delete` | Proven |
-| E-112 | G5 | Rate limit trips after configured count | `apps/web/tests/rate-limits.test.ts` > "trips rate limit after configured maximum attempts" | `npx vitest run apps/web/tests/rate-limits.test.ts` | `✓ trips rate limit after configured maximum attempts` | Proven |
-| E-113 | G5 | Rotating `x-forwarded-for` does not bypass limiter | `apps/web/tests/rate-limits.test.ts` > "rotating x-forwarded-for does not reset the limit when x-vercel-forwarded-for is pinned" | `npx vitest run apps/web/tests/rate-limits.test.ts` | `✓ rotating x-forwarded-for does not reset the limit when x-vercel-forwarded-for is pinned` | Proven |
-| E-114 | G5 | Mixed-case and lookalike emails share rate limit bucket | `apps/web/tests/rate-limits.test.ts` > "mixed-case and lookalike emails share the same rate-limit bucket" | `npx vitest run apps/web/tests/rate-limits.test.ts` | `✓ mixed-case and lookalike emails share the same rate-limit bucket` | Proven |
-| E-115 | G6 | Account enumeration protection (identical error status & body) | `apps/web/tests/enumeration.test.ts` > "returns identical status and error body for known and unknown emails" | `npx vitest run apps/web/tests/enumeration.test.ts` | `✓ returns identical status and error body for known and unknown emails` | Proven |
-| E-116 | G6 | Constant timing over 50 samples for known vs unknown | `apps/web/tests/enumeration.test.ts` > "measures response timing across 50 samples with comparable medians" | `npx vitest run apps/web/tests/enumeration.test.ts` | `✓ measures response timing across 50 samples with comparable medians` | Proven |
-| E-117 | G7 | Aggregated audit rows per (action, ip_hash, 10m window) | `apps/web/tests/audit.test.ts` > "aggregates repeated failures into 1 row with attempt count" | `npx vitest run apps/web/tests/audit.test.ts` | `✓ aggregates repeated failures into 1 row with attempt count` | Proven |
-| E-118 | G7 | Audit log redaction (zero plaintext emails or credentials) | `apps/web/tests/audit.test.ts` > "redacts plaintext emails, passwords, and tokens from metadata" | `npx vitest run apps/web/tests/audit.test.ts` | `✓ redacts plaintext emails, passwords, and tokens from metadata` | Proven |
-| E-119 | G7 | Transactional fail-closed behavior on audit insert failure | `apps/web/tests/audit.test.ts` > "fails closed if the audit event insert fails" | `npx vitest run apps/web/tests/audit.test.ts` | `✓ fails closed if the audit event insert fails` | Proven |
-| E-120 | B3 | `/api/health` 5-second `SELECT 1` timeout and 200/503 status | `apps/web/tests/health.test.ts` > "returns 200 and ok when database is healthy" & "returns 503 and unavailable when database fails or times out" | `npx vitest run apps/web/tests/health.test.ts` | `✓ 4 tests passed` | Proven |
-| E-121 | B4 | Next.js 16.4.5 security advisory check and 16.4.6 changes | Security review & release note inspection | `docs/reviews/WP2a-self-review.md` | Recorded: 16.4.5 patched 6 CVEs; 16.4.6 maintenance only | Proven |
-| E-122 | G8 | Safe redirect helper with 12 boundary attack vectors | `apps/web/tests/safe-redirect.test.ts` > "sanitizes all 12 unsafe redirect targets to /" | `npx vitest run apps/web/tests/safe-redirect.test.ts` | `✓ sanitizes all 12 unsafe redirect targets to /` | Proven |
-| E-123 | G9 | Quality gate: ESLint, TypeScript, Unit Tests, Seam Check, Production Build | `pnpm check` | `pnpm check` in `.worktrees/wp2a-proof` | `Done in 13.5s` | Proven |
-| E-206 | WP7 | Landing page Phase A redesign: light/dark themes, contrast >= 4.5:1, touch >= 44px, no trackers, spelling | `apps/web/tests/landing.test.ts` | `pnpm vitest run apps/web/tests/landing.test.ts` | `✓ 38 tests passed` | Proven |
-| E-207 | WP7 | @inkwellio/ui primitives: tokens, Chip, SectionHeader, IconTile (squircle), ThemeToggle (single button) | `packages/ui/tests/components.test.ts` | `pnpm vitest run packages/ui/tests/components.test.ts` | `✓ 12 tests passed` | Proven |
-| E-208 | WP7 | Phase 2 Living Hero Artifact, 4-Cell Interactive Bento, Spring Physics (`useSpring`/`useSpring2D`), HTTP 500 resolution via `@inkwellio/ui/client` isolation, 0 ESLint errors | `apps/web/tests/landing.test.ts`, `packages/ui/tests/components.test.ts`, `pnpm check` | `pnpm check` | `✔ no dependency violations found (44 modules, 42 dependencies cruised)`, 206 tests passed, build static `○ /` | Proven |
+## E. Mutation proofs
 
----
+| ID | Command | Result |
+| --- | --- | --- |
+| E-030 | `git stash push -- apps/web/src/app/api/health/route.ts`, then `vitest run apps/web/tests/health.test.ts`, then `git stash pop` | `AssertionError: expected +0 to be 1`; `Tests  2 failed | 5 passed (7)` |
+| E-031 | set `posts/policy.ts` to `public`, run `vitest run apps/web/tests/route-inventory.test.ts`, then `git checkout --` that file | `AssertionError: expected [...5 public routes] to deeply equal [...4]`; `Tests  1 failed | 8 passed (9)` |
+| E-032 | baseline comparison: stash all work, run the three build/server-dependent suites | same 3 failures as with the work applied, proving they need a built app rather than being regressions |
 
-# Evidence Table: WP3a Services (E-300 to E-399)
+## F. Honest self-score (0–3)
 
-Local runs on Postgres **18.3**, 2026-11-24, `REQUIRE_DB=1`, zero skipped DB tests.
-CI runs `postgres:17`; the code run for commit `67617e8` (which contains
-`91b43c2`) is green: https://github.com/hiamrhex/Inkwellio/actions/runs/45445775766.
-This docs-only follow-up commit triggers its own PR #11 CI run; the table below
-records the code run.
+| Dimension | Score | Why not higher |
+| --- | --- | --- |
+| Security | 2 | BOLA/BFLA, origin, session replay and injection probes passed on a local server (D6, D12, D14, D7). But no external pentest, no live CSP enforcement on HTML (report-only by design), and the account-erasure HTTP path was not drilled live. |
+| Data integrity | 2 | 598 automated tests on real Postgres, including compare-and-set drafts and BOLA, passed. No live 20-way race or restore-from-backup drill was run. |
+| Reliability / fallbacks | 2 | Health client leak fixed with mutation proof; bounded email timeouts and 503 contracts pinned. The database remains a single point of failure and no live provider outage was simulated. |
+| Abuse / rate limiting | 2 | Per-IP/per-identifier limits, uniform 429 shape and spoof resistance proved locally (D2, D3, E-013). Per-write limiting exists in code but is not wired; no live WAF or distributed-load test. |
 
-| Evidence ID | Step | Focus / Description | Test & Name | Command Run | Key Output Line | Status |
-| --- | --- | --- | --- | --- | --- | --- |
-| E-300 | Step 4 | Retired slug is in history before the pointer moves | `wp3a-slugs.test.ts > "writes the retired slug to history before moving the pointer"` | `REQUIRE_DB=1 DATABASE_URL=postgresql://postgres@localhost:55433/inkwellio pnpm vitest run apps/web/tests/db/wp3a-slugs.test.ts` | `Tests 12 passed (12)` | Proven (PG 18.3); CI 17 green: https://github.com/hiamrhex/Inkwellio/actions/runs/45445775766 |
-| E-301 | Step 4 | Current slug resolves without a redirect | `wp3a-slugs.test.ts > "resolves the current slug without a redirect"` | `REQUIRE_DB=1 DATABASE_URL=postgresql://postgres@localhost:55433/inkwellio pnpm vitest run apps/web/tests/db/wp3a-slugs.test.ts` | `Tests 12 passed (12)` | Proven (PG 18.3); CI 17 green: https://github.com/hiamrhex/Inkwellio/actions/runs/45445775766 |
-| E-302 | Step 4 | Old slug redirects to the post's current address | `wp3a-slugs.test.ts > "redirects an old slug to the post that now lives elsewhere"` | `REQUIRE_DB=1 DATABASE_URL=postgresql://postgres@localhost:55433/inkwellio pnpm vitest run apps/web/tests/db/wp3a-slugs.test.ts` | `Tests 12 passed (12)` | Proven (PG 18.3); CI 17 green: https://github.com/hiamrhex/Inkwellio/actions/runs/45445775766 |
-| E-303 | Step 4 | Drafts, deleted posts and other publications do not resolve | `wp3a-slugs.test.ts > "does not resolve a draft, a deleted post, or another publication's slug"` | `REQUIRE_DB=1 DATABASE_URL=postgresql://postgres@localhost:55433/inkwellio pnpm vitest run apps/web/tests/db/wp3a-slugs.test.ts` | `Tests 12 passed (12)` | Proven (PG 18.3); CI 17 green: https://github.com/hiamrhex/Inkwellio/actions/runs/45445775766 |
-| E-304 | Step 4 | A deleted post's live address is never reused | `wp3a-slugs.test.ts > "never reuses a deleted post's live address"` | `REQUIRE_DB=1 DATABASE_URL=postgresql://postgres@localhost:55433/inkwellio pnpm vitest run apps/web/tests/db/wp3a-slugs.test.ts` | `Tests 12 passed (12)` | Proven (PG 18.3); CI 17 green: https://github.com/hiamrhex/Inkwellio/actions/runs/45445775766 |
-| E-305 | Step 4 | Another post's historical address is never reused | `wp3a-slugs.test.ts > "never reuses another post's historical address"` | `REQUIRE_DB=1 DATABASE_URL=postgresql://postgres@localhost:55433/inkwellio pnpm vitest run apps/web/tests/db/wp3a-slugs.test.ts` | `Tests 12 passed (12)` | Proven (PG 18.3); CI 17 green: https://github.com/hiamrhex/Inkwellio/actions/runs/45445775766 |
-| E-306 | Step 4 | A post may return to its own previous address | `wp3a-slugs.test.ts > "lets a post return to its own previous address"` | `REQUIRE_DB=1 DATABASE_URL=postgresql://postgres@localhost:55433/inkwellio pnpm vitest run apps/web/tests/db/wp3a-slugs.test.ts` | `Tests 12 passed (12)` | Proven (PG 18.3); CI 17 green: https://github.com/hiamrhex/Inkwellio/actions/runs/45445775766 |
-| E-307 | Step 4 | Unchanged slug is a no-op and writes no history | `wp3a-slugs.test.ts > "is a no-op when the slug is unchanged, writing no history"` | `REQUIRE_DB=1 DATABASE_URL=postgresql://postgres@localhost:55433/inkwellio pnpm vitest run apps/web/tests/db/wp3a-slugs.test.ts` | `Tests 12 passed (12)` | Proven (PG 18.3); CI 17 green: https://github.com/hiamrhex/Inkwellio/actions/runs/45445775766 |
-| E-308 | Step 4 | Stranger, missing post, malformed id, deleted post and reserved slug refused | `wp3a-slugs.test.ts > "refuses a stranger, a missing post, a malformed id, a deleted post and a reserved slug"` | `REQUIRE_DB=1 DATABASE_URL=postgresql://postgres@localhost:55433/inkwellio pnpm vitest run apps/web/tests/db/wp3a-slugs.test.ts` | `Tests 12 passed (12)` | Proven (PG 18.3); CI 17 green: https://github.com/hiamrhex/Inkwellio/actions/runs/45445775766 |
-| E-309 | Step 4 | 50 concurrent renames yield one winner and one history row | `wp3a-slugs.test.ts > "serialises 50 concurrent renames to one winner and one history row"` | `REQUIRE_DB=1 DATABASE_URL=postgresql://postgres@localhost:55433/inkwellio pnpm vitest run apps/web/tests/db/wp3a-slugs.test.ts` | `Tests 12 passed (12)` | Proven (PG 18.3); CI 17 green: https://github.com/hiamrhex/Inkwellio/actions/runs/45445775766 |
-| E-310 | Step 4 | Forced interleaving: a waiting rename sees the committed slug | `wp3a-slugs.test.ts > "forced interleaving: a rename that waits for an open rename sees the committed slug"` | `REQUIRE_DB=1 DATABASE_URL=postgresql://postgres@localhost:55433/inkwellio pnpm vitest run apps/web/tests/db/wp3a-slugs.test.ts` | `Tests 12 passed (12)` | Proven (PG 18.3); CI 17 green: https://github.com/hiamrhex/Inkwellio/actions/runs/45445775766 |
-| E-311 | Step 6 | Publish appends one revision, points at its UUID, writes one audit row, version +1 | `wp3a-publish.test.ts > "publishes a draft: pointer, status, one revision, one audit row, version +1"` | `REQUIRE_DB=1 DATABASE_URL=postgresql://postgres@localhost:55433/inkwellio pnpm vitest run apps/web/tests/db/wp3a-publish.test.ts` | `Tests 15 passed (15)` | Proven (PG 18.3); CI 17 green: https://github.com/hiamrhex/Inkwellio/actions/runs/45445775766 |
-| E-312 | Step 6 | Newer revision published; published_at does not move | `wp3a-publish.test.ts > "publishes a newer revision and keeps published_at exactly where it was"` | `REQUIRE_DB=1 DATABASE_URL=postgresql://postgres@localhost:55433/inkwellio pnpm vitest run apps/web/tests/db/wp3a-publish.test.ts` | `Tests 15 passed (15)` | Proven (PG 18.3); CI 17 green: https://github.com/hiamrhex/Inkwellio/actions/runs/45445775766 |
-| E-313 | Step 6 | Identical republish is a no-op (no revision, no audit, same pointer) | `wp3a-publish.test.ts > "republishing identical text is a no-op: no revision, no audit, same pointer"` | `REQUIRE_DB=1 DATABASE_URL=postgresql://postgres@localhost:55433/inkwellio pnpm vitest run apps/web/tests/db/wp3a-publish.test.ts` | `Tests 15 passed (15)` | Proven (PG 18.3); CI 17 green: https://github.com/hiamrhex/Inkwellio/actions/runs/45445775766 |
-| E-314 | Step 6 | Retried requestId is idempotent even with a stale version | `wp3a-publish.test.ts > "a retried requestId is idempotent even with the now-stale version"` | `REQUIRE_DB=1 DATABASE_URL=postgresql://postgres@localhost:55433/inkwellio pnpm vitest run apps/web/tests/db/wp3a-publish.test.ts` | `Tests 15 passed (15)` | Proven (PG 18.3); CI 17 green: https://github.com/hiamrhex/Inkwellio/actions/runs/45445775766 |
-| E-315 | Step 6 | Two parallel publishes: one winner, one CONFLICT, one revision, one audit | `wp3a-publish.test.ts > "two parallel publishes from one version: one winner, one CONFLICT, one revision, one audit"` | `REQUIRE_DB=1 DATABASE_URL=postgresql://postgres@localhost:55433/inkwellio pnpm vitest run apps/web/tests/db/wp3a-publish.test.ts` | `Tests 15 passed (15)` | Proven (PG 18.3); CI 17 green: https://github.com/hiamrhex/Inkwellio/actions/runs/45445775766 |
-| E-316 | Step 6 | 50 parallel publishes still produce one revision and one audit row | `wp3a-publish.test.ts > "50 parallel publishes from one version still produce exactly one revision and one audit row"` | `REQUIRE_DB=1 DATABASE_URL=postgresql://postgres@localhost:55433/inkwellio pnpm vitest run apps/web/tests/db/wp3a-publish.test.ts` | `Tests 15 passed (15)` | Proven (PG 18.3); CI 17 green: https://github.com/hiamrhex/Inkwellio/actions/runs/45445775766 |
-| E-317 | Step 6 | Stranger refused before anything is touched | `wp3a-publish.test.ts > "refuses a stranger before touching anything"` | `REQUIRE_DB=1 DATABASE_URL=postgresql://postgres@localhost:55433/inkwellio pnpm vitest run apps/web/tests/db/wp3a-publish.test.ts` | `Tests 15 passed (15)` | Proven (PG 18.3); CI 17 green: https://github.com/hiamrhex/Inkwellio/actions/runs/45445775766 |
-| E-318 | Step 6 | Stale version is CONFLICT carrying the current draft and writes nothing | `wp3a-publish.test.ts > "a stale version is CONFLICT carrying the current draft, and writes nothing"` | `REQUIRE_DB=1 DATABASE_URL=postgresql://postgres@localhost:55433/inkwellio pnpm vitest run apps/web/tests/db/wp3a-publish.test.ts` | `Tests 15 passed (15)` | Proven (PG 18.3); CI 17 green: https://github.com/hiamrhex/Inkwellio/actions/runs/45445775766 |
-| E-319 | Step 6 | ADR-007 transitions; only deleted -> published is illegal | `wp3a-publish.test.ts > "enforces every legal transition and rejects only deleted -> published"` | `REQUIRE_DB=1 DATABASE_URL=postgresql://postgres@localhost:55433/inkwellio pnpm vitest run apps/web/tests/db/wp3a-publish.test.ts` | `Tests 15 passed (15)` | Proven (PG 18.3); CI 17 green: https://github.com/hiamrhex/Inkwellio/actions/runs/45445775766 |
-| E-320 | Step 6 | Failure after the audit insert rolls the whole publish back | `wp3a-publish.test.ts > "rejects a failure after the audit insert and rolls the whole publish back"` | `REQUIRE_DB=1 DATABASE_URL=postgresql://postgres@localhost:55433/inkwellio pnpm vitest run apps/web/tests/db/wp3a-publish.test.ts` | `Tests 15 passed (15)` | Proven (PG 18.3); CI 17 green: https://github.com/hiamrhex/Inkwellio/actions/runs/45445775766 |
-| E-321 | Step 6 | Audit insert failure rolls the whole publish back | `wp3a-publish.test.ts > "rejects an audit insert failure and rolls the whole publish back"` | `REQUIRE_DB=1 DATABASE_URL=postgresql://postgres@localhost:55433/inkwellio pnpm vitest run apps/web/tests/db/wp3a-publish.test.ts` | `Tests 15 passed (15)` | Proven (PG 18.3); CI 17 green: https://github.com/hiamrhex/Inkwellio/actions/runs/45445775766 |
-| E-322 | Step 6 | Empty or oversized requestId is VALIDATION | `wp3a-publish.test.ts > "rejects an empty or oversized requestId"` | `REQUIRE_DB=1 DATABASE_URL=postgresql://postgres@localhost:55433/inkwellio pnpm vitest run apps/web/tests/db/wp3a-publish.test.ts` | `Tests 15 passed (15)` | Proven (PG 18.3); CI 17 green: https://github.com/hiamrhex/Inkwellio/actions/runs/45445775766 |
-| E-323 | Step 6 | Rowless publish is VALIDATION for a draft | `wp3a-publish.test.ts > "publishing a post with no draft row: VALIDATION for a draft, no-op when already published"` | `REQUIRE_DB=1 DATABASE_URL=postgresql://postgres@localhost:55433/inkwellio pnpm vitest run apps/web/tests/db/wp3a-publish.test.ts` | `Tests 15 passed (15)` | Proven (PG 18.3); CI 17 green: https://github.com/hiamrhex/Inkwellio/actions/runs/45445775766 |
-| E-324 | Step 6 | Forced interleaving: publish waits for an open rename and sees the committed slug | `wp3a-publish.test.ts > "forced interleaving: publish waits for an open rename and sees the committed slug"` | `REQUIRE_DB=1 DATABASE_URL=postgresql://postgres@localhost:55433/inkwellio pnpm vitest run apps/web/tests/db/wp3a-publish.test.ts` | `Tests 15 passed (15)` | Proven (PG 18.3); CI 17 green: https://github.com/hiamrhex/Inkwellio/actions/runs/45445775766 |
-| E-325 | Mutation 1 | Remove the version CAS predicate in claimVersion (lifecycle.ts) | `wp3a-publish.test.ts > "a stale version is CONFLICT carrying the current draft, and writes nothing"` | `REQUIRE_DB=1 DATABASE_URL=postgresql://postgres@localhost:55433/inkwellio pnpm vitest run apps/web/tests/db/wp3a-publish.test.ts` | `AssertionError: the call must fail: expected false to be true` | Proven (PG 18.3); CI 17 green: https://github.com/hiamrhex/Inkwellio/actions/runs/45445775766 |
-| E-326 | Mutation 2 | Remove the deleted -> published guard in publishPost (lifecycle.ts) | `wp3a-publish.test.ts > "enforces every legal transition and rejects only deleted -> published"` | `REQUIRE_DB=1 DATABASE_URL=postgresql://postgres@localhost:55433/inkwellio pnpm vitest run apps/web/tests/db/wp3a-publish.test.ts` | `AssertionError: expected undefined to be 'CONFLICT'` | Proven (PG 18.3); CI 17 green: https://github.com/hiamrhex/Inkwellio/actions/runs/45445775766 |
-| E-327 | Mutation 3 | Remove the ownership check in lockOwnedPost (lifecycle.ts) | `wp3a-publish.test.ts > "refuses a stranger before touching anything"` | `REQUIRE_DB=1 DATABASE_URL=postgresql://postgres@localhost:55433/inkwellio pnpm vitest run apps/web/tests/db/wp3a-publish.test.ts` | `AssertionError: the call must fail: expected false to be true` | Proven (PG 18.3); CI 17 green: https://github.com/hiamrhex/Inkwellio/actions/runs/45445775766 |
-| E-328 | Mutation 4 | Write history after the pointer in renamePost (slugs.ts) | `wp3a-slugs.test.ts > "writes the retired slug to history before moving the pointer"` | `REQUIRE_DB=1 DATABASE_URL=postgresql://postgres@localhost:55433/inkwellio pnpm vitest run apps/web/tests/db/wp3a-slugs.test.ts` | `Caused by: error: slug moved from order-old-1 before its history row was written (SQLSTATE 23514)` | Proven (PG 18.3); CI 17 green: https://github.com/hiamrhex/Inkwellio/actions/runs/45445775766 |
-| E-329 | Mutation 5 | Remove the transaction in runInTransaction (publications/domain.ts) | `wp3a-publish.test.ts > "rejects an audit insert failure and rolls the whole publish back"` | `REQUIRE_DB=1 DATABASE_URL=postgresql://postgres@localhost:55433/inkwellio pnpm vitest run apps/web/tests/db/wp3a-publish.test.ts` | `AssertionError: expected 'published' to be 'draft'` | Proven (PG 18.3); CI 17 green: https://github.com/hiamrhex/Inkwellio/actions/runs/45445775766 |
-| E-330 | Gate | All five WP3a DB suites on a real Postgres | `REQUIRE_DB=1 DATABASE_URL=... pnpm vitest run <five wp3a suites>` | `REQUIRE_DB=1 DATABASE_URL=postgresql://postgres@localhost:55433/inkwellio pnpm vitest run apps/web/tests/db/wp3a-publications.test.ts apps/web/tests/db/wp3a-reads.test.ts apps/web/tests/db/wp3a-slugs.test.ts apps/web/tests/db/wp3a-drafts.test.ts apps/web/tests/db/wp3a-publish.test.ts` | `Test Files 5 passed (5); Tests 87 passed (87); 0 skipped` | Proven (PG 18.3); CI 17 green: https://github.com/hiamrhex/Inkwellio/actions/runs/45445775766 |
-| E-331 | Gate | Full gate: lint, typecheck, tests, boundaries, production build | `pnpm check` | `pnpm check` | `exit=0; lint 0 errors (4 warnings, all in Agent 1 files)` | Proven (PG 18.3); CI 17 green: https://github.com/hiamrhex/Inkwellio/actions/runs/45445775766 |
+**Three strongest reasons this score may be too generous**
+
+1. The live drills used a local server and a local database with fixture rows
+   verified directly in SQL. A deployed environment has a different proxy
+   chain, so the "trusted IP" verdict for `x-real-ip` depends on a deployment
+   flag (`TRUST_PROXY_HEADERS`) that has not been exercised in production.
+2. The route guard matrix is a source-code assertion, not a runtime policy
+   enforcement point. A handler that declares `authenticated` but forgets to
+   call the guard would pass `policy.ts` checks only if the scanner also found
+   no guard — but a future refactor to a new helper name would evade the
+   current regex patterns.
+3. The 598-test gate proves the tested paths, not the untested ones. Several
+   rows in `docs/FAILURE_MODES.md` still say `Proved = no` for live provider
+   events; those are exactly the failures most likely to hurt a free-tier T2
+   deployment.
+
+**Free-tier / single-region limits (accepted, not solved)**
+
+- One Neon compute in one region, 100 CU-hours/month and 1 GB storage: quota
+  exhaustion takes the whole application down; no cross-region failover.
+- One Vercel Hobby project with one WAF rate-limit rule and a 300 s function
+  cap; platform-level abuse protection is not under our control.
+- Gmail ~500 messages/day and one app password: verification is a hard gate,
+  so an SMTP outage stops sign-ups by design.
+- One developer, 6-hour documented recovery window, no independent pentest.
+
+## G. 15-minute manual check for Richard
+
+1. `cd .worktrees/wp8-backend && pnpm check` with the four env vars above.
+   Expect five green gate steps and `598 passed` (about 5 minutes).
+2. Start a local server: `NODE_ENV=production EMAIL_TRANSPORT=capture ... npx next start -H 127.0.0.1 -p 3100`.
+   `curl -i http://127.0.0.1:3100/api/health` → 200 `{"status":"ok"}`.
+3. `node apps/web/tests/manual/red-team-drills.mjs` → summary
+   `17 passed, 0 failed`. Then `node apps/web/tests/manual/red-team-drills.mjs --cleanup`
+   → `remaining` all zero.
+4. To see the old defects return, stash `apps/web/src/app/api/health/route.ts`
+   and run `vitest run apps/web/tests/health.test.ts`: expect 2 failures.
+
+## H. Pull request
+
+PR URL and `gh pr checks` result are filled in Milestone D after the push and
+PR creation. Unverified until then.
