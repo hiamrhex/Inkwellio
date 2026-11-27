@@ -8,7 +8,43 @@ describe("parseEnv", () => {
       LOG_LEVEL: "info",
       BETTER_AUTH_SECRET: "test-secret-minimum-32-characters-long",
       BETTER_AUTH_URL: "http://localhost:3000",
+      // Defaults that decide whether a client header may key a rate limit and
+      // whether mail leaves the process. They are part of the typed surface.
+      TRUST_PROXY_HEADERS: "0",
+      EMAIL_TRANSPORT: "auto",
     });
+  });
+
+  it("parses an explicit trusted-origin allowlist and rejects wildcards or bare hosts", () => {
+    const parsed = parseEnv({
+      NODE_ENV: "production",
+      BETTER_AUTH_SECRET: "prod-secret-minimum-32-characters-long-xyz",
+      BETTER_AUTH_URL: "https://inkwellio.vercel.app",
+      BETTER_AUTH_TRUSTED_ORIGINS:
+        "https://inkwellio-git-preview.vercel.app, http://192.168.1.20:3000",
+    });
+    expect(parsed.BETTER_AUTH_TRUSTED_ORIGINS).toEqual([
+      "https://inkwellio-git-preview.vercel.app",
+      "http://192.168.1.20:3000",
+    ]);
+
+    const base = {
+      NODE_ENV: "production",
+      BETTER_AUTH_SECRET: "prod-secret-minimum-32-characters-long-xyz",
+      BETTER_AUTH_URL: "https://inkwellio.vercel.app",
+    };
+    expect(() =>
+      parseEnv({ ...base, BETTER_AUTH_TRUSTED_ORIGINS: "https://*.vercel.app" }),
+    ).toThrow(/wildcard/i);
+    expect(() =>
+      parseEnv({ ...base, BETTER_AUTH_TRUSTED_ORIGINS: "inkwellio.vercel.app" }),
+    ).toThrow(/Invalid URL|absolute URL/i);
+    expect(() =>
+      parseEnv({ ...base, BETTER_AUTH_TRUSTED_ORIGINS: "https://evil.test/path" }),
+    ).toThrow(/origin/i);
+    expect(() =>
+      parseEnv({ ...base, BETTER_AUTH_TRUSTED_ORIGINS: "ftp://evil.test" }),
+    ).toThrow(/http/i);
   });
 
   it("throws when a required variable is missing", () => {

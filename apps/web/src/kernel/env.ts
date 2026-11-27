@@ -29,6 +29,60 @@ const envSchema = z.object({
   BETTER_AUTH_SECRET: z.string().min(32, "secret must be at least 32 characters"),
   /** Base URL for Better Auth (e.g. https://inkwellio.vercel.app) */
   BETTER_AUTH_URL: z.string().url("must be a valid URL"),
+  /**
+   * Extra origins allowed to call the auth endpoints (preview deployments,
+   * a LAN address used for device testing). Comma-separated, absolute
+   * http(s) URLs only: a wildcard would let any site drive the auth API, so
+   * `*` and bare hostnames are rejected at load time rather than ignored.
+   */
+  BETTER_AUTH_TRUSTED_ORIGINS: z.preprocess(
+    emptyToUndefined,
+    z
+      .string()
+      .transform((value) =>
+        value
+          .split(",")
+          .map((entry) => entry.trim())
+          .filter((entry) => entry.length > 0),
+      )
+      .pipe(
+        z
+          .array(
+            z
+              .string()
+              .url("must be an absolute URL")
+              .refine((url) => url.startsWith("http://") || url.startsWith("https://"), {
+                message: "must be an http:// or https:// origin",
+              })
+              .refine((url) => !url.includes("*"), {
+                message: "wildcards are not allowed",
+              })
+              .refine((url) => {
+                const parsed = new URL(url);
+                return parsed.pathname === "/" && parsed.search === "" && parsed.hash === "";
+              }, { message: "must be an origin (scheme + host + port), not a path" }),
+          )
+          .max(10, "at most 10 extra origins"),
+      )
+      .optional(),
+  ),
+  /**
+   * `1` when the process sits behind a proxy that overwrites `x-forwarded-for`
+   * (a self-hosted reverse proxy). On Vercel the platform header is trusted
+   * without this flag. Default `0`: an untrusted client header is never used to
+   * key a rate limit, because a caller could rotate it to bypass the limiter.
+   */
+  TRUST_PROXY_HEADERS: z.preprocess(emptyToUndefined, z.enum(["0", "1"]).default("0")),
+  /** Set by the platform on Vercel deployments; used to trust `x-real-ip`. */
+  VERCEL: z.preprocess(emptyToUndefined, z.string().optional()),
+  /**
+   * Which outbound email transport to use.
+   *   auto    - SMTP in production, capturing elsewhere (the default)
+   *   smtp    - SMTP everywhere; missing credentials fail at send time with 503
+   *   capture - in-memory capture; an explicit opt-in for local `next start`
+   *             drills, logged as a warning on every send
+   */
+  EMAIL_TRANSPORT: z.preprocess(emptyToUndefined, z.enum(["auto", "smtp", "capture"]).default("auto")),
   // Gmail SMTP (WP2b / WP2c)
   GMAIL_USER: z.preprocess(emptyToUndefined, z.string().email().optional()),
   GMAIL_APP_PASSWORD: z.preprocess(emptyToUndefined, z.string().min(16).optional()),

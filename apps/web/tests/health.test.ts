@@ -2,7 +2,7 @@ import { createServer, type Socket } from "node:net";
 import { describe, expect, it } from "vitest";
 import { GET, checkDatabaseHealth } from "../src/app/api/health/route";
 import { policy } from "../src/app/api/health/policy";
-import { closeDb } from "@/kernel/db";
+import { closeDb, type HealthProbeClient } from "@/kernel/db";
 
 describe("B3: Health check endpoint (/api/health, A11)", () => {
   it("has sibling policy 'public'", () => {
@@ -71,6 +71,88 @@ describe("B3: Health check endpoint (/api/health, A11)", () => {
       }
       await closeDb();
       await new Promise<void>((resolve) => server.close(() => resolve()));
+    }
+  });
+
+  it("releases the pooled client when the query times out, not just when it succeeds", async () => {
+    // The regression this locks: a `Promise.race` whose query leg loses leaves
+    // the acquired client unreleased. With `max: 5`, five timed-out probes
+    // exhaust the pool and every later query in the process hangs.
+    const origUrl = process.env.DATABASE_URL;
+    process.env.DATABASE_URL = "postgres://probe_user:probe_pass@127.0.0.1:1/inkwellio";
+
+    let releases = 0;
+    const neverResolvingClient: HealthProbeClient = {
+      query: () => new Promise<unknown>(() => {}),
+      release: () => {
+        releases += 1;
+      },
+    };
+
+    try {
+      const healthy = await checkDatabaseHealth(50, {
+        connect: async () => neverResolvingClient,
+      });
+      expect(healthy).toBe(false);
+      expect(releases).toBe(1);
+    } finally {
+      if (origUrl !== undefined) {
+        process.env.DATABASE_URL = origUrl;
+      } else {
+        delete process.env.DATABASE_URL;
+      }
+    }
+  });
+
+  it("releases the pooled client when the query succeeds", async () => {
+    const origUrl = process.env.DATABASE_URL;
+    process.env.DATABASE_URL = "postgres://probe_user:probe_pass@127.0.0.1:1/inkwellio";
+
+    let releases = 0;
+    const healthyClient: HealthProbeClient = {
+      query: async () => ({ rows: [{ "?column?": 1 }] }),
+      release: () => {
+        releases += 1;
+      },
+    };
+
+    try {
+      const healthy = await checkDatabaseHealth(500, { connect: async () => healthyClient });
+      expect(healthy).toBe(true);
+      expect(releases).toBe(1);
+    } finally {
+      if (origUrl !== undefined) {
+        process.env.DATABASE_URL = origUrl;
+      } else {
+        delete process.env.DATABASE_URL;
+      }
+    }
+  });
+
+  it("does not leak a client when connect() itself never resolves", async () => {
+    const origUrl = process.env.DATABASE_URL;
+    process.env.DATABASE_URL = "postgres://probe_user:probe_pass@127.0.0.1:1/inkwellio";
+
+    // Nothing was acquired, so there is nothing to release — but the caller
+    // must still get an answer rather than hanging. The probe may try once;
+    // what must never happen is a release of a client it never held.
+    const releases = { count: 0 };
+    const countingPool = {
+      connect: () => {
+        releases.count += 1;
+        return new Promise<never>(() => {});
+      },
+    };
+    try {
+      const healthy = await checkDatabaseHealth(50, countingPool);
+      expect(healthy).toBe(false);
+      expect(releases.count).toBe(1);
+    } finally {
+      if (origUrl !== undefined) {
+        process.env.DATABASE_URL = origUrl;
+      } else {
+        delete process.env.DATABASE_URL;
+      }
     }
   });
 

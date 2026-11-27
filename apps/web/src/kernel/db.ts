@@ -49,6 +49,21 @@ export function getDb(): NodePgDatabase {
 }
 
 /**
+ * The two operations the health probe needs from a pool, and the release that
+ * must happen afterwards. Narrow on purpose: a test can hand in a fake and
+ * count releases, which is how the pooled-client leak is proven fixed without
+ * opening a socket.
+ */
+export interface HealthProbeClient {
+  query(sql: string): Promise<unknown>;
+  release(): void;
+}
+
+export interface HealthProbePool {
+  connect(): Promise<HealthProbeClient>;
+}
+
+/**
  * Closes the pool and forgets it, so a later `getDb()` starts clean. Tests and
  * the eventual erasure job need this; request handlers never call it.
  */

@@ -110,7 +110,7 @@ describe("Gate G5: Rate limits and header rotation", () => {
     expect(normalizeRateLimitEmail("ｕｓｅｒ@example.com")).toBe("user@example.com");
   });
 
-  it("fails closed when DATABASE_URL is configured and DB query throws", async () => {
+  it("fails closed on a store outage as 503, never as 429 (an outage is not abuse)", async () => {
     const prevDbUrl = process.env.DATABASE_URL;
     process.env.DATABASE_URL = "postgres://invalid:5432/nonexistent";
     const spy = vi.spyOn(dbModule, "getDb").mockImplementation(() => {
@@ -120,7 +120,10 @@ describe("Gate G5: Rate limits and header rotation", () => {
     try {
       const res = await consumeRateLimit("ip:198.51.100.42:sign_in", { max: 5, windowSeconds: 600 });
       expect(res.allowed).toBe(false);
-      expect(res.status).toBe(429);
+      // 429 would tell the caller to slow down and retry inside the window.
+      // The caller did nothing wrong; the counter store is down.
+      expect(res.status).toBe(503);
+      expect(res.store).toBe("unavailable");
       expect(res.remaining).toBe(0);
     } finally {
       spy.mockRestore();
