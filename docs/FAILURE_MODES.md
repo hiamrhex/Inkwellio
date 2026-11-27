@@ -123,25 +123,45 @@ and rerunning the test produced
 | --- | --- | --- | --- | --- |
 | Public reads (`search`, `topics`, `posts/[id]`) | anonymous allowed; owner-only drafts are 404 | 503 with `{error}`, bounded by `withPublicDbTimeout` | no limiter | cached feed may be stale by up to 60 s by design |
 | Auth (`auth/[...all]`) | Better Auth denies; no session on failure | structured JSON, 503 on email outage | 429 with `Retry-After`, 503 on counter outage | none |
-| Owner writes (`posts/**`, `publications/**`) | 401/403 before service call | `jsonError` maps DB errors to closed vocabulary | no per-write limiter yet — see Honest gaps | no cache returned on failed save |
+| Owner writes (`posts/**`, `publications/**`) | 401/403 before service call | `jsonError` maps DB errors to closed vocabulary | wired per-user: 120/min for draft autosave, 30/min structural; 429 with `Retry-After` on breach, 503 on counter outage | no cache returned on failed save |
 | Account/privacy | 401/403 before service call | kernel JSON; export > 25 MB is 413 | 429 for export (1/hour) and erasure request (5/10 min) | erasure invalidates cached targets |
 
-**Honest gaps still open at Milestone B**
+**Gaps closed after PR #36 (see 5c); gaps still open**
 
-- Per-write rate limiting (`rateLimitWrite` exists in `identity/limiter.ts`) is
-  **not wired** into the WP3b write routes. It is a guard against runaway loops,
-  not a credential surface; it is recorded here rather than claimed as proved.
+- Per-write rate limiting is now wired and proved (section 5c). The earlier
+  note that it was "not wired" is superseded.
+- The account erasure request/confirm handlers now use the strict
+  `readIdentityJsonObject` helper: malformed JSON is a 400 `VALIDATION_ERROR`
+  with a fixed message instead of being silently read as an empty object. They
+  still do not enforce a `Content-Type` header or a byte cap at the boundary;
+  the service layer enforces draft body 102,400 bytes and title 200 chars.
 - Only the Vercel Hobby WAF rule count is known from the prior audit; live quota
   exhaustion and real SMTP outages remain `Unverified` (section 5a).
-- The account erasure request/confirm handlers parse the body with `request.json()`
-  directly rather than `readJsonObject`; they reject malformed JSON with the
-  fixed validation error, but they do not enforce a `Content-Type` or a byte
-  cap at the boundary. The WP3b write routes use `readJsonObject`; their size
-  cap is enforced in the service layer (draft body 102,400 bytes, title 200
-  chars), not before JSON parsing.
 - The public allow-list is a test-time source assertion, not runtime middleware.
   A route can be labelled `public` and still reject at runtime; the guard proves
   the declaration, not the handler's behaviour.
+
+## 5c. Owner-write limiting, wired and proved (follow-up to PR #36)
+
+| Route | Action key | Limit / 60 s window | Why |
+| --- | --- | --- | --- |
+| `PUT /api/posts/:id/draft` | `write:draft_save` | 120 | Studio debounces 1,500 ms with one save in flight (`components/studio/studio-editor.tsx:88-91,187-190`): continuous typing produces ~40 saves/minute, so 120 leaves 3x headroom |
+| `POST /api/posts` | `write:create_post` | 30 | Deliberate action |
+| `POST /api/posts/:id/publish`, `unpublish`, `delete`, `restore`, `slug` | `write:<action>` | 30 each | Deliberate lifecycle actions; separate buckets so one flood does not block another |
+| `PUT /api/posts/:id/topics` | `write:topics` | 30 | Deliberate action |
+| `POST /api/publications` | `write:publication` | 30 | One publication per ADR-006 |
+
+All calls go through `apps/web/src/app/api/_lib/write-limit.ts`, after
+`requireUser`, so buckets are keyed by verified user id. A breach throws the
+kernel `RateLimitError` rendered by `jsonError` as 429 with `Retry-After` and
+`requestId`; a counter-store outage throws `UNAVAILABLE` rendered as 503.
+
+Proofs: `apps/web/tests/wp8-write-limits.test.ts` (7 tests) covers a 40-save
+burst, the 121st draft save, the 31st structural write, bucket separation,
+store outage, and route-level 429/503 before the service runs. Mutation check:
+removing the `enforceWriteLimit` line from the draft route produced
+`Tests  2 failed | 5 passed (7)` (`expected 200 to be 429` and
+`expected 200 to be 503`).
 
 ## 6. Overload plan
 

@@ -1,3 +1,4 @@
+import { enforceWriteLimit } from "../../../_lib/write-limit";
 import { getPostCacheTarget, renamePost } from "@/modules/posts";
 import { readJsonObject, requireString } from "../../../_lib/body";
 import { invalidatePostSlug } from "../../../_lib/cache-seam";
@@ -22,6 +23,7 @@ export async function POST(
   const requestId = requestIdFrom(request.headers);
   try {
     const actor = await requireUser(request.headers);
+    await enforceWriteLimit("write:slug", actor.userId, { structural: true });
     const { id } = await params;
     const body = await readJsonObject(request);
     const slug = requireString(body, "slug");

@@ -320,6 +320,28 @@ function limitResponse(decision: RateLimitDecision, requestId: string): Response
 }
 
 /**
+ * Strict JSON-object body reader for identity endpoints.
+ *
+ * The account endpoints used to swallow a parse error and continue with an
+ * empty object, so a malformed body was reported as "password required" or
+ * "token required". A Phase 2 settings screen cannot distinguish a broken
+ * request from a missing field. Malformed input is now a VALIDATION_ERROR with
+ * the same fixed message the WP3b boundary uses.
+ */
+export async function readIdentityJsonObject(request: Request): Promise<Record<string, unknown>> {
+  let parsed: unknown;
+  try {
+    parsed = await request.json();
+  } catch {
+    throw new ValidationError("A JSON object body is required");
+  }
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+    throw new ValidationError("A JSON object body is required");
+  }
+  return parsed as Record<string, unknown>;
+}
+
+/**
  * Next.js App Router GET handler for `/api/auth/[...all]`.
  *
  * Kept inside `modules/identity` so `app/` never imports Better Auth directly.
@@ -490,13 +512,17 @@ export async function handleErasureRequestPost(request: Request): Promise<Respon
   }
 
   let password: string | undefined;
+  let bodyError: ValidationError | undefined;
   try {
-    const body = (await request.json()) as { password?: unknown };
-    if (typeof body?.password === "string") {
+    const body = await readIdentityJsonObject(request);
+    if (typeof body.password === "string") {
       password = body.password;
     }
-  } catch {
-    // Empty or non-JSON body
+  } catch (error) {
+    if (error instanceof ValidationError) bodyError = error;
+  }
+  if (bodyError !== undefined) {
+    return Response.json(toPublicError(bodyError, requestId), { status: 400 });
   }
 
   try {
@@ -543,13 +569,17 @@ export async function handleErasureConfirmPost(
   }
 
   let token = "";
+  let tokenBodyError: ValidationError | undefined;
   try {
-    const body = (await request.json()) as { token?: unknown };
-    if (typeof body?.token === "string") {
+    const body = await readIdentityJsonObject(request);
+    if (typeof body.token === "string") {
       token = body.token.trim();
     }
-  } catch {
-    // Invalid JSON
+  } catch (error) {
+    if (error instanceof ValidationError) tokenBodyError = error;
+  }
+  if (tokenBodyError !== undefined) {
+    return Response.json(toPublicError(tokenBodyError, requestId), { status: 400 });
   }
 
   if (!token) {
