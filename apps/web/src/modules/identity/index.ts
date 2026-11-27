@@ -12,17 +12,20 @@ import { getDb } from "@/kernel/db";
 import { env } from "@/kernel/env";
 import { logEvent } from "@/kernel/log";
 import {
+  AppError,
   ConflictError,
   ForbiddenError,
   NotFoundError,
+  RateLimitError,
   ValidationError,
   toPublicError,
   type PublicError,
 } from "@/kernel/errors";
+import { newRequestId } from "@/kernel/request-id";
 import { users, sessions, accounts, verifications, rateLimits } from "./schema";
-import { sendVerificationEmail, sendResetPasswordEmail } from "./email";
+import { sendVerificationEmail, sendResetPasswordEmail, isEmailTransportReady, EmailUnavailableError } from "./email";
 import { recordAuditEvent } from "./audit";
-import { getClientIp, rateLimitAuth } from "./limiter";
+import { getClientIp, rateLimitAuth, type RateLimitDecision } from "./limiter";
 import {
   ErasureTokenExpiredError,
   MAX_EXPORT_BYTES,
@@ -65,7 +68,10 @@ export function getAuth() {
     baseURL,
     basePath: "/api/auth",
     secret,
-    trustedOrigins: [baseURL],
+    // Explicit origins only. `BETTER_AUTH_TRUSTED_ORIGINS` is validated at load
+    // (absolute http(s) origins, no wildcards) so a preview host or a LAN
+    // address can be added without weakening CSRF for everyone else.
+    trustedOrigins: Array.from(new Set([baseURL, ...(env.BETTER_AUTH_TRUSTED_ORIGINS ?? [])])),
 
     database: drizzleAdapter(
       process.env.DATABASE_URL ? getDb() : ({} as ReturnType<typeof getDb>),
@@ -160,23 +166,29 @@ export function getAuth() {
       storeInDatabase: true,
     },
 
+    /**
+     * Better Auth's own limiter is disabled on purpose.
+     *
+     * It keys on the same IP header, and when that header is absent it collapses
+     * every caller into one `no-trusted-ip` bucket (3 requests/minute on
+     * sign-up). Two stacked limiters also meant a caller could be refused at
+     * attempt 4 with a different error shape than our limiter produces.
+     *
+     * `handleAuthPost` below is now the single limiter for the sensitive auth
+     * paths: per-IP when the IP is trusted, per-email always, and a high-cap
+     * global backstop when it is not. The endpoints it does not guard
+     * (`/get-session`, `/ok`, `/sign-out`, `/verify-email`) are not
+     * credential-guessing surfaces.
+     */
     rateLimit: {
-      enabled: true,
-      window: 60,
-      max: 100,
-      customRules: {
-        "/sign-in/email": {
-          window: 600,
-          max: 5,
-        },
-      },
-      storage: "database",
-      modelName: "rate_limit",
+      enabled: false,
     },
 
     advanced: {
       ipAddress: {
-        ipAddressHeaders: ["x-vercel-forwarded-for"],
+        // `x-real-ip` is set by Vercel and by common reverse proxies; including
+        // it gives session metadata a second chance before falling back.
+        ipAddressHeaders: ["x-vercel-forwarded-for", "x-real-ip"],
         disableIpTracking: false,
       },
       useSecureCookies: true,
@@ -260,23 +272,90 @@ const RATE_LIMITED_AUTH_PATHS = new Set([
 ]);
 
 /**
+ * Endpoints whose whole purpose is to send a message. When the transport
+ * cannot deliver, they must refuse rather than report success: a 200 here
+ * creates an account nobody can verify or promises a link that never arrives.
+ */
+const EMAIL_SENDING_AUTH_PATHS = new Set([
+  "sign-up/email",
+  "forget-password",
+  "request-password-reset",
+  "send-verification-email",
+]);
+
+const NO_STORE_HEADERS = {
+  "cache-control": "no-store",
+  "x-content-type-options": "nosniff",
+} as const;
+
+/** A request id the browser can quote, bounded so a header cannot flood logs. */
+function requestIdOf(request: Request): string {
+  const supplied = request.headers.get("x-request-id");
+  if (supplied !== null && supplied.length >= 1 && supplied.length <= 64) return supplied;
+  return newRequestId();
+}
+
+/**
+ * One 429 shape for every limiter in the application: the kernel's public
+ * vocabulary plus `Retry-After`. A client (or a support engineer reading a
+ * screenshot) sees the same fields whether the refusal came from the auth
+ * limiter, an export limiter or a write limiter.
+ */
+function limitResponse(decision: RateLimitDecision, requestId: string): Response {
+  if (decision.status === 503) {
+    // The counter store is unreachable. Deny as an outage, not as abuse.
+    return Response.json(
+      toPublicError(new AppError("Temporarily unavailable", "UNAVAILABLE"), requestId),
+      { status: 503, headers: NO_STORE_HEADERS },
+    );
+  }
+  const error = new RateLimitError(decision.retryAfterSeconds ?? 60);
+  return Response.json(toPublicError(error, requestId), {
+    status: 429,
+    headers: {
+      ...NO_STORE_HEADERS,
+      "retry-after": String(error.retryAfterSeconds),
+    },
+  });
+}
+
+/**
  * Next.js App Router GET handler for `/api/auth/[...all]`.
  *
  * Kept inside `modules/identity` so `app/` never imports Better Auth directly.
  */
 export async function handleAuthGet(request: Request): Promise<Response> {
-  return getAuth().handler(request);
+  const requestId = requestIdOf(request);
+  try {
+    return await getAuth().handler(request);
+  } catch (error) {
+    logEvent("error", "auth_handler_failed", {
+      requestId,
+      method: "GET",
+      error: error instanceof Error ? error.name : typeof error,
+    });
+    const mapped = mapAuthError(error, requestId);
+    return Response.json(mapped, { status: mapped.status, headers: NO_STORE_HEADERS });
+  }
 }
 
 /**
  * Next.js App Router POST handler for `/api/auth/[...all]`.
  *
- * Enforces application-layer rate limiting (pinned `x-vercel-forwarded-for` +
- * normalized email) before delegating to Better Auth's handler.
+ * Enforces application-layer rate limiting (trusted client IP + normalized
+ * email) before delegating to Better Auth's handler, and converts anything
+ * that escapes Better Auth into the kernel's JSON error contract.
  */
 export async function handleAuthPost(request: Request): Promise<Response> {
   const url = new URL(request.url);
   const subPath = url.pathname.replace(/^\/api\/auth\/?/, "");
+  const requestId = requestIdOf(request);
+
+  if (EMAIL_SENDING_AUTH_PATHS.has(subPath) && !isEmailTransportReady()) {
+    logEvent("error", "auth_email_transport_unconfigured", { requestId, path: subPath });
+    const mapped = toPublicError(new EmailUnavailableError(), requestId);
+    return Response.json(mapped, { status: mapped.status, headers: NO_STORE_HEADERS });
+  }
 
   if (RATE_LIMITED_AUTH_PATHS.has(subPath)) {
     let email: string | undefined;
@@ -287,30 +366,43 @@ export async function handleAuthPost(request: Request): Promise<Response> {
         email = body.email;
       }
     } catch {
-      // Non-JSON or empty body; IP rate limit still applies
+      // Non-JSON or empty body; the IP dimension still applies
     }
 
-    const limitResult = await rateLimitAuth(
+    const decision = await rateLimitAuth(
       `auth:${subPath}`,
       { headers: request.headers, email },
       { max: 5, windowSeconds: 600 },
     );
-    if (!limitResult.allowed) {
-      return Response.json(
-        { code: "RATE_LIMITED", message: "Too many requests" },
-        { status: 429 },
-      );
+    if (!decision.allowed) {
+      return limitResponse(decision, requestId);
     }
   }
 
-  return getAuth().handler(request);
+  try {
+    return await getAuth().handler(request);
+  } catch (error) {
+    // Better Auth normally converts its own failures into a Response. Anything
+    // that escapes — a transport throw, a driver error, a bug — used to become
+    // an empty-bodied platform 500. It becomes the kernel's JSON contract here.
+    logEvent("error", "auth_handler_failed", {
+      requestId,
+      path: subPath,
+      error: error instanceof Error ? error.name : typeof error,
+    });
+    const mapped = mapAuthError(error, requestId);
+    return Response.json(mapped, {
+      status: mapped.status,
+      headers: NO_STORE_HEADERS,
+    });
+  }
 }
 
 /**
  * Authenticated owner-only account export (`GET /api/account/export`).
  */
 export async function handleAccountExportGet(request: Request): Promise<Response> {
-  const requestId = request.headers.get("x-request-id") ?? crypto.randomUUID();
+  const requestId = requestIdOf(request);
   const ip = getClientIp(request.headers);
 
   const session = await getAuth().api.getSession({ headers: request.headers });
@@ -334,7 +426,7 @@ export async function handleAccountExportGet(request: Request): Promise<Response
     { max: 1, windowSeconds: 3600 },
   );
   if (!limit.allowed) {
-    return Response.json({ code: "RATE_LIMITED", message: "Too many export requests" }, { status: 429 });
+    return limitResponse(limit, requestId);
   }
 
   try {
@@ -370,7 +462,7 @@ export async function handleAccountExportGet(request: Request): Promise<Response
  * Initiates account erasure (`POST /api/account/erasure/request`).
  */
 export async function handleErasureRequestPost(request: Request): Promise<Response> {
-  const requestId = request.headers.get("x-request-id") ?? crypto.randomUUID();
+  const requestId = requestIdOf(request);
   const ip = getClientIp(request.headers);
 
   const session = await getAuth().api.getSession({ headers: request.headers });
@@ -394,7 +486,7 @@ export async function handleErasureRequestPost(request: Request): Promise<Respon
     { max: 5, windowSeconds: 600 },
   );
   if (!limit.allowed) {
-    return Response.json({ code: "RATE_LIMITED", message: "Too many requests" }, { status: 429 });
+    return limitResponse(limit, requestId);
   }
 
   let password: string | undefined;
@@ -433,7 +525,7 @@ export async function handleErasureConfirmPost(
     invalidateCache?: (targets: ErasedAccountCacheTargets) => Promise<void> | void;
   },
 ): Promise<Response> {
-  const requestId = request.headers.get("x-request-id") ?? crypto.randomUUID();
+  const requestId = requestIdOf(request);
   const ip = getClientIp(request.headers);
 
   const session = await getAuth().api.getSession({ headers: request.headers });
@@ -737,14 +829,22 @@ export function mapAuthError(error: unknown, requestId: string): PublicError {
     return toPublicError(new ValidationError("Invalid input"), requestId);
   }
 
-  // Rate limiting
+  // Rate limiting: a volume refusal, not a credential verdict, so it must not
+  // be flattened into VALIDATION_ERROR (which would read as "wrong password")
+  // nor into UNAVAILABLE (an outage). 429 with Retry-After is the contract.
   if (
     upperCode === "RATE_LIMITED" ||
     upperCode === "TOO_MANY_REQUESTS" ||
     lowerMsg.includes("rate limit") ||
     lowerMsg.includes("too many requests")
   ) {
-    return toPublicError(Object.assign(new Error(message), { code: "57014" }), requestId);
+    const retryAfter =
+      typeof (error as { retryAfter?: unknown }).retryAfter === "number"
+        ? (error as { retryAfter: number }).retryAfter
+        : typeof (error as { retryAfterSeconds?: unknown }).retryAfterSeconds === "number"
+          ? (error as { retryAfterSeconds: number }).retryAfterSeconds
+          : 60;
+    return toPublicError(new RateLimitError(retryAfter), requestId);
   }
 
   // Session / resource not found

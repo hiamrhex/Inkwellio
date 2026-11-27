@@ -11,8 +11,22 @@
  */
 
 import nodemailer from "nodemailer";
+import { AppError } from "@/kernel/errors";
 import { env } from "@/kernel/env";
 import { logEvent } from "@/kernel/log";
+
+/**
+ * A mail dependency is down or misconfigured.
+ *
+ * It is an `UNAVAILABLE` (503) rather than an `INTERNAL` (500): the caller did
+ * nothing wrong, and the correct client behaviour is to retry later, not to
+ * change the request. The message is fixed and carries no SMTP detail.
+ */
+export class EmailUnavailableError extends AppError {
+  constructor(options?: ErrorOptions) {
+    super("Email delivery is temporarily unavailable", "UNAVAILABLE", options);
+  }
+}
 
 export interface OutboundEmail {
   to: string;
@@ -116,9 +130,9 @@ export class ProductionEmailTransport implements EmailTransport {
 
   private getTransporter(): SmtpTransporter {
     if (!this.user || !this.appPassword) {
-      throw new Error(
-        "Missing production email configuration: GMAIL_USER and GMAIL_APP_PASSWORD are required in production",
-      );
+      // Fail as a dependency outage, not as a crash: the auth route maps this
+      // to 503 UNAVAILABLE with a JSON body the browser can show.
+      throw new EmailUnavailableError();
     }
     this.transporter ??= this.transporterFactory({
       host: "smtp.gmail.com",
@@ -157,7 +171,7 @@ export class ProductionEmailTransport implements EmailTransport {
         type: email.type,
         code,
       });
-      throw new Error("Email delivery failed");
+      throw new EmailUnavailableError({ cause: err });
     }
 
     logEvent("info", "production_email_dispatched", {
@@ -168,15 +182,55 @@ export class ProductionEmailTransport implements EmailTransport {
 
 let transportOverride: EmailTransport | null = null;
 const defaultCapturingTransport = new CapturingTransport();
+let captureModeWarned = false;
 
+/**
+ * The transport the process will actually use.
+ *
+ * `EMAIL_TRANSPORT=auto` (the default) is SMTP in production and capturing
+ * everywhere else. The previous switch was `NODE_ENV` alone, which meant a
+ * local `next start` silently swallowed every message: the flow looked
+ * healthy and nothing was delivered. Capturing now announces itself once, and
+ * `EMAIL_TRANSPORT=smtp` makes a local run exercise the real path.
+ */
 export function getEmailTransport(): EmailTransport {
   if (transportOverride) {
     return transportOverride;
   }
-  if (env.NODE_ENV === "production") {
+  const mode = env.EMAIL_TRANSPORT;
+  const useSmtp = mode === "smtp" || (mode === "auto" && env.NODE_ENV === "production");
+
+  if (useSmtp) {
     return new ProductionEmailTransport(env.GMAIL_USER, env.GMAIL_APP_PASSWORD);
   }
+
+  if (!captureModeWarned) {
+    captureModeWarned = true;
+    logEvent("warn", "email_transport_capture_mode", {
+      mode,
+      nodeEnv: env.NODE_ENV,
+      detail: "Messages are captured in memory and not delivered",
+    });
+  }
   return defaultCapturingTransport;
+}
+
+/**
+ * Whether a message sent now would leave the process.
+ *
+ * Capture is a working transport, not a failure: in a non-production process
+ * it is the intended mode. The false case is narrow and important — SMTP was
+ * selected but the credentials are absent, which is exactly the state that used
+ * to create an account nobody could ever verify.
+ */
+export function isEmailTransportReady(): boolean {
+  if (transportOverride) return true;
+  const mode = env.EMAIL_TRANSPORT;
+  if (mode === "capture") return true;
+  if (mode === "smtp") return Boolean(env.GMAIL_USER && env.GMAIL_APP_PASSWORD);
+  // auto: SMTP in production, capture elsewhere
+  if (env.NODE_ENV !== "production") return true;
+  return Boolean(env.GMAIL_USER && env.GMAIL_APP_PASSWORD);
 }
 
 export function setEmailTransport(transport: EmailTransport | null): void {

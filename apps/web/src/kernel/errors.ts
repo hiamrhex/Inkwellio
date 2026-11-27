@@ -18,6 +18,9 @@ export type PublicErrorCode =
   | "FORBIDDEN"
   | "NOT_FOUND"
   | "CONFLICT"
+  | "PAYLOAD_TOO_LARGE"
+  | "UNSUPPORTED_MEDIA_TYPE"
+  | "RATE_LIMITED"
   | "UNAVAILABLE"
   | "INTERNAL";
 
@@ -31,6 +34,9 @@ const PUBLIC_ERRORS: Record<PublicErrorCode, PublicDefinition> = {
   FORBIDDEN: { status: 403, message: "Forbidden" },
   NOT_FOUND: { status: 404, message: "Not found" },
   CONFLICT: { status: 409, message: "That already exists" },
+  PAYLOAD_TOO_LARGE: { status: 413, message: "Request body is too large" },
+  UNSUPPORTED_MEDIA_TYPE: { status: 415, message: "Unsupported content type" },
+  RATE_LIMITED: { status: 429, message: "Too many requests" },
   UNAVAILABLE: { status: 503, message: "Temporarily unavailable" },
   INTERNAL: { status: 500, message: "Something went wrong" },
 };
@@ -115,6 +121,35 @@ export class NotFoundError extends AppError {
 export class ConflictError extends AppError {
   constructor(message = "That already exists", options?: ErrorOptions) {
     super(message, "CONFLICT", options);
+  }
+}
+
+export class PayloadTooLargeError extends AppError {
+  constructor(message = "Request body is too large", options?: ErrorOptions) {
+    super(message, "PAYLOAD_TOO_LARGE", options);
+  }
+}
+
+export class UnsupportedMediaTypeError extends AppError {
+  constructor(message = "Unsupported content type", options?: ErrorOptions) {
+    super(message, "UNSUPPORTED_MEDIA_TYPE", options);
+  }
+}
+
+/**
+ * A refused request caused by volume, not by the caller's input.
+ *
+ * `retryAfterSeconds` is the only thing a client needs to recover, so it is
+ * carried on the error rather than recomputed at the HTTP boundary. It is
+ * clamped to at least one second so a `Retry-After: 0` never invites a retry
+ * storm inside the same window.
+ */
+export class RateLimitError extends AppError {
+  readonly retryAfterSeconds: number;
+
+  constructor(retryAfterSeconds = 60, message = "Too many requests", options?: ErrorOptions) {
+    super(message, "RATE_LIMITED", options);
+    this.retryAfterSeconds = Math.max(1, Math.ceil(retryAfterSeconds));
   }
 }
 

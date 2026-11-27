@@ -150,9 +150,12 @@ describe("Finding B: Email & Capturing Transport", () => {
         type: "verification",
       };
 
-      await expect(prodTransport.send(sampleEmail)).rejects.toThrow(
-        /Missing production email configuration/i,
-      );
+      // The contract is the kernel's: a dependency outage is UNAVAILABLE (503),
+      // not a generic Error that would surface as an empty-bodied 500.
+      await expect(prodTransport.send(sampleEmail)).rejects.toMatchObject({
+        code: "UNAVAILABLE",
+        message: "Email delivery is temporarily unavailable",
+      });
     });
 
     it("never falls back to silent drop or console logging in production transport", async () => {
@@ -173,7 +176,8 @@ describe("Finding B: Email & Capturing Transport", () => {
         await prodTransport.send(sampleEmail);
       } catch (err) {
         errorThrown = true;
-        expect((err as Error).message).toMatch(/Missing production email configuration/i);
+        expect((err as { code?: string }).code).toBe("UNAVAILABLE");
+        expect((err as Error).message).toBe("Email delivery is temporarily unavailable");
       }
 
       expect(errorThrown).toBe(true);
@@ -254,7 +258,10 @@ describe("Finding B: Email & Capturing Transport", () => {
           token: "SECRET_TOK",
           type: "verification",
         }),
-      ).rejects.toThrow(/Email delivery failed/i);
+      ).rejects.toMatchObject({
+        code: "UNAVAILABLE",
+        message: /temporarily unavailable/i,
+      });
 
       const allLogged = JSON.stringify(logEventSpy.mock.calls);
       expect(allLogged).not.toContain("super-secret-gmail-app-pw-16");

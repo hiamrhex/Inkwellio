@@ -2,6 +2,7 @@ import {
   ConflictError,
   ForbiddenError,
   NotFoundError,
+  RateLimitError,
   ValidationError,
   toPublicError,
   type PublicError,
@@ -44,8 +45,12 @@ export class UnauthorizedError extends Error {
 
 const NO_STORE = { "cache-control": "no-store", "x-content-type-options": "nosniff" } as const;
 
-function respond(body: unknown, status: number): Response {
-  return Response.json(body, { status, headers: NO_STORE });
+function respond(
+  body: unknown,
+  status: number,
+  extraHeaders: Record<string, string> = {},
+): Response {
+  return Response.json(body, { status, headers: { ...NO_STORE, ...extraHeaders } });
 }
 
 /** The public error body, with the conflict snapshot attached only for 409. */
@@ -61,6 +66,14 @@ function publicBody(publicError: PublicError, details?: Record<string, unknown>)
 export function jsonError(error: unknown, requestId: string): Response {
   if (error instanceof UnauthorizedError) {
     return respond({ code: "UNAUTHORIZED", message: UNAUTHORIZED_MESSAGE, requestId }, 401);
+  }
+
+  // A refused request caused by volume carries the one number a client needs to
+  // recover. The body stays in the kernel's public vocabulary.
+  if (error instanceof RateLimitError) {
+    return respond(toPublicError(error, requestId), 429, {
+      "retry-after": String(error.retryAfterSeconds),
+    });
   }
 
   if (isServiceError(error)) {
