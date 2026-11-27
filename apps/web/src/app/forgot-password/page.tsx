@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Chip } from "@inkwellio/ui";
 import { SiteShell } from "@/components/site-shell";
+import { AmbientOrbs } from "@/components/ambient-orbs";
+import { AuthSpatialBackdrop } from "@/components/auth/auth-spatial-backdrop";
 import { ForgotPasswordForm } from "./forgot-password-form";
 
 export const metadata: Metadata = {
@@ -12,10 +14,15 @@ export default function ForgotPasswordPage() {
   return (
     <SiteShell minimalHeader>
       <main id="main-content" className="auth-main">
-        <div className="auth-fluted-backdrop" aria-hidden="true" />
+        <AmbientOrbs />
+        <div className="auth-cursor-spotlight" aria-hidden="true" />
+        <div className="auth-fluted-backdrop" data-auth-parallax="true" aria-hidden="true">
+          <AuthSpatialBackdrop />
+        </div>
         <section
           className="auth-card auth-monolith-card spotlight-card bento-specular-card"
           data-spotlight="true"
+          data-tilt-auth="true"
           aria-labelledby="forgot-password-heading"
         >
           <div className="auth-card-head">
@@ -24,7 +31,7 @@ export default function ForgotPasswordPage() {
               Reset your password
             </h1>
             <p className="auth-subtitle">
-              Enter the email linked to your account. If an account exists, we will send a single-use reset link valid for 15 minutes.
+              Enter your email address. We will send a 15-minute reset link if it matches.
             </p>
           </div>
 

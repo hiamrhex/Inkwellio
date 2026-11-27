@@ -92,14 +92,18 @@ const themeToggleSrc = readSrc("packages/ui/src/theme-toggle.tsx");
 const heroArtifactSrc = readSrc("apps/web/src/app/living-hero-artifact.tsx");
 const topicMarqueeSrc = readSrc("apps/web/src/app/topic-marquee.tsx");
 const bentoSrc = readSrc("apps/web/src/app/interactive-bento.tsx");
+const bentoControlsSrc = readSrc("apps/web/src/app/bento-controls.tsx");
 const chipSrc = readSrc("packages/ui/src/chip.tsx");
 const sectionHeaderSrc = readSrc("packages/ui/src/section-header.tsx");
 const ribbonCanvasSrc = readSrc("apps/web/src/app/hero-ribbon-canvas.tsx");
 const dotMatrixSrc = readSrc("apps/web/src/app/cta-dot-matrix.tsx");
 const scrollChoreoSrc = readSrc("apps/web/src/app/scroll-choreography.tsx");
 const ribbonLoaderSrc = readSrc("apps/web/src/app/hero-ribbon-loader.tsx");
+const ribbonMediaSrc = readSrc("apps/web/src/app/hero-ribbon-media.tsx");
 const dotLoaderSrc = readSrc("apps/web/src/app/cta-dot-matrix-loader.tsx");
 const magneticSrc = readSrc("apps/web/src/app/magnetic-button.tsx");
+const logoSrc = readSrc("packages/ui/src/inkwellio-logo.tsx");
+const iconSvgSrc = readSrc("apps/web/src/app/icon.svg");
 const runtimePath = path.join(root, "apps/web/public/scripts/landing-runtime.js");
 const landingRuntimeSrc = fs.readFileSync(runtimePath, "utf8");
 const themeJsSrc = readSrc("apps/web/public/scripts/theme.js");
@@ -148,6 +152,7 @@ describe("Product name & honesty contract", () => {
       ["page.tsx", pageSrc],
       ["post-life-stage.tsx", postLifeSrc],
       ["interactive-bento.tsx", bentoSrc],
+      ["bento-controls.tsx", bentoControlsSrc],
       ["living-hero-artifact.tsx", heroArtifactSrc],
       ["site-shell.tsx", siteShellSrc],
       ["principles.md", principlesSrc],
@@ -170,17 +175,44 @@ describe("Product name & honesty contract", () => {
     expect(findHonestyViolations("A fast elite template")).toContain("banned adjective");
   });
 
-  it("zero third-party tracker domains in page.tsx", () => {
+  it("ties 'No ads or trackers' claim & built feature claims to real no-external-origin & route guards", () => {
+    const nextConfigSrc = readSrc("apps/web/next.config.ts");
     const TRACKER_PATTERNS = [
       /googletagmanager/,
+      /google-analytics/,
       /analytics\.js/,
       /gtag\(/,
       /facebook\.net/,
       /hotjar/,
       /segment\.com/,
+      /plausible/,
+      /mixpanel/,
+      /posthog/,
     ];
-    for (const pattern of TRACKER_PATTERNS) {
-      expect(pageSrc).not.toMatch(pattern);
+    for (const [name, src] of [
+      ["page.tsx", pageSrc],
+      ["layout.tsx", layoutSrc],
+      ["site-shell.tsx", siteShellSrc],
+      ["bento-controls.tsx", bentoControlsSrc],
+      ["theme.js", themeJsSrc],
+      ["landing-runtime.js", landingRuntimeSrc],
+    ] as const) {
+      for (const pattern of TRACKER_PATTERNS) {
+        expect(src, `tracker match in ${name}`).not.toMatch(pattern);
+      }
+    }
+    expect(nextConfigSrc).toContain("script-src 'self'");
+    expect(nextConfigSrc).toContain("default-src 'self'");
+
+    for (const realRouteOrApi of [
+      "apps/web/src/app/dashboard/page.tsx",
+      "apps/web/src/app/studio/[postId]/page.tsx",
+      "apps/web/src/app/topics/page.tsx",
+      "apps/web/src/app/p/[handle]/[slug]/page.tsx",
+      "apps/web/src/app/api/account/export/route.ts",
+      "apps/web/src/app/api/posts/[id]/draft/route.ts",
+    ]) {
+      expect(fs.existsSync(path.join(root, realRouteOrApi)), `missing ${realRouteOrApi}`).toBe(true);
     }
   });
 });
@@ -279,13 +311,16 @@ describe("Shared Shell & Public Reading Routes", () => {
     expect(siteShellSrc).toContain("site-header-bar");
     expect(siteShellSrc).toContain("site-header-inner");
     expect(siteShellSrc).toContain("minimalHeader");
+    expect(siteShellSrc).toContain("<InkwellioLogo");
+    expect(siteShellSrc.match(/<InkwellioLogo/g)?.length).toBeGreaterThanOrEqual(2);
     expect(siteShellSrc).toContain("nav-zone-left");
     expect(siteShellSrc).toContain("nav-zone-right");
     expect(siteShellSrc).toContain("<ThemeToggle");
+    expect(siteShellSrc).toContain("<MotionToggle");
     expect(siteShellSrc).toContain("<SessionNavActions");
     expect(siteShellSrc).toContain('data-motion-toggle="true"');
     expect(siteShellSrc).toContain("Pause motion");
-    expect(siteShellSrc).toContain("Resume motion");
+    expect(siteShellSrc).toContain("Motion paused — Resume");
     expect(siteShellSrc).toContain('href="#main-content"');
     expect(siteShellSrc).toContain('href="/privacy"');
     expect(siteShellSrc).toContain('href="/terms"');
@@ -296,9 +331,9 @@ describe("Shared Shell & Public Reading Routes", () => {
     expect(cssSrc).not.toContain(".flip-curtain");
     expect(landingRuntimeSrc).toContain("data-motion-toggle");
     expect(landingRuntimeSrc).toContain("inkwellio:motion-change");
-    expect(themeJsSrc).toContain("inkwellio-motion-paused");
+    expect(themeJsSrc).toContain("inkwellio-motion");
 
-    for (const src of [siteShellSrc, sessionNavSrc, bentoSrc, magneticSrc, pageSrc]) {
+    for (const src of [siteShellSrc, sessionNavSrc, bentoSrc, bentoControlsSrc, magneticSrc, pageSrc]) {
       expect(src).not.toContain("prefetch={false}");
     }
   });
@@ -346,7 +381,18 @@ describe("Shared Shell & Public Reading Routes", () => {
    5. Signature Stage ("A post's life"), Honest Bento & Hero
    ════════════════════════════════════════════════════════════════ */
 describe("Signature stage, honest Bento & Hero artifact", () => {
-  it("mounts zero-client-JS PostLifeStage (300vh horizontal), TopicMarquee, capability strip & side-glide", () => {
+  it("enforces 60/35/5 palette with subtle bounded emerald glints and clean hero framing", () => {
+    expect(cssSrc).toContain("--bg-canvas:   #000000");
+    expect(cssSrc).toContain("--bg-surface1: #08090c");
+    expect(cssSrc).toContain("--status-live:      #10b981");
+    expect(cssSrc).toContain("--bg-canvas:   #fafafa");
+    expect(tokens.dark.washSpec.emeraldMaxAlpha).toBeLessThanOrEqual(0.08);
+    expect(tokens.light.washSpec.emeraldMaxAlpha).toBeLessThanOrEqual(0.07);
+    expect(heroArtifactSrc).not.toContain("hero-wireframe-frame");
+    expect(cssSrc).not.toContain(".hero-wireframe-frame");
+  });
+
+  it("mounts zero-client-JS PostLifeStage (350vh dwell plateaus), TopicMarquee, capability strip & side-glide", () => {
     expect(pageSrc).toContain("<PostLifeStage");
     expect(pageSrc).toContain("<TopicMarquee");
     expect(pageSrc).toContain("capability-grid");
@@ -361,24 +407,97 @@ describe("Signature stage, honest Bento & Hero artifact", () => {
     expect(postLifeSrc).toContain("Publish");
     expect(postLifeSrc).toContain('className="sr-only"');
     expect(cssSrc).toContain("--post-life-tl");
-    expect(cssSrc).toContain("height: 300vh;");
+    expect(cssSrc).toContain("height: var(--post-life-runway, 360vh);");
     expect(cssSrc).toContain("post-life-horizontal-glide");
     expect(cssSrc).toContain("animation-timeline: view()");
     expect(cssSrc).toContain("rotateY(180deg)");
     expect(cssSrc).toContain("steps(");
+    expect(cssSrc).toContain(".post-life-dots");
     expect(cssSrc).toContain(".topic-marquee-track");
     expect(cssSrc).toContain(".spotlight-card::after");
+    expect(cssSrc).toContain(".hero-cursor-spotlight");
+    expect(cssSrc).toContain("580px");
+    expect(cssSrc).toContain("scale(0.96)");
+    expect(cssSrc).toContain("--bento-lift-px");
     expect(cssSrc).toContain(".side-glide-band");
     expect(cssSrc).toContain("overflow-x: clip");
     expect(cssSrc).toContain("side-glide-in-left");
     expect(cssSrc).toContain("side-glide-in-right");
+    expect(cssSrc).toContain("var(--side-glide-deg, 10deg)");
+    expect(cssSrc).toContain("calc(var(--side-glide-deg, 10deg) * -1)");
+    expect(cssSrc).toContain("var(--side-glide-scale, 0.9)");
   });
 
   it("InteractiveBento replaces fake revisions with real curated football topics", () => {
     expect(bentoSrc).toContain("03 / Topics");
-    expect(bentoSrc).toContain("Organise with curated topics");
+    expect(bentoSrc).toContain("Organise by football topics");
     expect(bentoSrc).toContain('href="/topics"');
     expect(bentoSrc).toContain("inkwellio.example/@");
+  });
+
+  it("enforces Phase 1C plain-English copy (short <= 16-word sentences) with mutation proofs", () => {
+    expect(bentoSrc).toContain("Auto-saved safely");
+    expect(bentoSrc).toContain("Write without clutter");
+    expect(bentoSrc).toContain(
+      "Write in plain text and preview how your story looks before you publish. Even with two tabs open, your latest draft stays safe.",
+    );
+    expect(bentoControlsSrc).toContain("Preview");
+    expect(bentoControlsSrc).toContain("Plain text");
+    expect(bentoControlsSrc).toContain("Your link:");
+    expect(bentoSrc).toContain("Download a copy of all your stories any time.");
+    expect(bentoSrc).toContain("Switch font or text size to test how it reads.");
+
+    expect(pageSrc).toContain("Simple tools to write your story. A clean page for your readers.");
+    expect(pageSrc).toContain("Clean editor");
+    expect(pageSrc).toContain("Focus on the story");
+    expect(pageSrc).toContain(
+      "Write in a quiet space with a live word count. Pick your topics, set your link, and your drafts are saved as you go.",
+    );
+    expect(pageSrc).toContain("Safe auto-save");
+    expect(pageSrc).toContain("Download your work");
+    expect(pageSrc).toContain("Easy to read");
+    expect(pageSrc).toContain("Just the story, nothing else");
+    expect(pageSrc).toContain(
+      "Pick dark or light mode and read without distractions. No ads, no pop-ups, and no trackers watching your readers.",
+    );
+    expect(pageSrc).toContain("Dark or light mode");
+    expect(pageSrc).toContain("No ads or trackers");
+    expect(postLifeSrc).toContain("Write cleanly with a live word count and autosave.");
+
+    for (const staleCopy of [
+      "Optimistic version checks",
+      "Archival typography",
+      "semantic server HTML",
+      "optical patience",
+      "ergonomics",
+      "Normalized link:",
+      "Safe draft saves",
+      "Distraction-free Markdown editor",
+      "Your drafts never overwrite each other",
+      "Clean reading with no distractions",
+    ]) {
+      expect(pageSrc).not.toContain(staleCopy);
+      expect(bentoSrc).not.toContain(staleCopy);
+      expect(bentoControlsSrc).not.toContain(staleCopy);
+      expect(heroArtifactSrc).not.toContain(staleCopy);
+    }
+
+    const assertPlainCopy = (src: string) =>
+      src.includes("Your link:") &&
+      src.includes("Focus on the story") &&
+      src.includes("Just the story, nothing else") &&
+      !src.includes("Normalized link:");
+    expect(assertPlainCopy(`${bentoControlsSrc}\n${pageSrc}`)).toBe(true);
+    expect(assertPlainCopy("Normalized link: Your drafts never overwrite each other")).toBe(false);
+
+    const checkShort = (s: string) =>
+      s
+        .split(/[.!?]+/)
+        .map((part) => part.trim())
+        .filter(Boolean)
+        .every((sent) => sent.split(/\s+/).length <= 16);
+    expect(checkShort("Write cleanly with a live word count and autosave.")).toBe(true);
+    expect(checkShort("One two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen.")).toBe(false);
   });
 
   it("Hero artifact uses shared pointer tilt and segmented Write/Read tabs", () => {
@@ -436,25 +555,59 @@ describe("Performance budgets, motion & hero sculpture assets", () => {
     expect(scrollChoreoSrc).toContain("prefers-reduced-motion: reduce");
     expect(scrollChoreoSrc).toContain("inkwellio:motion-change");
     expect(scrollChoreoSrc).toContain("passive: true");
-    expect(cssSrc).toMatch(/@media\s*\(prefers-reduced-motion:\s*reduce\)[\s\S]*\.hero-headline-sweep/);
+    expect(scrollChoreoSrc).toContain("playbackRate");
+    expect(ribbonCanvasSrc).not.toContain('addEventListener("pointermove"');
+    expect(dotMatrixSrc).not.toContain('addEventListener("pointermove"');
+    expect(landingRuntimeSrc).toContain("pointerType");
+    expect(cssSrc).toMatch(/@media\s*\(prefers-reduced-motion:\s*reduce\)[\s\S]*\.hero-form-body/);
     expect(cssSrc).toMatch(/@media\s*\(prefers-reduced-motion:\s*reduce\)[\s\S]*\.post-life-flip-inner/);
-    expect(cssSrc).toMatch(/:root\[data-motion="paused"\][\s\S]*\.hero-headline-sweep/);
+    expect(cssSrc).toMatch(/:root\[data-motion="paused"\][\s\S]*\.hero-ribbon-media-box/);
   });
 
-  it("replaces static hero images with lazy flowing HeroRibbonLoader on /", () => {
+  it("loads single active-theme hero 3D WebP with fetchpriority=high, srcset, sizes & byte caps alongside InkwellioLogo + icon.svg", () => {
+    expect(pageSrc).toContain("<HeroRibbonMedia");
     expect(pageSrc).toContain("<HeroRibbonLoader");
-    expect(pageSrc).not.toContain("HeroSculpture");
+    expect(themeJsSrc).toContain('link.rel = "preload"');
+    expect(themeJsSrc).toContain('fetchpriority", "high"');
+    expect(themeJsSrc).toContain("hero-ribbon-");
+    expect(themeJsSrc).toContain("-mobile.webp");
+    expect(ribbonMediaSrc).toContain('fetchPriority="high"');
+    expect(ribbonMediaSrc).toContain("srcSet=");
+    expect(ribbonMediaSrc).toContain("sizes=");
+    expect(ribbonMediaSrc).toContain("width={1280}");
+    expect(ribbonMediaSrc).toContain("height={714}");
+    expect(ribbonMediaSrc).toContain('alt=""');
+    expect(themeJsSrc).toContain("bindRibbon");
+    expect(bentoSrc).not.toMatch(/["']use client["']/);
     expect(themeJsSrc).not.toContain("hero-ink-dark.webp");
     expect(themeJsSrc).not.toContain("hero-ink-light.webp");
     expect(cssSrc).not.toContain("hero-ink-dark.webp");
     expect(cssSrc).not.toContain("hero-ink-light.webp");
+
+    for (const [rel, maxBytes] of [
+      ["apps/web/public/images/hero-ribbon-dark.webp", 45 * 1024],
+      ["apps/web/public/images/hero-ribbon-dark-mobile.webp", 22 * 1024],
+      ["apps/web/public/images/hero-ribbon-light.webp", 45 * 1024],
+      ["apps/web/public/images/hero-ribbon-light-mobile.webp", 22 * 1024],
+      ["apps/web/public/images/spatial-monolith-dark.webp", 38 * 1024],
+      ["apps/web/public/images/spatial-slab-light.webp", 38 * 1024],
+    ] as const) {
+      const sz = fs.statSync(path.join(root, rel)).size;
+      expect(sz, `${rel} exceeded ${maxBytes} B`).toBeLessThanOrEqual(maxBytes);
+    }
+
+    expect(logoSrc).toContain("<svg");
+    expect(logoSrc).toContain("#10b981");
+    expect(iconSvgSrc).toContain("prefers-color-scheme: dark");
+    expect(fs.existsSync(path.join(root, "apps/web/src/app/favicon.ico"))).toBe(true);
   });
 
   it("records design principles & local sculpture inventory without licence claims", () => {
     expect(principlesSrc).toContain("Clear in five seconds");
     expect(principlesSrc).toContain("One earned moment of delight");
-    expect(assetsDocSrc).toContain("29.18 KiB");
-    expect(assetsDocSrc).toContain("13.38 KiB");
+    for (const kib of ["42.87 KiB", "16.75 KiB", "43.45 KiB", "19.44 KiB", "31.48 KiB", "15.57 KiB"]) {
+      expect(assetsDocSrc).toContain(kib);
+    }
     expect(assetsDocSrc).toContain("Generated by Richard with Gemini and downloaded locally");
     expect(assetsDocSrc).not.toMatch(/\blicen[cs]e\b/i);
   });

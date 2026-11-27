@@ -1,5 +1,7 @@
+import type { CSSProperties } from "react";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Newsreader } from "next/font/google";
+import { getMotionCssVars } from "@inkwellio/ui";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -44,7 +46,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         {/* eslint-disable-next-line @next/next/no-sync-scripts */}
         <script src="/scripts/theme.js" />
       </head>
-      <body className="min-h-full flex flex-col">
+      <body className="min-h-full flex flex-col" style={getMotionCssVars() as CSSProperties}>
         {children}
         <script src="/scripts/landing-runtime.js" defer />
       </body>

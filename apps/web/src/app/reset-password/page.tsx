@@ -2,6 +2,8 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import { Chip } from "@inkwellio/ui";
 import { SiteShell } from "@/components/site-shell";
+import { AmbientOrbs } from "@/components/ambient-orbs";
+import { AuthSpatialBackdrop } from "@/components/auth/auth-spatial-backdrop";
 import { ResetPasswordForm } from "./reset-password-form";
 
 export const metadata: Metadata = {
@@ -30,10 +32,15 @@ export default function ResetPasswordPage({ searchParams }: ResetPasswordPagePro
   return (
     <SiteShell minimalHeader>
       <main id="main-content" className="auth-main">
-        <div className="auth-fluted-backdrop" aria-hidden="true" />
+        <AmbientOrbs />
+        <div className="auth-cursor-spotlight" aria-hidden="true" />
+        <div className="auth-fluted-backdrop" data-auth-parallax="true" aria-hidden="true">
+          <AuthSpatialBackdrop />
+        </div>
         <section
           className="auth-card auth-monolith-card spotlight-card bento-specular-card"
           data-spotlight="true"
+          data-tilt-auth="true"
           aria-labelledby="reset-password-heading"
         >
           <div className="auth-card-head">
@@ -42,7 +49,7 @@ export default function ResetPasswordPage({ searchParams }: ResetPasswordPagePro
               Choose a new password
             </h1>
             <p className="auth-subtitle">
-              Pick a strong password of 8 to 128 characters. Setting a new password signs out any existing sessions.
+              Pick a password between 8 and 128 characters. Updating it signs out other sessions.
             </p>
           </div>
 

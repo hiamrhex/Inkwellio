@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import {
+  EMAIL_FAILED_MESSAGE,
   focusFirstInvalidField,
   isValidEmailFormat,
   parseAuthError,
@@ -45,7 +46,7 @@ export function ForgotPasswordForm() {
       if (!response.ok) {
         const err = await parseAuthError(
           response,
-          "We could not start a password reset right now. Please try again shortly.",
+          EMAIL_FAILED_MESSAGE,
           "forgot-password",
         );
         setFormError(err.message);
@@ -71,7 +72,7 @@ export function ForgotPasswordForm() {
           If an account exists for that email address, we have sent a password reset link. Links expire after 15 minutes.
         </p>
         <Link href="/sign-in" className="btn-ghost auth-submit">
-          Back to sign in
+          <span className="mag-label">Back to sign in</span>
         </Link>
       </div>
     );
@@ -111,7 +112,7 @@ export function ForgotPasswordForm() {
       </div>
 
       <button type="submit" disabled={submitting} className="btn-primary auth-submit">
-        {submitting ? "Sending link..." : "Send reset link"}
+        <span className="mag-label">{submitting ? "Sending link..." : "Send reset link"}</span>
       </button>
 
       <div className="auth-footer-links">

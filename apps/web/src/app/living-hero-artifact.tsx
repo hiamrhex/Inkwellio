@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 const AUTO_TEXT =
-  "In the 64th minute, City inverted their right-back into the inside channel, instantly overloading the midfield pivot and forcing the defense into an uncomfortable choice.";
+  "In the 64th minute, City tucked their right-back inside. That move broke the press and opened the middle lane.";
 
 export function LivingHeroArtifact() {
   const [mode, setMode] = useState<"write" | "read">("write");
@@ -16,8 +16,8 @@ export function LivingHeroArtifact() {
   useEffect(() => {
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
     const syncFrozen = () => {
-      const paused = document.documentElement.getAttribute("data-motion") === "paused";
-      setIsReduced(mq.matches || paused);
+      const attr = document.documentElement.getAttribute("data-motion");
+      setIsReduced(attr === "paused" || (attr !== "active" && mq.matches));
     };
     const raf = requestAnimationFrame(syncFrozen);
     const mo = new MutationObserver(syncFrozen);
@@ -50,8 +50,8 @@ export function LivingHeroArtifact() {
           clearInterval(intervalId);
           intervalId = null;
         }
-      }, 36);
-    }, 180);
+      }, 42);
+    }, 520);
 
     return () => {
       clearTimeout(startTimer);
@@ -102,23 +102,6 @@ export function LivingHeroArtifact() {
         margin: "0 auto",
       }}
     >
-      {/* Wireframe layer (-12px Z depth) */}
-      <div
-        className="hero-wireframe-frame"
-        aria-hidden="true"
-        style={{
-          position: "absolute",
-          top: "2.625rem",
-          bottom: "3.875rem",
-          left: "0.5rem",
-          right: "-0.375rem",
-          borderRadius: "1.35rem",
-          border: "1px solid var(--wireframe-hairline)",
-          pointerEvents: "none",
-          zIndex: 0,
-        }}
-      />
-
       {/* Compact Top-Left Floating Status Pill (<= 44px height) */}
       <div
         className="hero-float-card hero-float-card-1"
@@ -150,7 +133,7 @@ export function LivingHeroArtifact() {
         <span className="status-dot status-dot-amber" />
         <span style={{ color: "var(--text-faint)", fontWeight: 500 }}>Draft saved</span>
         <span style={{ color: "var(--text-primary)", fontWeight: 500, fontFamily: "var(--font-geist-mono)" }}>
-          v3 checked
+          v3 safe
         </span>
       </div>
 
@@ -496,8 +479,8 @@ export function LivingHeroArtifact() {
                 gap: "0.5rem",
               }}
             >
-              <span>Newsreader serif, 65ch measure</span>
-              <span>Clean reader ergonomics</span>
+              <span>Newsreader serif, 65ch width</span>
+              <span>Quiet reading view</span>
             </div>
           </div>
         )}

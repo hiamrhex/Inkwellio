@@ -3,6 +3,8 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { Chip } from "@inkwellio/ui";
 import { SiteShell } from "@/components/site-shell";
+import { AmbientOrbs } from "@/components/ambient-orbs";
+import { AuthSpatialBackdrop } from "@/components/auth/auth-spatial-backdrop";
 import { safeRedirect } from "@/modules/identity";
 import { SignInForm } from "./sign-in-form";
 
@@ -50,10 +52,15 @@ export default function SignInPage({ searchParams }: SignInPageProps) {
   return (
     <SiteShell minimalHeader>
       <main id="main-content" className="auth-main">
-        <div className="auth-fluted-backdrop" aria-hidden="true" />
+        <AmbientOrbs />
+        <div className="auth-cursor-spotlight" aria-hidden="true" />
+        <div className="auth-fluted-backdrop" data-auth-parallax="true" aria-hidden="true">
+          <AuthSpatialBackdrop />
+        </div>
         <section
           className="auth-card auth-monolith-card spotlight-card bento-specular-card"
           data-spotlight="true"
+          data-tilt-auth="true"
           aria-labelledby="sign-in-heading"
         >
           <div className="auth-card-head">
@@ -62,7 +69,7 @@ export default function SignInPage({ searchParams }: SignInPageProps) {
               Sign in to Inkwellio
             </h1>
             <p className="auth-subtitle">
-              Open your dashboard, draft new pieces, or manage your publication link.
+              Open your dashboard and manage your drafts.
             </p>
           </div>
 

@@ -2,11 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { IconTile, SectionHeader } from "@inkwellio/ui";
 import { SiteShell } from "@/components/site-shell";
+import { AmbientOrbs } from "@/components/ambient-orbs";
 import { LivingHeroArtifact } from "./living-hero-artifact";
 import { MagneticButton } from "./magnetic-button";
 import { InteractiveBento } from "./interactive-bento";
 import { PostLifeStage } from "./post-life-stage";
 import { TopicMarquee } from "./topic-marquee";
+import { HeroRibbonMedia } from "./hero-ribbon-media";
 import { HeroRibbonLoader } from "./hero-ribbon-loader";
 import { CtaDotMatrixLoader } from "./cta-dot-matrix-loader";
 import { ScrollChoreography } from "./scroll-choreography";
@@ -20,22 +22,22 @@ export const metadata: Metadata = {
 const CAPABILITIES = [
   {
     title: "Plain Markdown",
-    body: "Draft clean tactical analysis with live word counts and zero formatting clutter.",
+    body: "Write cleanly with a live word count and simple formatting.",
     icon: "M4 6h12M4 10h8M4 14h10",
   },
   {
-    title: "Version-checked drafts",
-    body: "Optimistic version checks stop stale browser tabs from silently overwriting work.",
+    title: "Safe drafts",
+    body: "Open browser tabs never overwrite each other when saving.",
     icon: "M5 10l3 3 7-7",
   },
   {
-    title: "Curated channels",
-    body: "Assign up to three football topics so readers discover pieces without engagement feeds.",
+    title: "Football topics",
+    body: "Pick up to three topics so readers can find your work.",
     icon: "M4 6h5v5H4zM11 6h5v5h-5zM4 13h5v5H4z",
   },
   {
-    title: "Full JSON export",
-    body: "Download every profile record, publication link, and post in JSON whenever you want.",
+    title: "Full export",
+    body: "Download all your posts and profile data as JSON any time.",
     icon: "M10 3v9M6 8l4 4 4-4M4 15h12",
   },
 ] as const;
@@ -46,8 +48,11 @@ export default function Home() {
       <main id="main-content">
         {/* ── Hero ────────────────────────────────────────────────── */}
         <div className="hero-stage-outer">
+          <AmbientOrbs />
+          <div className="hero-cursor-spotlight" aria-hidden="true" />
           <div className="hero-silk-backdrop" aria-hidden="true">
             <div className="hero-silk-fallback" />
+            <HeroRibbonMedia />
           </div>
           <HeroRibbonLoader />
           <section
@@ -62,8 +67,8 @@ export default function Home() {
                 <span>Independent football publishing</span>
               </p>
 
-              <h1 className="hero-headline hero-headline-reveal">
-                <span className="hero-headline-line">Publish football.</span>{" "}
+              <h1 className="hero-headline">
+                <span className="hero-headline-line hero-headline-sweep">Publish football.</span>{" "}
                 <span className="hero-headline-line hero-headline-sweep">Own it.</span>
               </h1>
 
@@ -82,15 +87,7 @@ export default function Home() {
             </div>
 
             {/* Right (5/12): thick edge-lit living editor framed by flowing ink ribbons */}
-            <div
-              className="hero-artifact-wrap"
-              style={{
-                position: "relative",
-                width: "100%",
-                display: "flex",
-                justifyContent: "center",
-              }}
-            >
+            <div className="hero-artifact-wrap">
               <div
                 style={{
                   position: "relative",
@@ -114,7 +111,7 @@ export default function Home() {
         >
           <SectionHeader
             heading={<span id="essentials-heading" className="ink-reveal-heading">Write. Publish. Keep it yours.</span>}
-            body="Inkwellio is built around the work, not the platform. No recommendation algorithm. No engagement score. Just your writing at a web address you control."
+            body="Your writing comes first. No feed algorithms or scoreboards. Just clear words at your own web address."
           />
 
           <InteractiveBento />
@@ -129,7 +126,7 @@ export default function Home() {
         {/* ── Borderless 4-Column Capability Strip ─────────────────── */}
         <section
           id="capabilities"
-          className="page-section below-fold-section capability-band"
+          className="page-section section-entry below-fold-section capability-band"
           aria-labelledby="capabilities-heading"
         >
           <h2 id="capabilities-heading" className="sr-only">
@@ -164,13 +161,13 @@ export default function Home() {
         {/* ── Horizontal Side-Entrance Band: Writer & Reader ─────── */}
         <section
           id="writer-reader"
-          className="page-section below-fold-section side-glide-band"
+          className="page-section section-entry below-fold-section side-glide-band"
           aria-labelledby="writer-reader-heading"
         >
           <SectionHeader
-            eyebrow="Two crafts, one home"
+            eyebrow="Writer and reader"
             heading={<span id="writer-reader-heading" className="ink-reveal-heading">Calm to write. Calm to read.</span>}
-            body="Every feature exists either to protect the writer at the keyboard or keep the reader immersed in prose."
+            body="Simple tools to write your story. A clean page for your readers."
           />
 
           <div className="side-glide-grid">
@@ -179,16 +176,16 @@ export default function Home() {
               data-spotlight="true"
             >
               <div className="side-glide-card-head">
-                <span className="chip">For the writer</span>
-                <span className="side-glide-mono">Markdown · Studio</span>
+                <span className="chip">Clean editor</span>
+                <span className="side-glide-mono">For writers</span>
               </div>
-              <h3 className="side-glide-title">Drafts guarded against stale overwrites</h3>
+              <h3 className="side-glide-title">Focus on the story</h3>
               <p className="side-glide-copy">
-                Write in clean Markdown with live word count, assign up to three curated football topics, choose your slug, and publish with version-checked saves so open tabs never collide.
+                Write in a quiet space with a live word count. Pick your topics, set your link, and your drafts are saved as you go.
               </p>
               <div className="side-glide-foot">
-                <span>JSON export available any time</span>
-                <span>0% clutter</span>
+                <span>Safe auto-save</span>
+                <span>Download your work</span>
               </div>
             </article>
 
@@ -197,16 +194,16 @@ export default function Home() {
               data-spotlight="true"
             >
               <div className="side-glide-card-head">
-                <span className="chip">For the reader</span>
-                <span className="side-glide-mono">Newsreader · 65ch</span>
+                <span className="chip">Easy to read</span>
+                <span className="side-glide-mono">For readers</span>
               </div>
-              <h3 className="side-glide-title">Archival typography without noise</h3>
+              <h3 className="side-glide-title">Just the story, nothing else</h3>
               <p className="side-glide-copy">
-                Public articles arrive as semantic server HTML with deep black dark mode or cool-paper light surfaces, crisp keyboard focus rings, and zero third-party ad or analytics scripts.
+                Pick dark or light mode and read without distractions. No ads, no pop-ups, and no trackers watching your readers.
               </p>
               <div className="side-glide-foot">
-                <span>/@handle/slug &amp; /topics</span>
-                <span>0 trackers</span>
+                <span>Dark or light mode</span>
+                <span>No ads or trackers</span>
               </div>
             </article>
           </div>
@@ -223,7 +220,7 @@ export default function Home() {
             align="left"
             eyebrow="Reader mode"
             heading={<span id="reading-heading" className="ink-reveal-heading">The Reading Room</span>}
-            body="How your readers experience your writing. No banners, no pop-up overlays, no tracking scripts. Just print-grade typography set directly onto the open reading surface."
+            body="This is how your readers see your work. No banners, pop-ups, or trackers. Just clear words on a calm page."
           />
 
           <div className="reading-card reading-card-melted spotlight-card bento-specular-card" data-spotlight="true">
@@ -234,7 +231,7 @@ export default function Home() {
             <div style={{ display: "flex", alignItems: "center", gap: "0.625rem", marginBottom: "1.25rem" }}>
               <span className="status-dot status-dot-live" aria-hidden="true" />
               <span style={{ fontSize: "0.75rem", fontFamily: "var(--font-geist-mono)", color: "var(--text-faint)" }}>
-                Sample post — Tactical culture, 6 min read
+                Sample post — Match analysis, 6 min read
               </span>
             </div>
 
@@ -260,15 +257,15 @@ export default function Home() {
                 fontFamily: "var(--font-geist-mono)",
               }}
             >
-              Sample preview — Match analysis, 65ch reading measure
+              Sample preview — Comfortable reading width
             </p>
 
             <div className="editorial-reading">
               <p style={{ margin: "0 0 1.25rem" }}>
-                In the 64th minute, City inverted their right-back into the inside channel. It was a subtle structural adjustment, yet it instantly disrupted the defensive block, forcing the opposition winger to choose between tracking the overlapping runner or defending the interior passing lane.
+                In the 64th minute, City tucked their right-back inside. That move forced the opposition winger to guard both the flank and the inside lane.
               </p>
               <p style={{ margin: 0 }}>
-                Football writing deserves the space to examine these tactical nuances in full. When you publish on Inkwellio, your readers enjoy clean typography calibrated specifically for long-form focus—free from algorithmic distractions.
+                Good football writing needs space to show why a match turned. Inkwellio gives readers clear words with no noisy feeds.
               </p>
             </div>
 
@@ -288,7 +285,7 @@ export default function Home() {
               }}
             >
               <span>inkwellio.example/@sample/inverted-fullbacks</span>
-              <span>Set in Newsreader serif</span>
+              <span>Newsreader serif</span>
             </div>
           </div>
         </section>
@@ -296,26 +293,28 @@ export default function Home() {
         {/* ── Publishing Showcase (Continuous Tonal World) ──────── */}
         <section
           id="publishing"
-          className="page-section publishing-showcase below-fold-section"
+          className="page-section section-entry publishing-showcase below-fold-section"
           aria-labelledby="publishing-heading"
+          style={{ position: "relative" }}
         >
-          <div className="publishing-grid">
+          <AmbientOrbs />
+          <div className="publishing-grid" style={{ position: "relative", zIndex: 1 }}>
             <div>
               <span className="chip">For football writers</span>
               <h2
                 id="publishing-heading"
                 className="ink-reveal-heading publishing-display-heading"
               >
-                <span className="hero-headline-sweep">Write the game. Own the link.</span>
+                Write the game. Own the link.
               </h2>
               <p className="publishing-lead">
                 Your words, your address, nothing else.
               </p>
               <p className="publishing-body">
-                Match reports from non-league Saturdays. Long reads about tactics. Club histories that deserve more than a thread. Inkwellio gives each piece of writing a permanent home at a link with your handle in it.
+                Saturday match reports. Deep looks at tactics. Club histories that deserve real space. Every story lives at a lasting link with your name in it.
               </p>
               <p className="publishing-body" style={{ marginTop: "1rem" }}>
-                No tracking scripts. No engagement metrics. No algorithm deciding who reads you. Just honest publishing for people who care about the game.
+                No tracking scripts. No engagement scores. No feed deciding who reads you. Just honest publishing for football writers.
               </p>
             </div>
 
@@ -323,15 +322,15 @@ export default function Home() {
               {[
                 {
                   title: "Your link",
-                  body: "Every writer owns a publication at inkwellio.example/@yourname. Articles resolve permanently at /@handle/slug and /p/@handle/slug.",
+                  body: "Your page lives at inkwellio.example/@yourname. Every article keeps a lasting /@handle/slug and /p/@handle/slug link.",
                 },
                 {
-                  title: "Draft safety & full export",
-                  body: "Every draft write checks its version number to stop stale tabs colliding, and you can export all your writing as JSON at any time.",
+                  title: "Safe drafts and export",
+                  body: "Open tabs never overwrite saved work. Export all your posts as JSON any time.",
                 },
                 {
-                  title: "Readable anywhere",
-                  body: "Public publication and topic pages serve semantic HTML on slow connections and support full keyboard navigation.",
+                  title: "Easy to read anywhere",
+                  body: "Pages load fast on slow phone links and work with a keyboard.",
                 },
               ].map((item) => (
                 <li key={item.title} className="publishing-point">
@@ -345,7 +344,7 @@ export default function Home() {
 
         {/* ── Closing ─────────────────────────────────────────────── */}
         <section
-          className="closing-section below-fold-section"
+          className="section-entry closing-section below-fold-section"
           aria-labelledby="closing-heading"
           style={{ position: "relative", overflow: "hidden" }}
         >
@@ -380,7 +379,7 @@ export default function Home() {
                 maxWidth: "24ch",
               }}
             >
-              A calm platform for serious football writing.
+              A calm home for serious football writing.
             </h2>
 
             <p
@@ -392,7 +391,7 @@ export default function Home() {
                 margin: 0,
               }}
             >
-              Write in plain Markdown, organise under football topics, and publish cleanly at your own link.
+              Write in plain Markdown, pick your topics, and publish at your own link.
             </p>
 
             <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", justifyContent: "center" }}>
@@ -411,7 +410,7 @@ export default function Home() {
                 margin: 0,
               }}
             >
-              Version-checked studio drafts, curated topics, and JSON account export are live.
+              Safe drafts, football topics, and full JSON export are ready today.
             </p>
           </div>
         </section>

@@ -4,7 +4,11 @@
  */
 export { UI_PACKAGE_NAME, tokens } from "./tokens";
 export type { ColorMode, TokenKey } from "./tokens";
+export { motionConfig, getMotionCssVars } from "./motion-config";
+export type { MotionConfig } from "./motion-config";
 export { Chip } from "./chip";
 export { SectionHeader } from "./section-header";
 export { IconTile, SquircleClipDef } from "./icon-tile";
+export { InkwellioLogo } from "./inkwellio-logo";
 export { ThemeToggle } from "./theme-toggle";
+export { MotionToggle } from "./motion-toggle";

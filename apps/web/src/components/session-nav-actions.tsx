@@ -112,7 +112,7 @@ export function SessionNavActions() {
             disabled={signingOut}
             className="nav-auth-pill"
           >
-            {signingOut ? "Signing out" : "Sign out"}
+            <span className="mag-label">{signingOut ? "Signing out" : "Sign out"}</span>
           </button>
         </>
       ) : (
@@ -121,7 +121,7 @@ export function SessionNavActions() {
             Sign in
           </Link>
           <Link href="/sign-up" className="nav-auth-pill">
-            Sign up
+            <span className="mag-label">Sign up</span>
           </Link>
         </>
       )}
