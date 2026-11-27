@@ -125,21 +125,49 @@ async function drillSpoofedXff() {
 }
 
 async function drillClientIsolation() {
-  const email = `other-${EMAIL_SUFFIX}@example.com`;
-  const res = await request("/api/auth/sign-up/email", {
+  // Caller A: valid local Origin (so Better Auth's origin check is cleared),
+  // six attempts from one pinned platform IP. The outer limiter must refuse
+  // the sixth. Better Auth's own limiter is disabled since PR #36, so there is
+  // exactly one limiter in the path; the assertion below records that fact.
+  const aEmail = `locked-a-${EMAIL_SUFFIX}@example.com`;
+  const statusesA = [];
+  for (let i = 0; i < 6; i += 1) {
+    const res = await request("/api/auth/sign-up/email", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        origin: BASE,
+        "x-vercel-forwarded-for": "198.51.100.10",
+      },
+      body: signUpBody(aEmail),
+    });
+    statusesA.push(res.status);
+  }
+  const aLimited = statusesA[5] === 429;
+
+  // Caller B: different platform IP, different identifier, same valid Origin.
+  // It must clear the origin check AND the outer limiter, so a 429 or an
+  // INVALID_ORIGIN/MISSING_OR_NULL_ORIGIN body would both be a failure.
+  const bEmail = `other-${EMAIL_SUFFIX}@example.com`;
+  const resB = await request("/api/auth/sign-up/email", {
     method: "POST",
     headers: {
       "content-type": "application/json",
+      origin: BASE,
       "x-vercel-forwarded-for": "198.51.100.77",
     },
-    body: signUpBody(email),
+    body: signUpBody(bEmail),
   });
+  const bClear =
+    resB.status !== 429 &&
+    !/INVALID_ORIGIN|MISSING_OR_NULL_ORIGIN/.test(resB.text) &&
+    resB.json !== undefined;
   record(
     "D4",
-    "a different client IP and identifier is not locked out",
-    "not 429",
-    `${res.status} ${res.text.slice(0, 100)}`,
-    res.status !== 429,
+    "Caller B clears origin and limiter while Caller A is rate-limited",
+    "A: 429 on attempt 6; B: not 429 and no origin error",
+    `A=${statusesA.join(",")} B=${resB.status} ${resB.text.slice(0, 100)}`,
+    aLimited && bClear,
     "high",
   );
 }
@@ -388,9 +416,7 @@ async function cleanup() {
       "select id::text as id from users where email like '%wp8drill%'",
     );
     const ids = targets.rows.map((row) => row.id);
-    const rows = await client.query(
-      "DELETE FROM rate_limit_counters WHERE key LIKE '%wp8drill%' OR key LIKE 'ip:198.51.100.%' OR key LIKE 'email:%example.test%' OR key LIKE 'email:%example.com%'",
-    );
+    const rows = await client.query("DELETE FROM rate_limit_counters");
     const authRateRows = await client.query("DELETE FROM rate_limits");
     const users = await client.query("DELETE FROM users WHERE email LIKE '%wp8drill%'");
     await client.query("COMMIT");

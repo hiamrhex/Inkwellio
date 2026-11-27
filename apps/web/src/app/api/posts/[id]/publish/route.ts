@@ -1,3 +1,4 @@
+import { enforceWriteLimit } from "../../../_lib/write-limit";
 import { getPostCacheTarget, publishPost } from "@/modules/posts";
 import { readJsonObject } from "../../../_lib/body";
 import { invalidatePublishedPost } from "../../../_lib/cache-seam";
@@ -23,6 +24,7 @@ export async function POST(
   const requestId = requestIdFrom(request.headers);
   try {
     const actor = await requireUser(request.headers);
+    await enforceWriteLimit("write:publish", actor.userId, { structural: true });
     const { id } = await params;
     const body = await readJsonObject(request);
     const expectedVersion = requireExpectedVersion(body);

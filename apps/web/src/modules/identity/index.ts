@@ -11,6 +11,7 @@ import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 import { getDb } from "@/kernel/db";
 import { env } from "@/kernel/env";
 import { logEvent } from "@/kernel/log";
+import { after } from "next/server";
 import {
   AppError,
   ConflictError,
@@ -204,9 +205,7 @@ export function getAuth() {
       },
       backgroundTasks: {
         handler: (promise) => {
-          promise.catch((error) => {
-            logEvent("error", "background_task_failed", { error: String(error) });
-          });
+          trackIdentityBackgroundTask(promise);
         },
       },
     },
@@ -317,6 +316,55 @@ function limitResponse(decision: RateLimitDecision, requestId: string): Response
       "retry-after": String(error.retryAfterSeconds),
     },
   });
+}
+
+/**
+ * Strict JSON-object body reader for identity endpoints.
+ *
+ * The account endpoints used to swallow a parse error and continue with an
+ * empty object, so a malformed body was reported as "password required" or
+ * "token required". A Phase 2 settings screen cannot distinguish a broken
+ * request from a missing field. Malformed input is now a VALIDATION_ERROR with
+ * the same fixed message the WP3b boundary uses.
+ */
+export async function readIdentityJsonObject(request: Request): Promise<Record<string, unknown>> {
+  let parsed: unknown;
+  try {
+    parsed = await request.json();
+  } catch {
+    throw new ValidationError("A JSON object body is required");
+  }
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+    throw new ValidationError("A JSON object body is required");
+  }
+  return parsed as Record<string, unknown>;
+}
+
+/**
+ * Register Better Auth's background work with the platform request lifecycle.
+ *
+ * Better Auth sends the verification email in a background promise. Without
+ * `after`, a serverless invocation can freeze as soon as the response is sent:
+ * the browser gets 200, no error is logged and no message leaves the process.
+ * `after` keeps the invocation alive until the callback settles on Vercel.
+ *
+ * The rejection handler is attached before registration, so a failed send is
+ * logged with safe metadata only (error name, never a message that could carry
+ * a token or an address). Outside a Next request scope `after` throws; the
+ * fallback still holds the promise, which keeps unit tests and scripts working.
+ */
+export function trackIdentityBackgroundTask(promise: Promise<unknown>): void {
+  const tracked = promise.catch((error: unknown) => {
+    logEvent("error", "background_task_failed", {
+      error: error instanceof Error ? error.name : typeof error,
+    });
+  });
+  try {
+    after(() => tracked);
+  } catch {
+    // No request scope (unit test, script, or a non-Next host).
+    void tracked;
+  }
 }
 
 /**
@@ -490,13 +538,17 @@ export async function handleErasureRequestPost(request: Request): Promise<Respon
   }
 
   let password: string | undefined;
+  let bodyError: ValidationError | undefined;
   try {
-    const body = (await request.json()) as { password?: unknown };
-    if (typeof body?.password === "string") {
+    const body = await readIdentityJsonObject(request);
+    if (typeof body.password === "string") {
       password = body.password;
     }
-  } catch {
-    // Empty or non-JSON body
+  } catch (error) {
+    if (error instanceof ValidationError) bodyError = error;
+  }
+  if (bodyError !== undefined) {
+    return Response.json(toPublicError(bodyError, requestId), { status: 400 });
   }
 
   try {
@@ -543,13 +595,17 @@ export async function handleErasureConfirmPost(
   }
 
   let token = "";
+  let tokenBodyError: ValidationError | undefined;
   try {
-    const body = (await request.json()) as { token?: unknown };
-    if (typeof body?.token === "string") {
+    const body = await readIdentityJsonObject(request);
+    if (typeof body.token === "string") {
       token = body.token.trim();
     }
-  } catch {
-    // Invalid JSON
+  } catch (error) {
+    if (error instanceof ValidationError) tokenBodyError = error;
+  }
+  if (tokenBodyError !== undefined) {
+    return Response.json(toPublicError(tokenBodyError, requestId), { status: 400 });
   }
 
   if (!token) {

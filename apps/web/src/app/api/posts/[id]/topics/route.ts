@@ -1,3 +1,4 @@
+import { enforceWriteLimit } from "../../../_lib/write-limit";
 import { getPostCacheTarget } from "@/modules/posts";
 import { setPostTopics } from "@/modules/topics";
 import { readJsonObject, requireStringArray } from "../../../_lib/body";
@@ -25,6 +26,7 @@ export async function PUT(
   const requestId = requestIdFrom(request.headers);
   try {
     const actor = await requireUser(request.headers);
+    await enforceWriteLimit("write:topics", actor.userId, { structural: true });
     const { id } = await params;
     const body = await readJsonObject(request);
     const topicSlugs = requireStringArray(body, "topicSlugs");

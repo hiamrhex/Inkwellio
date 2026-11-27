@@ -1,3 +1,4 @@
+import { enforceWriteLimit } from "../../../_lib/write-limit";
 import { getDraftForOwner, saveDraft } from "@/modules/posts";
 import { readJsonObject, requireString, requireVersion } from "../../../_lib/body";
 import { dbExecutor } from "../../../_lib/executor";
@@ -39,6 +40,7 @@ export async function PUT(
   const requestId = requestIdFrom(request.headers);
   try {
     const actor = await requireUser(request.headers);
+    await enforceWriteLimit("write:draft_save", actor.userId);
     const { id } = await params;
     const body = await readJsonObject(request);
     const expectedVersion = requireVersion(body);

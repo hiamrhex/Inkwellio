@@ -18,7 +18,8 @@ const state = vi.hoisted(() => ({
   executor: null as unknown as Executor,
 }));
 
-vi.mock("../../src/modules/identity", () => ({
+vi.mock("../../src/modules/identity", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   getAuth: () => ({
     api: {
       getSession: async () => (state.userId === null ? null : { user: { id: state.userId } }),

@@ -121,3 +121,35 @@ Vercel Preview Comments pass 0
 `git diff --name-only origin/main..HEAD` listed 19 files: 8 under
 `apps/web/src/{kernel,modules,app/api}`, 8 under `apps/web/tests/**`, 3 under
 `docs/**`. Zero forbidden UI, dependency, `package.json` or lockfile changes.
+
+## I. WP8 write-limits follow-up (branch `wp8-write-limits`)
+
+**Unverified.** Local `next start` on `127.0.0.1:3101` and local Postgres on
+55433 only. No deployed service was contacted.
+
+| ID | Command / source | Trimmed result |
+| --- | --- | --- |
+| E-040 | `pnpm check` with the four env vars on the command line | lint, typecheck, build, `Test Files 61 passed (61)`, `Tests 611 passed (611)`, boundaries green; `✔ no dependency violations found (177 modules, 343 dependencies cruised)` |
+| E-041 | `vitest run apps/web/tests/wp8-write-limits.test.ts` | `Test Files 1 passed`, `Tests 7 passed` — 40-save burst allowed, 121st draft save 429, 31st structural write 429, separate action buckets, store outage 503, route-level 429/503 before service |
+| E-042 | remove the `enforceWriteLimit` line from `posts/[id]/draft/route.ts`, run the same test, restore | `Tests  2 failed | 5 passed (7)`: `expected 200 to be 429` and `expected 200 to be 503` |
+| E-043 | `vitest run apps/web/tests/wp8-identity-body.test.ts` | `Tests 6 passed` — malformed JSON, array, primitive and `null` all rejected with `VALIDATION_ERROR` and fixed message |
+| E-044 | replace `readIdentityJsonObject` with a bare `request.json()`, run the same test, restore | `Tests  5 failed | 1 passed (6)` |
+| E-045 | `DRILL_BASE_URL=http://127.0.0.1:3101 node apps/web/tests/manual/red-team-drills.mjs` | `{"total":17,"passed":17,"failed":[]}`; D4: `A=429,429,429,429,429,429 B=200 {"token":null,"user":{...}}` |
+| E-046 | `node apps/web/tests/manual/red-team-drills.mjs --cleanup` | `rateLimitCountersDeleted:33`, `usersDeleted:3`, all `remaining` values `0`, `pass:true` |
+| E-047 | `node apps/web/tests/manual/db-count.mjs` after cleanup | `wp8drill users: 0` |
+| E-048 | `git diff --name-only origin/main..HEAD` | checked before PR creation; must contain no UI, `package.json` or lockfile changes |
+| E-049 | post-gate cleanup (DB-enabled tests recreate counters) | `rateLimitCountersDeleted:40`, all `remaining` values `0`, `pass:true` |
+
+The Phase 2 contract note is `docs/handoffs/phase2-api-ready.md`; it records
+that `/history` has neither a screen nor a revisions/trash API route on this
+branch, so that contract remains `Unverified`.
+
+## J. Vercel background-email lifecycle fix (same PR)
+
+| ID | Command / source | Trimmed result |
+| --- | --- | --- |
+| E-050 | `apps/web/src/modules/identity/index.ts:356-366` | `trackIdentityBackgroundTask` attaches the redacting rejection handler, registers `after(() => tracked)`, and falls back to `void tracked` when no request scope exists; the Better Auth handler at line 208 calls it |
+| E-051 | `vitest run apps/web/tests/wp8-background-tasks.test.ts` | `Tests 3 passed` — platform callback registered and awaited, rejection logged as `{error:"Error"}` with no token/address/password in the log, and no throw when `after` throws |
+| E-052 | disable the `after(...)` registration in that helper, rerun, restore | `Tests 2 failed | 1 passed (3)` (`expected [] to have a length of 1 but got +0`) |
+| E-053 | `pnpm check` after the fix | lint, typecheck, build, `Test Files 62 passed (62)`, `Tests 614 passed (614)`, boundaries green |
+| E-054 | post-gate cleanup | `rateLimitCountersDeleted:94`, all `remaining` values `0`, `pass:true` |

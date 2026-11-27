@@ -1,3 +1,4 @@
+import { enforceWriteLimit } from "../_lib/write-limit";
 import { ensurePublication, listPublicationsForOwner } from "@/modules/publications";
 import { requireString, optionalString, readJsonObject } from "../_lib/body";
 import { dbExecutor } from "../_lib/executor";
@@ -19,6 +20,7 @@ export async function POST(request: Request): Promise<Response> {
   const requestId = requestIdFrom(request.headers);
   try {
     const actor = await requireUser(request.headers);
+    await enforceWriteLimit("write:publication", actor.userId, { structural: true });
     const body = await readJsonObject(request);
     const name = requireString(body, "name");
     const slug = optionalString(body, "slug");

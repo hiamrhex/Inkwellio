@@ -360,10 +360,18 @@ export async function rateLimitAuth(
  * Guards an authenticated write. Keyed by user id, so one account cannot
  * exhaust another account's budget, and a trusted IP adds a second dimension.
  *
- * The cap is deliberately generous (120 writes/minute): it exists to stop a
- * runaway loop or a scripted flood, not to shape normal editing.
+ * Two tiers, chosen against the studio's actual cadence:
+ *   - draft autosave: 120/minute. The editor debounces for 1,500 ms and keeps
+ *     one save in flight (components/studio/studio-editor.tsx:88-91,187-190),
+ *     so continuous typing produces at most ~40 saves/minute.
+ *   - structural writes: 30/minute for deliberate human actions. A flood
+ *     script hits the cap after 30 requests in the window.
+ *
+ * A store outage denies with 503, never 429: the caller did nothing wrong.
  */
 export const WRITE_LIMIT_PER_MINUTE = 120;
+
+export const STRUCTURAL_WRITE_LIMIT_PER_MINUTE = 30;
 
 export async function rateLimitWrite(
   action: string,
@@ -371,10 +379,13 @@ export async function rateLimitWrite(
     userId: string;
     headers?: Headers | Record<string, string | undefined>;
   },
+  options: { max?: number; windowSeconds?: number } = {},
 ): Promise<RateLimitDecision> {
+  const max = options.max ?? WRITE_LIMIT_PER_MINUTE;
+  const windowSeconds = options.windowSeconds ?? 60;
   const userResult = await consumeRateLimit(`user:${context.userId}:${action}`, {
-    max: WRITE_LIMIT_PER_MINUTE,
-    windowSeconds: 60,
+    max,
+    windowSeconds,
   });
   if (userResult.store === "unavailable") {
     return {
@@ -382,7 +393,7 @@ export async function rateLimitWrite(
       status: 503,
       reason: "store_unavailable",
       retryAfterSeconds: secondsUntil(userResult.resetAt, Date.now()),
-      limit: WRITE_LIMIT_PER_MINUTE,
+      limit: max,
     };
   }
   if (!userResult.allowed) {
@@ -391,10 +402,10 @@ export async function rateLimitWrite(
       status: 429,
       reason: "user_rate_limit_exceeded",
       retryAfterSeconds: secondsUntil(userResult.resetAt, Date.now()),
-      limit: WRITE_LIMIT_PER_MINUTE,
+      limit: max,
     };
   }
-  return { allowed: true, status: 200, limit: WRITE_LIMIT_PER_MINUTE };
+  return { allowed: true, status: 200, limit: max };
 }
 
 /** Convert a decision into the error the HTTP boundary renders. */
