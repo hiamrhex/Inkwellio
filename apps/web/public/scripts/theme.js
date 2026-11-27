@@ -16,8 +16,16 @@
           : "light";
     d.setAttribute("data-theme", resolved);
 
-    var paused = localStorage.getItem("inkwellio-motion-paused") === "1";
-    d.setAttribute("data-motion", paused ? "paused" : "active");
+    var m = localStorage.getItem("inkwellio-motion");
+    var legacyPaused = localStorage.getItem("inkwellio-motion-paused");
+    var osReduced = window.matchMedia("(prefers-reduced-motion:reduce)").matches;
+    var resolvedMotion =
+      m === "active"
+        ? "active"
+        : m === "paused" || legacyPaused === "1" || osReduced
+          ? "paused"
+          : "active";
+    d.setAttribute("data-motion", resolvedMotion);
 
     if (window.location && window.location.pathname === "/") {
       var head = document.head || d;

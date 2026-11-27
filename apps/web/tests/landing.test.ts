@@ -316,10 +316,11 @@ describe("Shared Shell & Public Reading Routes", () => {
     expect(siteShellSrc).toContain("nav-zone-left");
     expect(siteShellSrc).toContain("nav-zone-right");
     expect(siteShellSrc).toContain("<ThemeToggle");
+    expect(siteShellSrc).toContain("<MotionToggle");
     expect(siteShellSrc).toContain("<SessionNavActions");
     expect(siteShellSrc).toContain('data-motion-toggle="true"');
     expect(siteShellSrc).toContain("Pause motion");
-    expect(siteShellSrc).toContain("Resume motion");
+    expect(siteShellSrc).toContain("Motion paused — Resume");
     expect(siteShellSrc).toContain('href="#main-content"');
     expect(siteShellSrc).toContain('href="/privacy"');
     expect(siteShellSrc).toContain('href="/terms"');
@@ -330,7 +331,7 @@ describe("Shared Shell & Public Reading Routes", () => {
     expect(cssSrc).not.toContain(".flip-curtain");
     expect(landingRuntimeSrc).toContain("data-motion-toggle");
     expect(landingRuntimeSrc).toContain("inkwellio:motion-change");
-    expect(themeJsSrc).toContain("inkwellio-motion-paused");
+    expect(themeJsSrc).toContain("inkwellio-motion");
 
     for (const src of [siteShellSrc, sessionNavSrc, bentoSrc, bentoControlsSrc, magneticSrc, pageSrc]) {
       expect(src).not.toContain("prefetch={false}");
@@ -415,8 +416,8 @@ describe("Signature stage, honest Bento & Hero artifact", () => {
     expect(cssSrc).toContain(".spotlight-card::after");
     expect(cssSrc).toContain(".hero-cursor-spotlight");
     expect(cssSrc).toContain("580px");
-    expect(cssSrc).toContain("scale(0.97)");
-    expect(cssSrc).toContain("translateY(-5px)");
+    expect(cssSrc).toContain("scale(0.96)");
+    expect(cssSrc).toContain("--bento-lift-px");
     expect(cssSrc).toContain(".side-glide-band");
     expect(cssSrc).toContain("overflow-x: clip");
     expect(cssSrc).toContain("side-glide-in-left");

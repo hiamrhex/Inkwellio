@@ -7,8 +7,8 @@ interface MagneticButtonProps extends AnchorHTMLAttributes<HTMLAnchorElement> {
 }
 
 /**
- * Pure server component primary pill link with <= 5px magnetic pull driven by
- * the single shared pointer listener in /scripts/landing-runtime.js and 100ms :active press feedback.
+ * Pure server component primary pill link with smooth magnetic pull driven by
+ * /scripts/landing-runtime.js, 2px label micro-parallax, and 100ms :active press feedback.
  */
 export function MagneticButton({
   href,
@@ -23,7 +23,7 @@ export function MagneticButton({
       className={`magnetic-btn ${className}`.trim()}
       {...props}
     >
-      {children}
+      <span className="mag-label">{children}</span>
     </Link>
   );
 }

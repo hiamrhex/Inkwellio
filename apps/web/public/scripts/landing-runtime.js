@@ -1,146 +1,55 @@
-/** landing-runtime.js — theme/motion toggle + single passive pointer controller */
-(function () {
-  "use strict";
-  var d = document.documentElement;
-  function qAll(s) { return document.querySelectorAll(s); }
-  function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
-  function sv(el, k, v) { if (el) el.style.setProperty(k, v); }
-  function applyTheme(t) {
-    try { d.setAttribute("data-theme", t); localStorage.setItem("inkwellio-theme", t); } catch {}
-  }
-  function syncMotion(paused) {
-    var ts = qAll("[data-motion-toggle]");
-    for (var i = 0; i < ts.length; i++) ts[i].setAttribute("aria-pressed", paused ? "true" : "false");
-  }
-  function applyMotionPaused(paused) {
-    try {
-      d.setAttribute("data-motion", paused ? "paused" : "active");
-      localStorage.setItem("inkwellio-motion-paused", paused ? "1" : "0");
-      syncMotion(paused);
-      window.dispatchEvent(new Event("inkwellio:motion-change"));
-    } catch {}
-  }
-  document.addEventListener("click", function (e) {
-    var t = e.target && e.target.closest;
-    var tb = t ? e.target.closest("[data-theme-toggle]") : null;
-    if (tb) { applyTheme(d.getAttribute("data-theme") === "dark" ? "light" : "dark"); return; }
-    var mb = t ? e.target.closest("[data-motion-toggle]") : null;
-    if (mb) applyMotionPaused(d.getAttribute("data-motion") !== "paused");
-  });
-
-  function initPointer() {
-    syncMotion(d.getAttribute("data-motion") === "paused");
-    var fine = window.matchMedia("(hover: hover) and (pointer: fine)");
-    var reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
-    var heroOuter = document.querySelector(".hero-stage-outer");
-    var stage = document.querySelector(".hero-stage");
-    var ribbonBox = document.querySelector(".hero-ribbon-media-box");
-    var heroTilt = document.querySelector("[data-tilt-hero]");
-    var stageCards = [].slice.call(qAll("[data-tilt-stage]"));
-    var spotlights = [].slice.call(qAll("[data-spotlight]"));
-    var magnetics = [].slice.call(qAll("[data-magnetic]"));
-    var vw = window.innerWidth || 1440, vh = window.innerHeight || 900;
-    var p = { x: vw * 0.65, y: vh * 0.42, curX: vw * 0.65, curY: vh * 0.42, rx: 0, ry: 0, tx: 0, ty: 0, lastMoveAt: 0, active: false };
-    window.__inkwellioPointer = p;
-    if (!stage && !heroTilt && !ribbonBox && !stageCards.length && !spotlights.length && !magnetics.length) return;
-
-    var rects = new WeakMap();
-    var allMeasured = [].concat(heroOuter || [], heroTilt || [], stageCards, spotlights, magnetics);
-    function invalidate() {
-      vw = window.innerWidth || 1440; vh = window.innerHeight || 900;
-      for (var i = 0; i < allMeasured.length; i++) rects.delete(allMeasured[i]);
-    }
-    if (typeof ResizeObserver !== "undefined" && allMeasured.length) {
-      var ro = new ResizeObserver(invalidate);
-      for (var i = 0; i < allMeasured.length; i++) ro.observe(allMeasured[i]);
-    }
-    window.addEventListener("scroll", invalidate, { passive: true });
-    window.addEventListener("resize", invalidate, { passive: true });
-    function getRect(el) { var r = rects.get(el); if (!r) { r = el.getBoundingClientRect(); rects.set(el, r); } return r; }
-    function frozen() { return reduced.matches || d.getAttribute("data-motion") === "paused"; }
-    var rafId = 0, lastAt = 0;
-
-    function reset() {
-      p.rx = p.ry = p.tx = p.ty = 0;
-      if (heroOuter) {
-        sv(heroOuter, "--mx", "0"); sv(heroOuter, "--my", "0");
-        sv(heroOuter, "--rx", "0px"); sv(heroOuter, "--ry", "0px");
-        sv(heroOuter, "--cursor-x", "65%"); sv(heroOuter, "--cursor-y", "42%");
-        heroOuter.style.removeProperty("--spotlight-active");
-      }
-      sv(stage, "--mx", "0"); sv(stage, "--my", "0");
-      sv(ribbonBox, "--rx", "0px"); sv(ribbonBox, "--ry", "0px");
-      sv(heroTilt, "--tx", "0"); sv(heroTilt, "--ty", "0");
-      for (var s = 0; s < stageCards.length; s++) { sv(stageCards[s], "--sx", "0"); sv(stageCards[s], "--sy", "0"); }
-      for (var m = 0; m < magnetics.length; m++) { sv(magnetics[m], "--mag-x", "0px"); sv(magnetics[m], "--mag-y", "0px"); }
-    }
-
-    function tick(now) {
-      rafId = 0;
-      if (!fine.matches || frozen()) { p.active = false; reset(); return; }
-      var dt = lastAt ? clamp(now - lastAt, 8, 50) : 16.667;
-      lastAt = now;
-      var idle = p.lastMoveAt ? now - p.lastMoveAt : 0;
-      var baseLerp = idle > 280 ? Math.min(0.45, 0.11 + (idle - 280) * 0.0012) : 0.11;
-      var a = 1 - Math.pow(1 - baseLerp, dt / 16.667);
-      var x = p.x, y = p.y;
-      var nx = clamp((x / (vw || 1)) * 2 - 1, -1, 1), ny = clamp((y / (vh || 1)) * 2 - 1, -1, 1);
-      var tRx = nx * 18, tRy = ny * 12, tTx = 0, tTy = 0;
-      if (heroTilt) {
-        var hr = getRect(heroTilt);
-        var topB = heroOuter ? getRect(heroOuter).top : hr.top - 120;
-        var botB = heroOuter ? getRect(heroOuter).bottom : hr.bottom + 120;
-        if (y >= topB && y <= botB) { tTx = clamp(-ny * 2.2, -3.5, 3.5); tTy = clamp(nx * 5.8, -6, 6); }
-      }
-      if (idle >= 780) { p.curX = x; p.curY = y; p.rx = tRx; p.ry = tRy; p.tx = tTx; p.ty = tTy; }
-      else { p.curX += (x - p.curX) * a; p.curY += (y - p.curY) * a; p.rx += (tRx - p.rx) * a; p.ry += (tRy - p.ry) * a; p.tx += (tTx - p.tx) * a; p.ty += (tTy - p.ty) * a; }
-
-      if (heroOuter) {
-        var or = getRect(heroOuter);
-        sv(heroOuter, "--mx", nx.toFixed(4)); sv(heroOuter, "--my", ny.toFixed(4));
-        sv(heroOuter, "--cursor-x", (p.curX - or.left).toFixed(1) + "px");
-        sv(heroOuter, "--cursor-y", (p.curY - or.top).toFixed(1) + "px");
-        sv(heroOuter, "--spotlight-active", "1");
-        sv(heroOuter, "--rx", p.rx.toFixed(2) + "px"); sv(heroOuter, "--ry", p.ry.toFixed(2) + "px");
-      }
-      sv(stage, "--mx", nx.toFixed(4)); sv(stage, "--my", ny.toFixed(4));
-      sv(ribbonBox, "--rx", p.rx.toFixed(2) + "px"); sv(ribbonBox, "--ry", p.ry.toFixed(2) + "px");
-      sv(heroTilt, "--tx", p.tx.toFixed(2)); sv(heroTilt, "--ty", p.ty.toFixed(2));
-
-      for (var sc = 0; sc < stageCards.length; sc++) {
-        var c = stageCards[sc], sr = getRect(c);
-        if (x >= sr.left - 32 && x <= sr.right + 32 && y >= sr.top - 32 && y <= sr.bottom + 32 && sr.width > 0) {
-          sv(c, "--sx", clamp(-((y - sr.top) / sr.height - 0.5) * 5, -3, 3).toFixed(2));
-          sv(c, "--sy", clamp(((x - sr.left) / sr.width - 0.5) * 5, -3, 3).toFixed(2));
-        } else { sv(c, "--sx", "0"); sv(c, "--sy", "0"); }
-      }
-      for (var i = 0; i < spotlights.length; i++) {
-        var sp = spotlights[i], spr = getRect(sp);
-        sv(sp, "--spotlight-x", (p.curX - spr.left).toFixed(1) + "px");
-        sv(sp, "--spotlight-y", (p.curY - spr.top).toFixed(1) + "px");
-      }
-      for (var j = 0; j < magnetics.length; j++) {
-        var btn = magnetics[j], mr = getRect(btn);
-        if (x >= mr.left - 28 && x <= mr.right + 28 && y >= mr.top - 28 && y <= mr.bottom + 28 && mr.width > 0) {
-          sv(btn, "--mag-x", clamp((x - (mr.left + mr.width * 0.5)) * 0.18, -6, 6).toFixed(1) + "px");
-          sv(btn, "--mag-y", clamp((y - (mr.top + mr.height * 0.5)) * 0.18, -6, 6).toFixed(1) + "px");
-        } else { sv(btn, "--mag-x", "0px"); sv(btn, "--mag-y", "0px"); }
-      }
-      var settled = Math.abs(x - p.curX) < 0.35 && Math.abs(y - p.curY) < 0.35 && Math.abs(tRx - p.rx) < 0.1 && Math.abs(tTy - p.ty) < 0.05;
-      if (!settled && idle < 780) rafId = requestAnimationFrame(tick);
-      else { lastAt = 0; p.active = false; }
-    }
-
-    document.addEventListener("pointermove", function (e) {
-      if (e.pointerType === "touch" || !fine.matches || frozen()) return;
-      p.x = e.clientX; p.y = e.clientY; p.lastMoveAt = performance.now(); p.active = true;
-      if (!rafId) rafId = requestAnimationFrame(tick);
-      window.dispatchEvent(new Event("inkwellio:pointer-wake"));
-    }, { passive: true });
-    function stop() { p.active = false; if (rafId) { cancelAnimationFrame(rafId); rafId = 0; } reset(); }
-    window.addEventListener("inkwellio:motion-change", function () { if (frozen()) stop(); });
-    document.addEventListener("pointerleave", stop, { passive: true });
-  }
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", initPointer);
-  else initPointer();
+/** landing-runtime.js */
+(function(){
+"use strict";
+var d=document.documentElement,W=window,D=document,ls=localStorage,qA=function(s){return D.querySelectorAll(s);};
+var clamp=function(v,a,b){return v<a?a:v>b?b:v;},sv=function(e,k,v){if(e)e.style.setProperty(k,v);};
+var xy=function(e,p,a,b,u){if(e){e.style.setProperty(p+"x",a+u);e.style.setProperty(p+"y",b+u);}};
+var pz=function(){return d.getAttribute("data-motion")==="paused";};
+function syncM(p){for(var t=qA("[data-motion-toggle]"),lb=p?"Motion paused — Resume":"Pause motion",i=0;i<t.length;i++){t[i].setAttribute("aria-pressed",p?"true":"false");t[i].setAttribute("aria-label",lb);t[i].title=lb;}}
+function setM(p){try{d.setAttribute("data-motion",p?"paused":"active");ls.setItem("inkwellio-motion",p?"paused":"active");ls.setItem("inkwellio-motion-paused",p?"1":"0");syncM(p);W.dispatchEvent(new Event("inkwellio:motion-change"));}catch{}}
+D.addEventListener("click",function(e){var g=e.target&&e.target.closest?e.target:null,tb=g&&g.closest("[data-theme-toggle]"),mb=g&&g.closest("[data-motion-toggle]");if(tb){var nx=d.getAttribute("data-theme")==="dark"?"light":"dark";try{d.setAttribute("data-theme",nx);ls.setItem("inkwellio-theme",nx);}catch{}}else if(mb)setM(!pz());});
+var IS='input,textarea,select,button,a,label,[role="tab"],.auth-field,.bento-pill-btn',FS='input,textarea,select,[contenteditable="true"]';
+function init(){
+syncM(pz());
+var rq=W.matchMedia("(prefers-reduced-motion: reduce)");rq.addEventListener("change",function(){try{if(!ls.getItem("inkwellio-motion"))setM(rq.matches);}catch{}});
+var fine=W.matchMedia("(hover: hover) and (pointer: fine)"),cs=getComputedStyle(D.body||d);
+var nv=function(k,f){var n=parseFloat(cs.getPropertyValue(k));return Number.isFinite(n)?n:f;};
+var ho=D.querySelector(".hero-stage-outer"),rb=D.querySelector(".hero-ribbon-media-box"),ht=D.querySelector("[data-tilt-hero]"),am=D.querySelector(".auth-main"),ac=D.querySelector("[data-tilt-auth]"),ab=D.querySelector("[data-auth-parallax]");
+var sps=[].slice.call(qA("[data-spotlight]")),mgs=[].slice.call(qA("[data-magnetic],.nav-auth-pill,.auth-submit"));
+var vw=W.innerWidth||1440,vh=W.innerHeight||900;
+var mg=nv("--motion-gain",1),rS=nv("--hero-ribbon-shift",38),rR=nv("--hero-ribbon-rot",2),hM=nv("--hero-tilt-max",9),aM=nv("--auth-tilt-max",6),aS=nv("--auth-backdrop-shift",28),bM=nv("--bento-tilt-max",5),mM=nv("--magnetic-pull",8.5),mL=nv("--magnetic-label-pull",2);
+var p={x:vw*.65,y:vh*.42,curX:vw*.65,curY:vh*.42,rx:0,ry:0,rrot:0,tx:0,ty:0,abx:0,aby:0,atx:0,aty:0,lastMoveAt:0,active:false,oc:false,hc:null,fc:false};
+W.__inkwellioPointer=p;var wm=new WeakMap(),all=[].concat(ho||[],ht||[],am||[],ac||[],sps,mgs);
+function inv(){vw=W.innerWidth||1440;vh=W.innerHeight||900;mg=nv("--motion-gain",1);for(var i=0;i<all.length;i++)wm.delete(all[i]);}
+if(typeof ResizeObserver!=="undefined"&&all.length){var ro=new ResizeObserver(inv);for(var i=0;i<all.length;i++)ro.observe(all[i]);}
+W.addEventListener("scroll",inv,{passive: true});W.addEventListener("resize",inv,{passive: true});
+function gr(el){var r=wm.get(el);if(!r){r=el.getBoundingClientRect();wm.set(el,r);}return r;}
+var rid=0,it=0,last=0,f2=function(v){return v.toFixed(2);};
+function flat(tr){if(tr)d.classList.add("is-idle-flat");p.tx=p.ty=p.atx=p.aty=0;xy(ht,"--t",0,0,"");xy(ac,"--at",0,0,"");for(var i=0;i<sps.length;i++)xy(sps[i],"--s",0,0,"");}
+function rst(tr){p.rx=p.ry=p.rrot=p.abx=p.aby=0;flat(tr);if(ho){xy(ho,"--m",0,0,"");ho.style.removeProperty("--spotlight-active");}if(am)am.style.removeProperty("--spotlight-active");xy(rb,"--r",0,0,"px");sv(rb,"--rrot","0deg");xy(ab,"--ab",0,0,"px");for(var i=0;i<sps.length;i++)xy(sps[i],"--spotlight-",-999,-999,"px");for(var m=0;m<mgs.length;m++){xy(mgs[m],"--mag-",0,0,"px");xy(mgs[m],"--mag-l",0,0,"px");}}
+function sfc(){var ae=D.activeElement;p.fc=!!(ae&&ae.matches&&ae.matches(FS)&&((ht&&ht.contains(ae))||(ac&&ac.contains(ae))));if(p.fc)flat(true);}
+D.addEventListener("focusin",sfc,{passive:true});D.addEventListener("focusout",function(){setTimeout(sfc,0);},{passive:true});
+function tick(now){
+rid=0;if(!fine.matches||pz()){p.active=false;rst(false);return;}
+var dt=last?clamp(now-last,8,50):16.667;last=now;
+var x=p.x,y=p.y,nx=clamp((x/(vw||1))*2-1,-1,1),ny=clamp((y/(vh||1))*2-1,-1,1);
+var flt=p.fc||p.oc,tTx=0,tTy=0,tAtx=0,tAty=0,tRx=nx*rS*mg,tRy=ny*rS*mg,tRr=nx*rR*mg,tAbx=-nx*aS*mg,tAby=-ny*aS*mg;
+if(ht&&!flt){var hr=gr(ht),oT=ho?gr(ho).top:hr.top-120,oB=ho?gr(ho).bottom:hr.bottom+120;if(y>=oT&&y<=oB){tTx=clamp(-ny*hM*.55*mg,-hM*mg,hM*mg);tTy=clamp(nx*hM*mg,-hM*mg,hM*mg);}}
+if(ac&&!flt){tAtx=clamp(-ny*aM*.6*mg,-aM*mg,aM*mg);tAty=clamp(nx*aM*mg,-aM*mg,aM*mg);}
+var pa=1-Math.pow(.88,dt/16.667),ta=1-Math.pow(flt?.66:.86,dt/16.667);
+p.curX+=(x-p.curX)*pa;p.curY+=(y-p.curY)*pa;p.rx+=(tRx-p.rx)*pa;p.ry+=(tRy-p.ry)*pa;p.rrot+=(tRr-p.rrot)*pa;p.abx+=(tAbx-p.abx)*pa;p.aby+=(tAby-p.aby)*pa;p.tx+=(tTx-p.tx)*ta;p.ty+=(tTy-p.ty)*ta;p.atx+=(tAtx-p.atx)*ta;p.aty+=(tAty-p.aty)*ta;
+if(ho){var or=gr(ho);xy(ho,"--m",nx.toFixed(4),ny.toFixed(4),"");xy(ho,"--cursor-",(p.curX-or.left).toFixed(1),(p.curY-or.top).toFixed(1),"px");sv(ho,"--spotlight-active","1");}
+if(am){var ar=gr(am);xy(am,"--cursor-",(p.curX-ar.left).toFixed(1),(p.curY-ar.top).toFixed(1),"px");sv(am,"--spotlight-active","1");}
+xy(rb,"--r",f2(p.rx),f2(p.ry),"px");sv(rb,"--rrot",f2(p.rrot)+"deg");xy(ab,"--ab",f2(p.abx),f2(p.aby),"px");xy(ht,"--t",f2(p.tx),f2(p.ty),"");xy(ac,"--at",f2(p.atx),f2(p.aty),"");
+for(var i=0;i<sps.length;i++){var sp=sps[i],sr=gr(sp);xy(sp,"--spotlight-",(p.curX-sr.left).toFixed(1),(p.curY-sr.top).toFixed(1),"px");if(sp!==ac){if(sp===p.hc&&!p.oc&&sr.width>0)xy(sp,"--s",f2(clamp((y-(sr.top+sr.height*.5))/(sr.height*.5),-1,1)*-bM*.8*mg),f2(clamp((x-(sr.left+sr.width*.5))/(sr.width*.5),-1,1)*bM*mg),"");else xy(sp,"--s",0,0,"");}}
+for(var j=0;j<mgs.length;j++){var b=mgs[j],mr=gr(b);if(x>=mr.left-24&&x<=mr.right+24&&y>=mr.top-24&&y<=mr.bottom+24&&mr.width>0){var dx=(x-(mr.left+mr.width*.5))/(mr.width*.5+24),dy=(y-(mr.top+mr.height*.5))/(mr.height*.5+24);xy(b,"--mag-",f2(clamp(dx*mM*mg,-mM*mg,mM*mg)),f2(clamp(dy*mM*mg,-mM*mg,mM*mg)),"px");xy(b,"--mag-l",f2(clamp(dx*mL*mg,-mL*mg,mL*mg)),f2(clamp(dy*mL*mg,-mL*mg,mL*mg)),"px");}else{xy(b,"--mag-",0,0,"px");xy(b,"--mag-l",0,0,"px");}}
+var done=Math.abs(x-p.curX)<.3&&Math.abs(y-p.curY)<.3&&Math.abs(tTx-p.tx)<.04&&Math.abs(tTy-p.ty)<.04&&Math.abs(tAty-p.aty)<.04&&Math.abs(tRx-p.rx)<.1&&Math.abs(tAbx-p.abx)<.1;
+if(!done)rid=requestAnimationFrame(tick);else{last=0;p.active=false;}
+}
+D.addEventListener("pointermove",function(e){if(e.pointerType==="touch"||!fine.matches||pz())return;d.classList.remove("is-idle-flat");var t=e.target&&e.target.closest?e.target:null;p.oc=!!(t&&t.closest(IS));p.hc=t?t.closest("[data-spotlight]"):null;p.x=e.clientX;p.y=e.clientY;p.lastMoveAt=performance.now();p.active=true;if(it)clearTimeout(it);it=setTimeout(function(){if(rid){cancelAnimationFrame(rid);rid=0;}last=0;p.active=false;flat(true);},1200);if(!rid)rid=requestAnimationFrame(tick);W.dispatchEvent(new Event("inkwellio:pointer-wake"));},{passive:true});
+function stop(){if(it){clearTimeout(it);it=0;}if(rid){cancelAnimationFrame(rid);rid=0;}last=0;p.active=false;rst(true);}
+W.addEventListener("inkwellio:motion-change",function(){if(pz())stop();else sfc();});
+D.addEventListener("pointerleave",function(){if(it){clearTimeout(it);it=0;}if(rid){cancelAnimationFrame(rid);rid=0;}last=0;p.active=false;flat(true);},{passive:true});
+}
+if(D.readyState==="loading")D.addEventListener("DOMContentLoaded",init);else init();
 })();

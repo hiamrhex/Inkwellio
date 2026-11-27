@@ -1,12 +1,12 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { InkwellioLogo, SquircleClipDef, ThemeToggle } from "@inkwellio/ui";
+import { InkwellioLogo, MotionToggle, SquircleClipDef, ThemeToggle } from "@inkwellio/ui";
 import { SessionNavActions } from "./session-nav-actions";
 
 interface SiteHeaderProps {
   /** When true, anchor links target in-page sections directly (`#essentials`); otherwise prefix `/`. */
   readonly isHome?: boolean;
-  /** When true (auth routes), render a distraction-free single bar with brand + theme toggle only. */
+  /** When true (auth routes), render a distraction-free single bar with brand + theme/motion toggles. */
   readonly minimalHeader?: boolean;
 }
 
@@ -55,10 +55,16 @@ export function SiteHeader({ isHome = false, minimalHeader = false }: SiteHeader
           <div className="nav-zone-right">
             <div className="nav-utilities">
               <ThemeToggle />
+              <MotionToggle />
               {minimalHeader ? null : <SessionNavActions />}
             </div>
           </div>
         </div>
+        {isHome ? (
+          <div className="site-scroll-progress" aria-hidden="true">
+            <div className="site-scroll-progress-bar" />
+          </div>
+        ) : null}
       </header>
     </>
   );
@@ -92,7 +98,7 @@ export function SiteFooter() {
             className="site-footer-link site-motion-toggle"
           >
             <span className="motion-label-pause">Pause motion</span>
-            <span className="motion-label-resume">Resume motion</span>
+            <span className="motion-label-resume">Motion paused — Resume</span>
           </button>
         </nav>
       </div>

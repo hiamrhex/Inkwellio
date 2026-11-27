@@ -16,8 +16,8 @@ export function LivingHeroArtifact() {
   useEffect(() => {
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
     const syncFrozen = () => {
-      const paused = document.documentElement.getAttribute("data-motion") === "paused";
-      setIsReduced(mq.matches || paused);
+      const attr = document.documentElement.getAttribute("data-motion");
+      setIsReduced(attr === "paused" || (attr !== "active" && mq.matches));
     };
     const raf = requestAnimationFrame(syncFrozen);
     const mo = new MutationObserver(syncFrozen);

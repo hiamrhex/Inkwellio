@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { motionConfig } from "@inkwellio/ui";
 
 interface SharedPointerWindow extends Window {
   __inkwellioPointer?: { x: number; y: number; active: boolean; lastMoveAt?: number };
@@ -57,9 +58,10 @@ export function HeroRibbonCanvas() {
     let curPull = 0.12;
     let scrollTwist = 0;
 
-    const isMotionFrozen = () =>
-      reducedQuery.matches ||
-      document.documentElement.getAttribute("data-motion") === "paused";
+    const isMotionFrozen = () => {
+      const attr = document.documentElement.getAttribute("data-motion");
+      return attr === "paused" || (attr !== "active" && reducedQuery.matches);
+    };
 
     const syncBounds = () => {
       const rect = host.getBoundingClientRect();
@@ -93,9 +95,13 @@ export function HeroRibbonCanvas() {
       const segments = isNarrow ? 30 : 48;
 
       const strokeRgb = isLight ? "30, 41, 59" : "226, 232, 240";
+      const emeraldRgb = isLight ? "5, 150, 105" : "16, 185, 129";
+      const ag = motionConfig.accentGain;
+      const mg = motionConfig.motionGain;
 
       for (let s = 0; s < STRANDS.length; s++) {
         const strand = STRANDS[s];
+        const useEmeraldTint = s === 1 || s === 3;
         const grad = ctx.createLinearGradient(
           anchorX - spanX * 0.52,
           anchorY - spanY * 0.5,
@@ -104,8 +110,12 @@ export function HeroRibbonCanvas() {
         );
         const aEdge = (strand.alpha * 0.06).toFixed(3);
         const aMid = (strand.alpha * (isLight ? 0.55 : 0.85)).toFixed(3);
+        const aHint = Math.min(0.45, strand.alpha * 0.62 * ag).toFixed(3);
         grad.addColorStop(0, `rgba(${strokeRgb}, ${aEdge})`);
-        grad.addColorStop(0.5, `rgba(${strokeRgb}, ${aMid})`);
+        grad.addColorStop(
+          0.5,
+          useEmeraldTint ? `rgba(${emeraldRgb}, ${aHint})` : `rgba(${strokeRgb}, ${aMid})`,
+        );
         grad.addColorStop(1, `rgba(${strokeRgb}, ${aEdge})`);
 
         ctx.beginPath();
@@ -137,9 +147,11 @@ export function HeroRibbonCanvas() {
           const dx = mxPx - baseX;
           const dy = myPx - waveY;
           const dist = Math.hypot(dx, dy);
-          const radius = isNarrow ? 160 : 260;
+          const radius = isNarrow
+            ? Math.round(motionConfig.pointer.canvasBendRadiusPx * 0.65)
+            : motionConfig.pointer.canvasBendRadiusPx;
           const influence =
-            dist < radius ? Math.pow(1 - dist / radius, 2) * curPull * 0.2 : 0;
+            dist < radius ? Math.pow(1 - dist / radius, 2) * curPull * 0.36 * mg : 0;
 
           const px = baseX + dx * influence;
           const py = waveY + dy * influence;
@@ -168,7 +180,8 @@ export function HeroRibbonCanvas() {
       const lastMoveAt = shared?.lastMoveAt ?? 0;
       const sinceMove = lastMoveAt ? now - lastMoveAt : Infinity;
       const inInitialSettle = now - startTime < 550;
-      const pointerAlive = fineQuery.matches && sinceMove < 780;
+      const pointerAlive =
+        fineQuery.matches && sinceMove < motionConfig.pointer.idleStopMs;
 
       if (now - lastDraw >= minFrameMs) {
         lastDraw = now;

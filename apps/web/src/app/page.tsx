@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { IconTile, SectionHeader } from "@inkwellio/ui";
 import { SiteShell } from "@/components/site-shell";
+import { AmbientOrbs } from "@/components/ambient-orbs";
 import { LivingHeroArtifact } from "./living-hero-artifact";
 import { MagneticButton } from "./magnetic-button";
 import { InteractiveBento } from "./interactive-bento";
@@ -47,6 +48,7 @@ export default function Home() {
       <main id="main-content">
         {/* ── Hero ────────────────────────────────────────────────── */}
         <div className="hero-stage-outer">
+          <AmbientOrbs />
           <div className="hero-cursor-spotlight" aria-hidden="true" />
           <div className="hero-silk-backdrop" aria-hidden="true">
             <div className="hero-silk-fallback" />
@@ -66,8 +68,8 @@ export default function Home() {
               </p>
 
               <h1 className="hero-headline">
-                <span className="hero-headline-line">Publish football.</span>{" "}
-                <span className="hero-headline-line">Own it.</span>
+                <span className="hero-headline-line hero-headline-sweep">Publish football.</span>{" "}
+                <span className="hero-headline-line hero-headline-sweep">Own it.</span>
               </h1>
 
               <p className="hero-sub">
@@ -293,8 +295,10 @@ export default function Home() {
           id="publishing"
           className="page-section publishing-showcase below-fold-section"
           aria-labelledby="publishing-heading"
+          style={{ position: "relative" }}
         >
-          <div className="publishing-grid">
+          <AmbientOrbs />
+          <div className="publishing-grid" style={{ position: "relative", zIndex: 1 }}>
             <div>
               <span className="chip">For football writers</span>
               <h2
