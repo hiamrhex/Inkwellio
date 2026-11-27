@@ -11,14 +11,24 @@ interface SessionPayload {
   session?: { id?: string } | null;
 }
 
+interface SessionNavActionsProps {
+  readonly initialSignedIn?: boolean;
+  readonly inWorkspace?: boolean;
+}
+
 /**
  * Tiny idle-deferred navigation auth slot.
  * Calls GET /api/auth/get-session after load + idle and swaps Sign in / Sign up
  * to Dashboard / Sign out inside a fixed-width container (zero CLS).
  */
-export function SessionNavActions() {
+export function SessionNavActions({
+  initialSignedIn = false,
+  inWorkspace = false,
+}: SessionNavActionsProps = {}) {
   const router = useRouter();
-  const [authState, setAuthState] = useState<AuthSessionState>("guest");
+  const [authState, setAuthState] = useState<AuthSessionState>(
+    initialSignedIn ? "signed-in" : "guest",
+  );
   const [signingOut, setSigningOut] = useState(false);
 
   useEffect(() => {
@@ -37,8 +47,12 @@ export function SessionNavActions() {
         const ct = res.headers.get("content-type")?.toLowerCase() ?? "";
         if (!ct.includes("application/json")) return;
         const data = (await res.json()) as SessionPayload | null;
-        if (!cancelled && data && data.user?.id && data.session?.id) {
-          setAuthState("signed-in");
+        if (!cancelled) {
+          if (data && data.user?.id && data.session?.id) {
+            setAuthState("signed-in");
+          } else {
+            setAuthState("guest");
+          }
         }
       } catch {
         // Stay gracefully in guest state if network or auth is offline.
@@ -95,6 +109,9 @@ export function SessionNavActions() {
     } finally {
       setAuthState("guest");
       setSigningOut(false);
+      if (inWorkspace) {
+        router.push("/");
+      }
       router.refresh();
     }
   };

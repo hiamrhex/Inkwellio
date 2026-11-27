@@ -2,7 +2,8 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import Link from "next/link";
-import { AuthGuardCard } from "@/components/studio/auth-guard-card";
+import { redirect } from "next/navigation";
+import { SiteShell } from "@/components/site-shell";
 import { DashboardClient } from "@/components/studio/dashboard-client";
 import {
   loadDashboardData,
@@ -16,14 +17,15 @@ export const metadata: Metadata = {
 async function DashboardLoader() {
   const actor = await resolveStudioActor(await headers());
   if (actor === null) {
-    return <AuthGuardCard heading="Writer Dashboard" />;
+    redirect("/sign-in?next=%2Fdashboard");
   }
 
   const loaded = await loadDashboardData(actor);
   if (loaded.kind === "unavailable") {
     return (
       <main
-        className="flex min-h-screen flex-col items-center justify-center gap-4 px-4 py-16 text-center"
+        id="main-content"
+        className="workspace-main flex flex-col items-center justify-center gap-4 px-4 py-16 text-center"
         style={{
           backgroundColor: "var(--bg-canvas)",
           color: "var(--text-primary)",
@@ -37,7 +39,6 @@ async function DashboardLoader() {
         </p>
         <Link
           href="/"
-          prefetch={false}
           className="inline-flex min-h-[44px] items-center rounded-md border px-4 py-2 text-sm font-medium"
           style={{
             borderColor: "var(--border-hairline)",
@@ -60,20 +61,23 @@ async function DashboardLoader() {
 
 export default function DashboardPage() {
   return (
-    <Suspense
-      fallback={
-        <main
-          className="min-h-screen px-4 py-12 sm:px-6"
-          style={{
-            backgroundColor: "var(--bg-canvas)",
-            color: "var(--text-muted)",
-          }}
-        >
-          <div className="mx-auto max-w-4xl text-sm">Loading dashboard...</div>
-        </main>
-      }
-    >
-      <DashboardLoader />
-    </Suspense>
+    <SiteShell workspaceNav activePath="/dashboard">
+      <Suspense
+        fallback={
+          <main
+            id="main-content"
+            className="workspace-main px-4 py-12 sm:px-6"
+            style={{
+              backgroundColor: "var(--bg-canvas)",
+              color: "var(--text-muted)",
+            }}
+          >
+            <div className="mx-auto max-w-4xl text-sm">Loading dashboard...</div>
+          </main>
+        }
+      >
+        <DashboardLoader />
+      </Suspense>
+    </SiteShell>
   );
 }

@@ -2925,6 +2925,70 @@ body {
   opacity: 1 !important;
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   Writer Workspace Shell & Mobile Sub-Navigation (WP7 Wave B)
+   ═══════════════════════════════════════════════════════════════ */
+.workspace-main {
+  min-height: calc(100vh - 60px);
+  padding-top: 5.25rem;
+}
+
+.workspace-mobile-nav {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .workspace-mobile-nav {
+    position: fixed;
+    top: 60px;
+    left: 0;
+    right: 0;
+    height: 48px;
+    z-index: 95;
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0 0.75rem;
+    overflow-x: auto;
+    background: color-mix(in srgb, var(--bg-canvas) 94%, transparent);
+    border-bottom: 1px solid var(--border-hairline);
+  }
+
+  .workspace-mobile-link {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    min-width: 44px;
+    padding: 0 0.75rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  .workspace-mobile-link[data-active="true"] {
+    color: var(--text-primary);
+  }
+
+  .workspace-mobile-link[data-active="true"]::after {
+    content: "";
+    position: absolute;
+    left: 0.75rem;
+    right: 0.75rem;
+    bottom: 6px;
+    height: 1.5px;
+    border-radius: 1px;
+    background: linear-gradient(90deg, var(--text-primary) 0%, var(--status-live) 100%);
+  }
+
+  .workspace-main {
+    padding-top: 8.25rem;
+  }
+}
+
 @media (forced-colors: active) {
   .btn-primary {
     border: 2px solid ButtonText;

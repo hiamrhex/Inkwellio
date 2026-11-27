@@ -8,6 +8,10 @@ interface SiteHeaderProps {
   readonly isHome?: boolean;
   /** When true (auth routes), render a distraction-free single bar with brand + theme/motion toggles. */
   readonly minimalHeader?: boolean;
+  /** When true (authenticated writer workspace), render Dashboard / Topics / Settings links. */
+  readonly workspaceNav?: boolean;
+  /** Current workspace path used to mark the active workspace nav link. */
+  readonly activePath?: "/dashboard" | "/studio" | "/settings/privacy";
 }
 
 const NAV_ITEMS = [
@@ -17,7 +21,18 @@ const NAV_ITEMS = [
   { label: "Publishing", anchor: "#publishing" },
 ] as const;
 
-export function SiteHeader({ isHome = false, minimalHeader = false }: SiteHeaderProps) {
+const WORKSPACE_NAV_ITEMS = [
+  { label: "Dashboard", href: "/dashboard" },
+  { label: "Topics", href: "/topics" },
+  { label: "Settings", href: "/settings/privacy" },
+] as const;
+
+export function SiteHeader({
+  isHome = false,
+  minimalHeader = false,
+  workspaceNav = false,
+  activePath,
+}: SiteHeaderProps) {
   return (
     <>
       <a href="#main-content" className="skip-link">
@@ -38,7 +53,28 @@ export function SiteHeader({ isHome = false, minimalHeader = false }: SiteHeader
             </Link>
           </div>
 
-          {minimalHeader ? null : (
+          {minimalHeader ? null : workspaceNav ? (
+            <nav className="site-nav" aria-label="Workspace navigation">
+              <ul className="nav-links">
+                {WORKSPACE_NAV_ITEMS.map((item) => {
+                  const isActive =
+                    activePath === item.href ||
+                    (item.href === "/dashboard" && activePath === "/studio");
+                  return (
+                    <li key={item.href}>
+                      <Link
+                        href={item.href}
+                        data-active={isActive ? "true" : undefined}
+                        aria-current={isActive ? "page" : undefined}
+                      >
+                        {item.label}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </nav>
+          ) : (
             <nav className="site-nav" aria-label="Primary sections">
               <ul className="nav-links">
                 {NAV_ITEMS.map((item) => (
@@ -56,7 +92,12 @@ export function SiteHeader({ isHome = false, minimalHeader = false }: SiteHeader
             <div className="nav-utilities">
               <ThemeToggle />
               <MotionToggle />
-              {minimalHeader ? null : <SessionNavActions />}
+              {minimalHeader ? null : (
+                <SessionNavActions
+                  initialSignedIn={workspaceNav}
+                  inWorkspace={workspaceNav}
+                />
+              )}
             </div>
           </div>
         </div>
@@ -66,6 +107,27 @@ export function SiteHeader({ isHome = false, minimalHeader = false }: SiteHeader
           </div>
         ) : null}
       </header>
+
+      {workspaceNav && !minimalHeader ? (
+        <nav className="workspace-mobile-nav" aria-label="Workspace sections">
+          {WORKSPACE_NAV_ITEMS.map((item) => {
+            const isActive =
+              activePath === item.href ||
+              (item.href === "/dashboard" && activePath === "/studio");
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="workspace-mobile-link"
+                data-active={isActive ? "true" : undefined}
+                aria-current={isActive ? "page" : undefined}
+              >
+                {item.label}
+              </Link>
+            );
+          })}
+        </nav>
+      ) : null}
     </>
   );
 }
@@ -76,7 +138,7 @@ export function SiteFooter() {
       <div className="site-footer-inner">
         <span className="site-footer-brand">
           <InkwellioLogo size={16} />
-          <span>Inkwellio — 2026 — inkwellio.example</span>
+          <span>Inkwellio — 2026 — Independent football publishing</span>
         </span>
         <nav aria-label="Footer navigation" className="site-footer-links">
           <Link href="/topics" className="site-footer-link">
@@ -110,15 +172,24 @@ export function SiteShell({
   children,
   isHome = false,
   minimalHeader = false,
+  workspaceNav = false,
+  activePath,
 }: {
-  readonly children: ReactNode;
+  readonly children?: ReactNode;
   readonly isHome?: boolean;
   readonly minimalHeader?: boolean;
+  readonly workspaceNav?: boolean;
+  readonly activePath?: "/dashboard" | "/studio" | "/settings/privacy";
 }) {
   return (
     <>
       <SquircleClipDef />
-      <SiteHeader isHome={isHome} minimalHeader={minimalHeader} />
+      <SiteHeader
+        isHome={isHome}
+        minimalHeader={minimalHeader}
+        workspaceNav={workspaceNav}
+        activePath={activePath}
+      />
       {children}
       <SiteFooter />
     </>

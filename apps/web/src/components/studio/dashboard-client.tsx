@@ -1,10 +1,15 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Chip } from "@inkwellio/ui";
-import { requestJson } from "./api";
+import {
+  formatApiFailure,
+  normalizeHandleInput,
+  requestJson,
+  slugifyHandlePreview,
+  type ApiFailure,
+} from "./api";
 import type { DashboardPostSummary } from "./server-data";
 
 export interface DashboardPublication {
@@ -19,6 +24,13 @@ export interface DashboardClientProps {
 }
 
 type FilterTab = "draft" | "published" | "deleted";
+
+interface FeedbackNotice {
+  readonly kind: "error" | "success";
+  readonly message: string;
+  readonly linkHref?: string;
+  readonly linkLabel?: string;
+}
 
 const TAB_LABELS: ReadonlyArray<{ readonly key: FilterTab; readonly label: string }> = [
   { key: "draft", label: "Drafts" },
@@ -40,21 +52,74 @@ export function DashboardClient({
   const [pubSlug, setPubSlug] = useState("");
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
-  const [bannerMessage, setBannerMessage] = useState<string | null>(null);
+  const [cooldownSeconds, setCooldownSeconds] = useState<number>(0);
+  const [notice, setNotice] = useState<FeedbackNotice | null>(null);
+
+  useEffect(() => {
+    if (cooldownSeconds <= 0) return undefined;
+    const timer = setInterval(() => {
+      setCooldownSeconds((prev) => (prev <= 1 ? 0 : prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [cooldownSeconds]);
+
+  function reportFailure(res: ApiFailure) {
+    if (res.status === 429) {
+      setCooldownSeconds(res.retryAfterSeconds ?? 10);
+    }
+    setNotice({ kind: "error", message: formatApiFailure(res) });
+  }
+
+  function applyConflictVersion(postId: string, res: ApiFailure) {
+    if (res.status !== 409) {
+      reportFailure(res);
+      return;
+    }
+    if (typeof res.details?.currentVersion === "number") {
+      const nextVersion = res.details.currentVersion;
+      const nextTitle = res.details.currentTitle;
+      setPosts((current) =>
+        current.map((item) =>
+          item.id === postId
+            ? {
+                ...item,
+                version: nextVersion,
+                title: nextTitle ?? item.title,
+              }
+            : item,
+        ),
+      );
+      setNotice({
+        kind: "error",
+        message: "This post changed in another session. Synced the latest version — try again.",
+      });
+      router.refresh();
+      return;
+    }
+    reportFailure(res);
+  }
+
+  const previewHandle =
+    normalizeHandleInput(pubSlug) ||
+    slugifyHandlePreview(pubName.trim()) ||
+    "your-handle";
 
   async function handleCreatePublication(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (busyAction !== null) return;
+    if (busyAction !== null || cooldownSeconds > 0) return;
 
     const trimmedName = pubName.trim();
     const trimmedSlug = pubSlug.trim().toLowerCase();
     if (!trimmedName) {
-      setBannerMessage("Enter a publication name (1-80 characters).");
+      setNotice({
+        kind: "error",
+        message: "Enter a publication name (1-80 characters).",
+      });
       return;
     }
 
     setBusyAction("create-pub");
-    setBannerMessage(null);
+    setNotice(null);
 
     const payload: { name: string; slug?: string } = { name: trimmedName };
     if (trimmedSlug !== "") {
@@ -71,7 +136,7 @@ export function DashboardClient({
 
     setBusyAction(null);
     if (!res.ok) {
-      setBannerMessage(res.message);
+      reportFailure(res);
       return;
     }
 
@@ -80,13 +145,17 @@ export function DashboardClient({
       slug: res.data.slug,
       name: trimmedName,
     });
+    setNotice({
+      kind: "success",
+      message: `Created publication @${res.data.slug}.`,
+    });
     router.refresh();
   }
 
   async function handleNewDraft() {
-    if (!publication || busyAction !== null) return;
+    if (!publication || busyAction !== null || cooldownSeconds > 0) return;
     setBusyAction("create-post");
-    setBannerMessage(null);
+    setNotice(null);
 
     const res = await requestJson<{ id: string; slug: string }>("/api/posts", {
       method: "POST",
@@ -95,17 +164,97 @@ export function DashboardClient({
 
     setBusyAction(null);
     if (!res.ok) {
-      setBannerMessage(res.message);
+      reportFailure(res);
       return;
     }
 
     router.push(`/studio/${encodeURIComponent(res.data.id)}`);
   }
 
+  async function handlePublish(post: DashboardPostSummary) {
+    if (busyAction !== null || cooldownSeconds > 0) return;
+    if (post.version === 0 && post.title.trim() === "") {
+      setNotice({
+        kind: "error",
+        message: "Open this draft in the studio to save a title and body before publishing.",
+      });
+      return;
+    }
+    setBusyAction(`publish:${post.id}`);
+    setNotice(null);
+
+    const res = await requestJson<{ id: string; status: "published"; version: number }>(
+      `/api/posts/${encodeURIComponent(post.id)}/publish`,
+      {
+        method: "POST",
+        body: JSON.stringify({ expectedVersion: post.version }),
+      },
+    );
+
+    setBusyAction(null);
+    if (!res.ok) {
+      applyConflictVersion(post.id, res);
+      return;
+    }
+
+    setPosts((current) =>
+      current.map((item) =>
+        item.id === post.id
+          ? {
+              ...item,
+              status: "published",
+              version: res.data.version,
+              publishedAt: item.publishedAt ?? new Date().toISOString(),
+            }
+          : item,
+      ),
+    );
+    setActiveTab("published");
+    setNotice({
+      kind: "success",
+      message: `Published "${post.title.trim() || post.slug}".`,
+    });
+    router.refresh();
+  }
+
+  async function handleUnpublish(post: DashboardPostSummary) {
+    if (busyAction !== null || cooldownSeconds > 0) return;
+    setBusyAction(`unpublish:${post.id}`);
+    setNotice(null);
+
+    const res = await requestJson<{ id: string; status: "draft"; version: number }>(
+      `/api/posts/${encodeURIComponent(post.id)}/unpublish`,
+      {
+        method: "POST",
+        body: JSON.stringify({ expectedVersion: post.version }),
+      },
+    );
+
+    setBusyAction(null);
+    if (!res.ok) {
+      applyConflictVersion(post.id, res);
+      return;
+    }
+
+    setPosts((current) =>
+      current.map((item) =>
+        item.id === post.id
+          ? { ...item, status: "draft", version: res.data.version }
+          : item,
+      ),
+    );
+    setActiveTab("draft");
+    setNotice({
+      kind: "success",
+      message: `Moved "${post.title.trim() || post.slug}" back to drafts.`,
+    });
+    router.refresh();
+  }
+
   async function handleDelete(post: DashboardPostSummary) {
-    if (busyAction !== null) return;
+    if (busyAction !== null || cooldownSeconds > 0) return;
     setBusyAction(`delete:${post.id}`);
-    setBannerMessage(null);
+    setNotice(null);
 
     const res = await requestJson<{ id: string; status: "deleted"; version: number }>(
       `/api/posts/${encodeURIComponent(post.id)}/delete`,
@@ -118,7 +267,7 @@ export function DashboardClient({
     setBusyAction(null);
     setConfirmDeleteId(null);
     if (!res.ok) {
-      setBannerMessage(res.message);
+      applyConflictVersion(post.id, res);
       return;
     }
 
@@ -129,13 +278,17 @@ export function DashboardClient({
           : item,
       ),
     );
+    setNotice({
+      kind: "success",
+      message: `Moved "${post.title.trim() || post.slug}" to trash.`,
+    });
     router.refresh();
   }
 
   async function handleRestore(post: DashboardPostSummary) {
-    if (busyAction !== null) return;
+    if (busyAction !== null || cooldownSeconds > 0) return;
     setBusyAction(`restore:${post.id}`);
-    setBannerMessage(null);
+    setNotice(null);
 
     const res = await requestJson<{ id: string; status: "draft"; version: number }>(
       `/api/posts/${encodeURIComponent(post.id)}/restore`,
@@ -147,7 +300,7 @@ export function DashboardClient({
 
     setBusyAction(null);
     if (!res.ok) {
-      setBannerMessage(res.message);
+      applyConflictVersion(post.id, res);
       return;
     }
 
@@ -158,57 +311,71 @@ export function DashboardClient({
           : item,
       ),
     );
+    setActiveTab("draft");
+    setNotice({
+      kind: "success",
+      message: `Restored "${post.title.trim() || post.slug}" to drafts.`,
+      linkHref: `/studio/${encodeURIComponent(post.id)}`,
+      linkLabel: "Open in studio",
+    });
     router.refresh();
   }
 
   const filteredPosts = posts.filter((post) => post.status === activeTab);
+  const actionsLocked = busyAction !== null || cooldownSeconds > 0;
 
   return (
     <main
-      className="min-h-screen px-4 py-10 sm:px-6 sm:py-12"
+      id="main-content"
+      className="workspace-main px-4 pb-16 sm:px-6"
       style={{
         backgroundColor: "var(--bg-canvas)",
         color: "var(--text-primary)",
       }}
     >
-      <div className="mx-auto flex w-full max-w-4xl flex-col gap-8">
-        <nav
-          aria-label="Workspace navigation"
-          className="flex flex-wrap items-center justify-between gap-3 border-b pb-4"
-          style={{ borderColor: "var(--border-hairline)" }}
-        >
-          <div className="flex items-center gap-3">
-            <Chip>Writer Studio</Chip>
-            <Link
-              href="/"
-              prefetch={false}
-              className="inline-flex min-h-[44px] items-center px-2 text-sm hover:underline"
-              style={{ color: "var(--text-muted)" }}
-            >
-              Home
-            </Link>
-            <Link
-              href="/topics"
-              prefetch={false}
-              className="inline-flex min-h-[44px] items-center px-2 text-sm hover:underline"
-              style={{ color: "var(--text-muted)" }}
-            >
-              Topics
-            </Link>
-          </div>
-        </nav>
-
-        {bannerMessage ? (
+      <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
+        {cooldownSeconds > 0 ? (
           <div
-            role="alert"
+            role="status"
+            aria-live="polite"
             className="rounded-lg border px-4 py-3 text-sm"
             style={{
               backgroundColor: "var(--bg-surface2)",
-              borderColor: "var(--border-hairline)",
+              borderColor: "var(--status-amber)",
               color: "var(--text-primary)",
             }}
           >
-            {bannerMessage}
+            Write actions paused for {cooldownSeconds}s to respect rate limits.
+          </div>
+        ) : null}
+
+        {notice ? (
+          <div
+            role={notice.kind === "error" ? "alert" : "status"}
+            aria-live="polite"
+            className="flex flex-wrap items-center justify-between gap-3 rounded-lg border px-4 py-3 text-sm"
+            style={{
+              backgroundColor: "var(--bg-surface2)",
+              borderColor:
+                notice.kind === "success"
+                  ? "var(--status-live)"
+                  : "var(--status-amber)",
+              color: "var(--text-primary)",
+            }}
+          >
+            <span>{notice.message}</span>
+            {notice.linkHref && notice.linkLabel ? (
+              <Link
+                href={notice.linkHref}
+                className="inline-flex min-h-[44px] items-center rounded-md border px-3 py-1.5 text-xs font-medium underline underline-offset-4 hover:opacity-85"
+                style={{
+                  borderColor: "var(--border-hairline)",
+                  color: "var(--text-primary)",
+                }}
+              >
+                {notice.linkLabel}
+              </Link>
+            ) : null}
           </div>
         ) : null}
 
@@ -273,6 +440,7 @@ export function DashboardClient({
                   value={pubSlug}
                   onChange={(e) => setPubSlug(e.target.value)}
                   placeholder="half-space-notebook"
+                  aria-describedby="pub-slug-preview"
                   className="min-h-[44px] rounded-md border px-3.5 py-2 font-mono text-sm"
                   style={{
                     backgroundColor: "var(--bg-canvas)",
@@ -280,6 +448,20 @@ export function DashboardClient({
                     color: "var(--text-primary)",
                   }}
                 />
+                <div
+                  id="pub-slug-preview"
+                  className="flex flex-wrap items-center gap-2 rounded-md border px-3 py-2 text-xs"
+                  style={{
+                    backgroundColor: "var(--bg-surface2)",
+                    borderColor: "var(--border-hairline)",
+                    color: "var(--text-muted)",
+                  }}
+                >
+                  <span>Public URL preview:</span>
+                  <code className="font-mono" style={{ color: "var(--text-primary)" }}>
+                    /@{previewHandle}
+                  </code>
+                </div>
                 <span className="text-xs" style={{ color: "var(--text-faint)" }}>
                   Lowercase letters, numbers, and hyphens. Defaults cleanly from your name if left blank.
                 </span>
@@ -288,7 +470,7 @@ export function DashboardClient({
               <div>
                 <button
                   type="submit"
-                  disabled={busyAction !== null}
+                  disabled={actionsLocked}
                   className="inline-flex min-h-[44px] cursor-pointer items-center justify-center rounded-md px-5 py-2.5 text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-60"
                   style={{
                     backgroundColor: "var(--btn-primary-bg)",
@@ -316,7 +498,7 @@ export function DashboardClient({
                 <h1 className="font-serif text-2xl font-semibold tracking-tight sm:text-3xl">
                   {publication.name}
                 </h1>
-                <div className="mt-1.5 flex flex-wrap items-center gap-3 text-sm">
+                <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
                   <span
                     className="font-mono"
                     style={{ color: "var(--text-muted)" }}
@@ -325,11 +507,17 @@ export function DashboardClient({
                   </span>
                   <Link
                     href={`/@${encodeURIComponent(publication.slug)}`}
-                    prefetch={false}
                     className="inline-flex min-h-[44px] items-center underline underline-offset-4 hover:opacity-80"
                     style={{ color: "var(--text-primary)" }}
                   >
                     View public page
+                  </Link>
+                  <Link
+                    href="/settings/privacy"
+                    className="inline-flex min-h-[44px] items-center underline underline-offset-4 hover:opacity-80"
+                    style={{ color: "var(--text-muted)" }}
+                  >
+                    Privacy & export
                   </Link>
                 </div>
               </div>
@@ -337,8 +525,8 @@ export function DashboardClient({
               <button
                 type="button"
                 onClick={handleNewDraft}
-                disabled={busyAction !== null}
-                className="inline-flex min-h-[44px] cursor-pointer items-center justify-center rounded-md px-5 py-2.5 text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-60"
+                disabled={actionsLocked}
+                className="inline-flex min-h-[44px] shrink-0 cursor-pointer items-center justify-center rounded-md px-5 py-2.5 text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-60"
                 style={{
                   backgroundColor: "var(--btn-primary-bg)",
                   color: "var(--btn-primary-text)",
@@ -398,7 +586,7 @@ export function DashboardClient({
                     ? "No drafts yet. Start with New draft above."
                     : activeTab === "published"
                       ? "No published posts yet."
-                      : "Trash is empty."}
+                      : "Trash is empty. Deleted drafts and stories appear here until you restore them."}
                 </div>
               ) : (
                 <ul className="flex flex-col gap-3">
@@ -456,7 +644,6 @@ export function DashboardClient({
                         <div className="flex flex-wrap items-center gap-2">
                           <Link
                             href={`/studio/${encodeURIComponent(post.id)}`}
-                            prefetch={false}
                             className="inline-flex min-h-[44px] items-center justify-center rounded-md border px-4 py-2 text-sm font-medium transition-opacity hover:opacity-80"
                             style={{
                               borderColor: "var(--border-hairline)",
@@ -466,18 +653,48 @@ export function DashboardClient({
                             Edit
                           </Link>
 
-                          {post.status === "published" ? (
-                            <Link
-                              href={`/@${encodeURIComponent(publication.slug)}/${encodeURIComponent(post.slug)}`}
-                              prefetch={false}
-                              className="inline-flex min-h-[44px] items-center justify-center rounded-md border px-4 py-2 text-sm font-medium transition-opacity hover:opacity-80"
+                          {post.status === "draft" ? (
+                            <button
+                              type="button"
+                              disabled={actionsLocked}
+                              onClick={() => handlePublish(post)}
+                              className="inline-flex min-h-[44px] cursor-pointer items-center justify-center rounded-md border px-4 py-2 text-sm font-medium transition-opacity hover:opacity-85 disabled:opacity-60"
                               style={{
                                 borderColor: "var(--border-hairline)",
-                                color: "var(--text-muted)",
+                                color: "var(--text-primary)",
                               }}
                             >
-                              View
-                            </Link>
+                              {busyAction === `publish:${post.id}` ? "Publishing..." : "Publish"}
+                            </button>
+                          ) : null}
+
+                          {post.status === "published" ? (
+                            <>
+                              <Link
+                                href={`/@${encodeURIComponent(publication.slug)}/${encodeURIComponent(post.slug)}`}
+                                className="inline-flex min-h-[44px] items-center justify-center rounded-md border px-4 py-2 text-sm font-medium transition-opacity hover:opacity-80"
+                                style={{
+                                  borderColor: "var(--border-hairline)",
+                                  color: "var(--text-muted)",
+                                }}
+                              >
+                                View
+                              </Link>
+                              <button
+                                type="button"
+                                disabled={actionsLocked}
+                                onClick={() => handleUnpublish(post)}
+                                className="inline-flex min-h-[44px] cursor-pointer items-center justify-center rounded-md border px-4 py-2 text-sm font-medium transition-opacity hover:opacity-80 disabled:opacity-60"
+                                style={{
+                                  borderColor: "var(--border-hairline)",
+                                  color: "var(--text-muted)",
+                                }}
+                              >
+                                {busyAction === `unpublish:${post.id}`
+                                  ? "Updating..."
+                                  : "Unpublish"}
+                              </button>
+                            </>
                           ) : null}
 
                           {post.status !== "deleted" ? (
@@ -485,7 +702,7 @@ export function DashboardClient({
                               <div className="flex items-center gap-2">
                                 <button
                                   type="button"
-                                  disabled={busyAction !== null}
+                                  disabled={actionsLocked}
                                   onClick={() => handleDelete(post)}
                                   className="inline-flex min-h-[44px] cursor-pointer items-center justify-center rounded-md px-3.5 py-2 text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-60"
                                   style={{
@@ -512,8 +729,9 @@ export function DashboardClient({
                             ) : (
                               <button
                                 type="button"
+                                disabled={actionsLocked}
                                 onClick={() => setConfirmDeleteId(post.id)}
-                                className="inline-flex min-h-[44px] cursor-pointer items-center justify-center rounded-md border px-4 py-2 text-sm font-medium transition-opacity hover:opacity-80"
+                                className="inline-flex min-h-[44px] cursor-pointer items-center justify-center rounded-md border px-4 py-2 text-sm font-medium transition-opacity hover:opacity-80 disabled:opacity-60"
                                 style={{
                                   borderColor: "var(--border-hairline)",
                                   color: "var(--text-muted)",
@@ -525,7 +743,7 @@ export function DashboardClient({
                           ) : (
                             <button
                               type="button"
-                              disabled={busyAction !== null}
+                              disabled={actionsLocked}
                               onClick={() => handleRestore(post)}
                               className="inline-flex min-h-[44px] cursor-pointer items-center justify-center rounded-md border px-4 py-2 text-sm font-medium transition-opacity hover:opacity-80 disabled:opacity-60"
                               style={{
