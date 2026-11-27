@@ -1,5 +1,17 @@
 @import "tailwindcss";
 
+@property --hero-scroll {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
+
+@property --scroll-progress {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
+
 /* ═══════════════════════════════════════════════════════════════
    Ink & Paper — Inkwellio design tokens (WP7)
    Contrast values computed with WCAG 2.1 relative-luminance formula.
@@ -254,10 +266,11 @@ body {
 /* Shared 2-orb drifting atmosphere (monochrome silver/slate + whisper emerald mist) */
 .ambient-backdrop {
   position: absolute;
-  inset: -64px;
+  inset: 0;
   pointer-events: none;
   z-index: 0;
   overflow: hidden;
+  contain: strict;
 }
 
 .ambient-orb {
@@ -268,7 +281,7 @@ body {
 }
 
 .ambient-orb-silver {
-  top: -8%;
+  top: -40px;
   left: -4%;
   width: min(56vw, 680px);
   height: min(56vw, 680px);
@@ -282,7 +295,8 @@ body {
 }
 
 .ambient-orb-emerald {
-  bottom: -10%;
+  top: 260px;
+  bottom: auto;
   right: -4%;
   width: min(54vw, 640px);
   height: min(54vw, 640px);
@@ -504,7 +518,7 @@ body {
 .hero-stage-outer {
   position: relative;
   width: 100%;
-  overflow-x: clip;
+  overflow: clip;
   background: var(--bg-canvas);
   --cursor-x: 65%;
   --cursor-y: 42%;
@@ -513,14 +527,20 @@ body {
 
 .hero-cursor-spotlight {
   position: absolute;
-  inset: 0;
+  top: 0;
+  left: 0;
+  width: var(--cursor-glow-size, 580px);
+  height: var(--cursor-glow-size, 580px);
+  border-radius: 9999px;
   pointer-events: none;
   z-index: 0;
   opacity: var(--spotlight-active, 0);
+  transform: translate3d(calc(var(--cursor-x, 65%) - 50%), calc(var(--cursor-y, 42%) - 50%), 0);
+  will-change: transform, opacity;
   background: radial-gradient(
-    var(--cursor-glow-size, 580px) circle at var(--cursor-x, 65%) var(--cursor-y, 42%),
+    circle,
     rgba(16, 185, 129, var(--spot-emerald-dark, 0.075)) 0%,
-    rgba(226, 232, 240, var(--spot-silver-dark, 0.14)) 28%,
+    rgba(226, 232, 240, var(--spot-silver-dark, 0.14)) 34%,
     transparent 70%
   );
   transition: opacity 220ms ease;
@@ -528,9 +548,9 @@ body {
 
 [data-theme="light"] .hero-cursor-spotlight {
   background: radial-gradient(
-    var(--cursor-glow-size, 580px) circle at var(--cursor-x, 65%) var(--cursor-y, 42%),
+    circle,
     rgba(5, 150, 105, var(--spot-emerald-light, 0.065)) 0%,
-    rgba(148, 163, 184, var(--spot-slate-light, 0.11)) 30%,
+    rgba(148, 163, 184, var(--spot-slate-light, 0.11)) 36%,
     transparent 72%
   );
 }
@@ -640,7 +660,7 @@ body {
   -webkit-background-clip: text;
   color: transparent;
   -webkit-text-fill-color: transparent;
-  animation: headline-shimmer 10s ease-in-out infinite;
+  animation: headline-shimmer 10s ease-in-out 1.2s infinite;
 }
 
 [data-theme="light"] .hero-headline-sweep {
@@ -2139,14 +2159,20 @@ body {
 
 .auth-cursor-spotlight {
   position: absolute;
-  inset: 0;
+  top: 0;
+  left: 0;
+  width: var(--cursor-glow-size, 580px);
+  height: var(--cursor-glow-size, 580px);
+  border-radius: 9999px;
   pointer-events: none;
   z-index: 0;
   opacity: var(--spotlight-active, 0);
+  transform: translate3d(calc(var(--cursor-x, 50%) - 50%), calc(var(--cursor-y, 44%) - 50%), 0);
+  will-change: transform, opacity;
   background: radial-gradient(
-    var(--cursor-glow-size, 580px) circle at var(--cursor-x, 50%) var(--cursor-y, 44%),
+    circle,
     rgba(16, 185, 129, var(--spot-emerald-dark, 0.075)) 0%,
-    rgba(226, 232, 240, var(--spot-silver-dark, 0.14)) 28%,
+    rgba(226, 232, 240, var(--spot-silver-dark, 0.14)) 34%,
     transparent 70%
   );
   transition: opacity 220ms ease;
@@ -2154,9 +2180,9 @@ body {
 
 [data-theme="light"] .auth-cursor-spotlight {
   background: radial-gradient(
-    var(--cursor-glow-size, 580px) circle at var(--cursor-x, 50%) var(--cursor-y, 44%),
+    circle,
     rgba(5, 150, 105, var(--spot-emerald-light, 0.065)) 0%,
-    rgba(148, 163, 184, var(--spot-slate-light, 0.11)) 30%,
+    rgba(148, 163, 184, var(--spot-slate-light, 0.11)) 36%,
     transparent 72%
   );
 }
@@ -2715,6 +2741,11 @@ body {
 
   .publishing-grid {
     grid-template-columns: 1fr;
+  }
+
+  .post-life-section {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 960px;
   }
 }
 

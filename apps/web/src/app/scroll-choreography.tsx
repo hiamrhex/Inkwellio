@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect } from "react";
-import { motionConfig } from "@inkwellio/ui";
 
 const STAGE_CENTRE_PROGRESS = [0.09, 0.36, 0.63, 0.91] as const;
 
@@ -27,6 +26,7 @@ export function ScrollChoreography() {
     const nav =
       document.querySelector<HTMLElement>(".site-header-bar") ??
       document.querySelector<HTMLElement>(".site-nav");
+    const progressBar = document.querySelector<HTMLElement>(".site-scroll-progress-bar");
     const navAnchors = Array.from(
       document.querySelectorAll<HTMLAnchorElement>('.nav-links a[href^="#"], .nav-links a[href^="/#"]'),
     );
@@ -43,8 +43,16 @@ export function ScrollChoreography() {
           item !== null,
       );
 
-    const heroOuter = document.querySelector<HTMLElement>(".hero-stage-outer");
-    const heroStage = document.querySelector<HTMLElement>(".hero-stage");
+    const heroScrollEls = Array.from(
+      document.querySelectorAll<HTMLElement>(
+        ".hero-silk-backdrop, .hero-copy, .hero-form-body, .hero-float-card",
+      ),
+    );
+    const heroExitPx = Math.max(
+      1,
+      parseFloat(document.body.style.getPropertyValue("--hero-exit-scroll-px")) || 500,
+    );
+    const marqueeGain = parseFloat(document.body.style.getPropertyValue("--marquee-velocity-gain")) || 1.15;
     const readingSection = document.querySelector<HTMLElement>("#reading-room");
     const readingFill = document.querySelector<HTMLElement>(".reading-progress-fill");
     const sideGlideSection = document.querySelector<HTMLElement>("#writer-reader");
@@ -59,6 +67,8 @@ export function ScrollChoreography() {
     let maxDocScroll = 1;
     let postLifeTop = 0;
     let postLifeTravel = 1;
+    let marqueeTop = 0;
+    let marqueeBottom = 0;
 
     const isMotionFrozen = () => {
       const attr = document.documentElement.getAttribute("data-motion");
@@ -74,6 +84,10 @@ export function ScrollChoreography() {
       if (postLifeTrack && postLifeSection) {
         postLifeTop = Math.round(postLifeTrack.getBoundingClientRect().top + (window.scrollY || 0));
         postLifeTravel = Math.max(1, postLifeTrack.offsetHeight - vh);
+      }
+      if (marqueeTrack) {
+        marqueeTop = Math.round(marqueeTrack.getBoundingClientRect().top + (window.scrollY || 0));
+        marqueeBottom = marqueeTop + marqueeTrack.offsetHeight + 120;
       }
     };
 
@@ -106,29 +120,50 @@ export function ScrollChoreography() {
       }
     };
 
-    const updateMarqueePace = (scrollY: number, frozen: boolean) => {
-      if (!marqueeTrack || typeof marqueeTrack.getAnimations !== "function") return;
+    let cachedMarqueeAnims: Animation[] | null = null;
+    let lastMarqueeQueryAt = -1000;
+    let lastSpyId: string | null = null;
+    let lastDocProgress = "";
+    let lastHeroVal = "";
+    let lastStageVal = "";
+
+    const getMarqueeAnims = (now: number) => {
+      if (cachedMarqueeAnims && cachedMarqueeAnims.length > 0 && cachedMarqueeAnims[0].playState !== "finished") {
+        return cachedMarqueeAnims;
+      }
+      if (!marqueeTrack || typeof marqueeTrack.getAnimations !== "function") return [];
+      if (now - lastMarqueeQueryAt < 1000) return [];
+      lastMarqueeQueryAt = now;
       const anims = marqueeTrack.getAnimations();
+      if (anims.length > 0) cachedMarqueeAnims = anims;
+      return anims;
+    };
+
+    const updateMarqueePace = (scrollY: number, vh: number, frozen: boolean) => {
+      if (!marqueeTrack || scrollY + vh < marqueeTop || scrollY > marqueeBottom) return;
+      const now = performance.now();
+      const anims = getMarqueeAnims(now);
       if (!anims.length) return;
       if (frozen) {
-        for (const anim of anims) anim.playbackRate = 1;
+        if (anims[0].playbackRate !== 1) {
+          for (const anim of anims) anim.playbackRate = 1;
+        }
         return;
       }
-      const now = performance.now();
       const dt = Math.max(16, now - lastScrollTs);
       const velocity = Math.abs(scrollY - lastScrollY) / dt;
       lastScrollY = scrollY;
       lastScrollTs = now;
       const boostRate = Math.max(
         1,
-        Math.min(3.0, 1 + velocity * motionConfig.scroll.marqueeVelocityGain * motionConfig.motionGain),
+        Math.min(3.0, +(1 + velocity * marqueeGain).toFixed(2)),
       );
-      for (const anim of anims) {
-        anim.playbackRate = boostRate;
+      if (Math.abs(anims[0].playbackRate - boostRate) > 0.05) {
+        for (const anim of anims) anim.playbackRate = boostRate;
       }
       if (marqueeResetTimer !== null) clearTimeout(marqueeResetTimer);
       marqueeResetTimer = setTimeout(() => {
-        const list = marqueeTrack.getAnimations();
+        const list = getMarqueeAnims(performance.now());
         for (const anim of list) anim.playbackRate = 1;
       }, 180);
     };
@@ -142,10 +177,11 @@ export function ScrollChoreography() {
       if (nav) {
         nav.classList.toggle("is-scrolled", scrollY > 64);
       }
-      document.documentElement.style.setProperty(
-        "--scroll-progress",
-        frozen ? "0" : clamp01(scrollY / maxDocScroll).toFixed(4),
-      );
+      const docProg = frozen ? "0" : clamp01(scrollY / maxDocScroll).toFixed(4);
+      if (docProg !== lastDocProgress) {
+        lastDocProgress = docProg;
+        progressBar?.style.setProperty("--scroll-progress", docProg);
+      }
 
       if (spyItems.length > 0) {
         const probeY = scrollY + 140;
@@ -155,29 +191,39 @@ export function ScrollChoreography() {
             currentId = item.id;
           }
         }
-        for (const item of spyItems) {
-          if (item.id === currentId) item.anchor.setAttribute("data-active", "true");
-          else item.anchor.removeAttribute("data-active");
+        if (currentId !== lastSpyId) {
+          lastSpyId = currentId;
+          for (const item of spyItems) {
+            if (item.id === currentId) item.anchor.setAttribute("data-active", "true");
+            else item.anchor.removeAttribute("data-active");
+          }
         }
       }
 
       if (fromScrollEvent) {
-        updateMarqueePace(scrollY, frozen);
+        updateMarqueePace(scrollY, vh, frozen);
       }
 
-      const heroExitPx = Math.max(1, motionConfig.scroll.heroExitScrollPx);
       const heroVal = frozen ? "0" : clamp01(scrollY / heroExitPx).toFixed(4);
-      heroStage?.style.setProperty("--hero-scroll", heroVal);
-      heroOuter?.style.setProperty("--hero-scroll", heroVal);
+      if (heroVal !== lastHeroVal) {
+        lastHeroVal = heroVal;
+        for (const el of heroScrollEls) {
+          el.style.setProperty("--hero-scroll", heroVal);
+        }
+      }
 
       if (postLifeSection) {
         const rawP = clamp01((scrollY - postLifeTop) / postLifeTravel);
         const stagePos = frozen ? 0 : mapPlateauStage(rawP);
-        postLifeSection.style.setProperty("--post-life-stage", stagePos.toFixed(4));
+        const stageStr = stagePos.toFixed(4);
+        if (stageStr !== lastStageVal) {
+          lastStageVal = stageStr;
+          postLifeSection.style.setProperty("--post-life-stage", stageStr);
+        }
         setActiveStageUi(frozen ? 0 : Math.max(0, Math.min(3, Math.round(stagePos))));
       }
 
-      if (!supportsTimeline || frozen || document.documentElement.getAttribute("data-motion") === "active") {
+      if (!supportsTimeline || frozen) {
         if (readingSection && readingFill) {
           if (frozen) {
             readingFill.style.transform = "scaleX(1)";

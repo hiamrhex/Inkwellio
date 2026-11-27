@@ -48,7 +48,7 @@ export function HeroRibbonMedia() {
         alt=""
         aria-hidden="true"
         loading="eager"
-        decoding="async"
+        decoding="sync"
         fetchPriority="high"
         className="hero-ribbon-img"
         suppressHydrationWarning

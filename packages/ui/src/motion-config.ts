@@ -94,7 +94,7 @@ export const motionConfig: MotionConfig = {
   scroll: {
     heroExitScrollPx: 500,
     heroHeadlineExitPx: 48,
-    heroCardExitPx: 90,
+    heroCardExitPx: 96,
     heroCardExitDeg: 6,
     heroRibbonDropPx: 75,
     heroRibbonEndScale: 1.06,
@@ -146,6 +146,8 @@ export function getMotionCssVars(cfg: MotionConfig = motionConfig): Record<strin
     "--magnetic-pull": String(+(cfg.pointer.magneticPullPx * mg).toFixed(2)),
     "--magnetic-label-pull": String(+(cfg.pointer.magneticLabelPullPx * mg).toFixed(2)),
     "--hero-exit-head-px": `${(-cfg.scroll.heroHeadlineExitPx * mg).toFixed(1)}px`,
+    "--hero-exit-scroll-px": String(cfg.scroll.heroExitScrollPx),
+    "--marquee-velocity-gain": String(+(cfg.scroll.marqueeVelocityGain * mg).toFixed(3)),
     "--hero-exit-card-px": `${(-cfg.scroll.heroCardExitPx * mg).toFixed(1)}px`,
     "--hero-exit-card-deg": `${(cfg.scroll.heroCardExitDeg * mg).toFixed(2)}deg`,
     "--hero-exit-ribbon-px": `${(cfg.scroll.heroRibbonDropPx * mg).toFixed(1)}px`,

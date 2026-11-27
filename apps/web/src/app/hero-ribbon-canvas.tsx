@@ -63,6 +63,41 @@ export function HeroRibbonCanvas() {
       return attr === "paused" || (attr !== "active" && reducedQuery.matches);
     };
 
+    let cachedTheme: string | null = null;
+    let cachedSilverGrad: CanvasGradient | null = null;
+    let cachedEmeraldGrad: CanvasGradient | null = null;
+
+    const buildGradients = () => {
+      const theme = document.documentElement.getAttribute("data-theme") || "dark";
+      const isLight = theme === "light";
+      const isNarrow = cssW < 768;
+      const anchorX = isNarrow ? cssW * 0.56 : cssW * 0.74;
+      const anchorY = isNarrow ? cssH * 0.34 : cssH * 0.38;
+      const spanX = isNarrow ? cssW * 0.95 : cssW * 0.56;
+      const spanY = cssH * 0.34;
+      const strokeRgb = isLight ? "30, 41, 59" : "226, 232, 240";
+      const emeraldRgb = isLight ? "5, 150, 105" : "16, 185, 129";
+      const ag = motionConfig.accentGain;
+      const x0 = anchorX - spanX * 0.52;
+      const y0 = anchorY - spanY * 0.5;
+      const x1 = anchorX + spanX * 0.52;
+      const y1 = anchorY + spanY * 0.5;
+
+      const sGrad = ctx.createLinearGradient(x0, y0, x1, y1);
+      sGrad.addColorStop(0, `rgba(${strokeRgb}, 0.015)`);
+      sGrad.addColorStop(0.5, `rgba(${strokeRgb}, ${isLight ? 0.14 : 0.22})`);
+      sGrad.addColorStop(1, `rgba(${strokeRgb}, 0.015)`);
+
+      const eGrad = ctx.createLinearGradient(x0, y0, x1, y1);
+      eGrad.addColorStop(0, `rgba(${strokeRgb}, 0.012)`);
+      eGrad.addColorStop(0.5, `rgba(${emeraldRgb}, ${Math.min(0.45, 0.16 * ag).toFixed(3)})`);
+      eGrad.addColorStop(1, `rgba(${strokeRgb}, 0.012)`);
+
+      cachedTheme = theme;
+      cachedSilverGrad = sGrad;
+      cachedEmeraldGrad = eGrad;
+    };
+
     const syncBounds = () => {
       const rect = host.getBoundingClientRect();
       const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
@@ -77,6 +112,7 @@ export function HeroRibbonCanvas() {
         canvas.height = pxH;
       }
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      buildGradients();
       scrollTwist = Math.max(
         0,
         Math.min(1, (window.scrollY || window.pageYOffset || 0) / Math.max(1, cssH)),
@@ -84,44 +120,35 @@ export function HeroRibbonCanvas() {
     };
 
     const drawRibbons = (phaseTime: number) => {
-      ctx.clearRect(0, 0, cssW, cssH);
-
-      const isLight = document.documentElement.getAttribute("data-theme") === "light";
       const isNarrow = cssW < 768;
       const anchorX = isNarrow ? cssW * 0.56 : cssW * 0.74;
       const anchorY = isNarrow ? cssH * 0.34 : cssH * 0.38;
       const spanX = isNarrow ? cssW * 0.95 : cssW * 0.56;
       const spanY = cssH * 0.34;
-      const segments = isNarrow ? 30 : 48;
+      const segments = isNarrow ? 24 : 34;
 
-      const strokeRgb = isLight ? "30, 41, 59" : "226, 232, 240";
-      const emeraldRgb = isLight ? "5, 150, 105" : "16, 185, 129";
-      const ag = motionConfig.accentGain;
+      const theme = document.documentElement.getAttribute("data-theme") || "dark";
+      if (theme !== cachedTheme || !cachedSilverGrad || !cachedEmeraldGrad) {
+        buildGradients();
+      }
+
+      const dirtyReset = cssW > 0 && cssH > 0;
+      if (dirtyReset) ctx.clearRect(0, 0, cssW, cssH);
+
       const mg = motionConfig.motionGain;
+      const mxPx = curMouseX * cssW;
+      const myPx = curMouseY * cssH;
+      const radius = isNarrow
+        ? Math.round(motionConfig.pointer.canvasBendRadiusPx * 0.65)
+        : motionConfig.pointer.canvasBendRadiusPx;
+      ctx.lineCap = "round";
 
       for (let s = 0; s < STRANDS.length; s++) {
         const strand = STRANDS[s];
         const useEmeraldTint = s === 1 || s === 3;
-        const grad = ctx.createLinearGradient(
-          anchorX - spanX * 0.52,
-          anchorY - spanY * 0.5,
-          anchorX + spanX * 0.52,
-          anchorY + spanY * 0.5,
-        );
-        const aEdge = (strand.alpha * 0.06).toFixed(3);
-        const aMid = (strand.alpha * (isLight ? 0.55 : 0.85)).toFixed(3);
-        const aHint = Math.min(0.45, strand.alpha * 0.62 * ag).toFixed(3);
-        grad.addColorStop(0, `rgba(${strokeRgb}, ${aEdge})`);
-        grad.addColorStop(
-          0.5,
-          useEmeraldTint ? `rgba(${emeraldRgb}, ${aHint})` : `rgba(${strokeRgb}, ${aMid})`,
-        );
-        grad.addColorStop(1, `rgba(${strokeRgb}, ${aEdge})`);
-
         ctx.beginPath();
-        ctx.strokeStyle = grad;
+        ctx.strokeStyle = useEmeraldTint ? cachedEmeraldGrad! : cachedSilverGrad!;
         ctx.lineWidth = strand.width;
-        ctx.lineCap = "round";
 
         for (let i = 0; i <= segments; i++) {
           const u = i / segments;
@@ -142,16 +169,16 @@ export function HeroRibbonCanvas() {
             Math.cos(phase * 1.45 - u * 3.1) * spanY * 0.08 +
             strand.offset * spanY * 0.8;
 
-          const mxPx = curMouseX * cssW;
-          const myPx = curMouseY * cssH;
           const dx = mxPx - baseX;
           const dy = myPx - waveY;
-          const dist = Math.hypot(dx, dy);
-          const radius = isNarrow
-            ? Math.round(motionConfig.pointer.canvasBendRadiusPx * 0.65)
-            : motionConfig.pointer.canvasBendRadiusPx;
-          const influence =
-            dist < radius ? Math.pow(1 - dist / radius, 2) * curPull * 0.36 * mg : 0;
+          let influence = 0;
+          if (Math.abs(dx) < radius && Math.abs(dy) < radius) {
+            const dist = Math.hypot(dx, dy);
+            if (dist < radius) {
+              const t = 1 - dist / radius;
+              influence = t * t * curPull * 0.36 * mg;
+            }
+          }
 
           const px = baseX + dx * influence;
           const py = waveY + dy * influence;
@@ -236,8 +263,12 @@ export function HeroRibbonCanvas() {
 
     const onPointerWake = () => wakeLoop();
     const onScrollWake = () => {
-      syncBounds();
-      drawRibbons(0.6 + scrollTwist * 0.4 + (curMouseX - 0.5) * 0.35);
+      if (!isVisible || isMotionFrozen() || !fineQuery.matches || cssW < 768) return;
+      scrollTwist = Math.max(
+        0,
+        Math.min(1, (window.scrollY || window.pageYOffset || 0) / Math.max(1, cssH)),
+      );
+      wakeLoop();
     };
 
     const io =
