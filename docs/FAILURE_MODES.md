@@ -25,10 +25,10 @@ Every row here is a design claim until a drill proves it; the "proved" column is
 | --- | --- | --- |
 | Authorization check | **Closed** (deny) | Wrong "allow" is unrecoverable; drafts are private |
 | Session validation | **Closed** | Same |
-| Rate limiter | **Closed** for auth and OTP; **open** for public reads | Login abuse is worse than a slow reader; a broken limiter must not take the site down |
+| Rate limiter | **Closed** for auth, email and writes. A counter-store outage denies with `503 UNAVAILABLE`, never `429` — an outage is not abuse. Public reads have no limiter by design. | Login abuse is worse than a slow reader; a limiter that cannot count must not silently let traffic through, and must not tell a caller to retry inside a window it cannot see |
 | Public page cache | **Stale** (serve last known good) | This is the only thing standing between us and R1 |
 | Search | **Open** (feature unavailable) | Non-critical |
-| Email send | **Closed** for verification-gated actions | Never claim "check your inbox" when nothing was sent |
+| Email send | **Closed** for verification-gated actions. Every failure is a kernel `UNAVAILABLE` JSON with `requestId`; an email-only route refuses up front when no transport can deliver, so no account is created that cannot be verified. | Never claim "check your inbox" when nothing was sent |
 
 ## 3. SPOF register
 
@@ -85,6 +85,63 @@ The main failure-mode table above leaves `Proved` = `no` for live infrastructure
   - Live Neon 100 CU-hour quota exhaustion, Neon 1 GB storage cutoff, and real PITR/branch restore drill (`runbooks`: [docs/RUNBOOKS.md](docs/RUNBOOKS.md)).
   - Live Gmail `500/day` SMTP quota saturation and live secret rotation end-to-end drill.
   - External uptime monitor polling history and pre-writer synthetic load baseline ([docs/SLO.md](docs/SLO.md)).
+
+## 5b. WP8 route inventory and guard proofs
+
+Source of truth: `apps/web/tests/route-inventory.test.ts` (9 tests). It walks
+`apps/web/src/app/api/**` at test time, so a new route with no declared policy,
+no session guard, or an unlisted `public` label fails CI. Mutation proof:
+changing `apps/web/src/app/api/posts/policy.ts` from `authenticated` to `public`
+and rerunning the test produced
+`Tests  1 failed | 8 passed (9)` — the allow-list check caught it.
+
+| Route | Methods | Policy | Guard | Body input | Error shape |
+| --- | --- | --- | --- | --- | --- |
+| `/api/account` | DELETE | authenticated | identity handler (`getSession`) | - | kernel JSON |
+| `/api/account/erasure/confirm` | POST | authenticated | identity handler (`getSession`) | raw JSON | kernel JSON |
+| `/api/account/erasure/request` | POST | authenticated | identity handler (`getSession`) | raw JSON | kernel JSON |
+| `/api/account/export` | GET | authenticated | identity handler (`getSession`) | - | kernel JSON |
+| `/api/auth/[...all]` | GET, POST | public (allow-listed) | Better Auth + app limiter | Better Auth | kernel JSON on escape; all 429s uniform |
+| `/api/health` | GET | public (allow-listed) | none by design | - | `{status}` only; 200/503 |
+| `/api/posts` | POST | authenticated | `requireUser` | `readJsonObject` | `jsonError` |
+| `/api/posts/[id]` | GET | public (allow-listed) | `resolveActor` | - | `jsonError` |
+| `/api/posts/[id]/delete` | POST | authenticated | `requireUser` | `readJsonObject` | `jsonError` |
+| `/api/posts/[id]/draft` | GET, PUT | authenticated | `requireUser` | `readJsonObject` | `jsonError` |
+| `/api/posts/[id]/publish` | POST | authenticated | `requireUser` | `readJsonObject` | `jsonError` |
+| `/api/posts/[id]/restore` | POST | authenticated | `requireUser` | `readJsonObject` | `jsonError` |
+| `/api/posts/[id]/slug` | POST | authenticated | `requireUser` | `readJsonObject` | `jsonError` |
+| `/api/posts/[id]/topics` | PUT | authenticated | `requireUser` | `readJsonObject` | `jsonError` |
+| `/api/posts/[id]/unpublish` | POST | authenticated | `requireUser` | `readJsonObject` | `jsonError` |
+| `/api/publications` | GET, POST | authenticated | `requireUser` | `readJsonObject` | `jsonError` |
+| `/api/publications/[id]` | GET | authenticated | `requireUser` | - | `jsonError` |
+| `/api/search` | GET | public (allow-listed) | unbounded query + pagination validators | query params | `{error: PublicError}` |
+| `/api/topics` | GET | public (allow-listed) | none by design | - | `{error: PublicError}` |
+
+**Fail-open / fail-closed / fail-stale, applied to each route class**
+
+| Route class | Auth failure | Dependency failure | Rate-limit failure | Stale data |
+| --- | --- | --- | --- | --- |
+| Public reads (`search`, `topics`, `posts/[id]`) | anonymous allowed; owner-only drafts are 404 | 503 with `{error}`, bounded by `withPublicDbTimeout` | no limiter | cached feed may be stale by up to 60 s by design |
+| Auth (`auth/[...all]`) | Better Auth denies; no session on failure | structured JSON, 503 on email outage | 429 with `Retry-After`, 503 on counter outage | none |
+| Owner writes (`posts/**`, `publications/**`) | 401/403 before service call | `jsonError` maps DB errors to closed vocabulary | no per-write limiter yet — see Honest gaps | no cache returned on failed save |
+| Account/privacy | 401/403 before service call | kernel JSON; export > 25 MB is 413 | 429 for export (1/hour) and erasure request (5/10 min) | erasure invalidates cached targets |
+
+**Honest gaps still open at Milestone B**
+
+- Per-write rate limiting (`rateLimitWrite` exists in `identity/limiter.ts`) is
+  **not wired** into the WP3b write routes. It is a guard against runaway loops,
+  not a credential surface; it is recorded here rather than claimed as proved.
+- Only the Vercel Hobby WAF rule count is known from the prior audit; live quota
+  exhaustion and real SMTP outages remain `Unverified` (section 5a).
+- The account erasure request/confirm handlers parse the body with `request.json()`
+  directly rather than `readJsonObject`; they reject malformed JSON with the
+  fixed validation error, but they do not enforce a `Content-Type` or a byte
+  cap at the boundary. The WP3b write routes use `readJsonObject`; their size
+  cap is enforced in the service layer (draft body 102,400 bytes, title 200
+  chars), not before JSON parsing.
+- The public allow-list is a test-time source assertion, not runtime middleware.
+  A route can be labelled `public` and still reject at runtime; the guard proves
+  the declaration, not the handler's behaviour.
 
 ## 6. Overload plan
 
