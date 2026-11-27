@@ -142,7 +142,7 @@ export function VerifyEmailClient({
           Your Inkwellio writer account is ready. Sign in to set up your publication and write your first draft.
         </p>
         <Link href="/sign-in?verified=1" className="btn-primary auth-submit">
-          Sign in
+          <span className="mag-label">Sign in</span>
         </Link>
       </div>
     );
@@ -196,7 +196,7 @@ export function VerifyEmailClient({
         </div>
 
         <button type="submit" disabled={submitting} className="btn-primary auth-submit">
-          {submitting ? "Sending link..." : "Send verification link"}
+          <span className="mag-label">{submitting ? "Sending link..." : "Send verification link"}</span>
         </button>
       </form>
 

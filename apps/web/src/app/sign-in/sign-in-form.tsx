@@ -171,7 +171,7 @@ export function SignInForm({
       </div>
 
       <button type="submit" disabled={submitting} className="btn-primary auth-submit">
-        {submitting ? "Signing in..." : "Sign in"}
+        <span className="mag-label">{submitting ? "Signing in..." : "Sign in"}</span>
       </button>
 
       <div className="auth-footer-links">

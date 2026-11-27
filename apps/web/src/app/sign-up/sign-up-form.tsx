@@ -106,10 +106,10 @@ export function SignUpForm() {
         </p>
         <div className="auth-actions-stack">
           <Link href="/verify-email" className="btn-primary auth-submit">
-            Need another verification link?
+            <span className="mag-label">Need another verification link?</span>
           </Link>
           <Link href="/sign-in" className="btn-ghost auth-submit">
-            Back to sign in
+            <span className="mag-label">Back to sign in</span>
           </Link>
         </div>
       </div>
@@ -203,7 +203,7 @@ export function SignUpForm() {
       </div>
 
       <button type="submit" disabled={submitting} className="btn-primary auth-submit">
-        {submitting ? "Creating account..." : "Create account"}
+        <span className="mag-label">{submitting ? "Creating account..." : "Create account"}</span>
       </button>
 
       <div className="auth-field">

@@ -104,7 +104,7 @@ export function ResetPasswordForm({
           All existing sessions have been signed out. Use your new password to sign in cleanly.
         </p>
         <Link href="/sign-in?reset=1" className="btn-primary auth-submit">
-          Sign in
+          <span className="mag-label">Sign in</span>
         </Link>
       </div>
     );
@@ -120,7 +120,7 @@ export function ResetPasswordForm({
           </span>
         </div>
         <Link href="/forgot-password" className="btn-primary auth-submit">
-          Request a new reset link
+          <span className="mag-label">Request a new reset link</span>
         </Link>
         <div className="auth-footer-links">
           <Link href="/sign-in" className="auth-text-link">
@@ -193,7 +193,7 @@ export function ResetPasswordForm({
       </div>
 
       <button type="submit" disabled={submitting} className="btn-primary auth-submit">
-        {submitting ? "Updating password..." : "Update password"}
+        <span className="mag-label">{submitting ? "Updating password..." : "Update password"}</span>
       </button>
     </form>
   );

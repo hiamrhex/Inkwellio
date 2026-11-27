@@ -82,15 +82,32 @@ describe("Wave A Phase A2 — Auth & Legal policy, shell, and accessibility", ()
       ["/reset-password", resetPage],
     ] as const) {
       expect(authSrc, `${label} must use minimalHeader`).toContain("<SiteShell minimalHeader>");
+      expect(authSrc, `${label} must mount AmbientOrbs`).toContain("<AmbientOrbs");
+      expect(authSrc, `${label} must render cursor spotlight`).toContain("auth-cursor-spotlight");
       expect(authSrc, `${label} must render fluted backdrop`).toContain("auth-fluted-backdrop");
+      expect(authSrc, `${label} must enable auth backdrop parallax`).toContain('data-auth-parallax="true"');
       expect(authSrc, `${label} must mount lazy AuthSpatialBackdrop`).toContain("<AuthSpatialBackdrop");
       expect(authSrc, `${label} must use monolith rim-lit card`).toContain("auth-monolith-card");
+      expect(authSrc, `${label} must enable 3D auth card tilt`).toContain('data-tilt-auth="true"');
+    }
+    for (const [label, formSrc] of [
+      ["sign-in-form", signInForm],
+      ["sign-up-form", signUpForm],
+      ["forgot-password-form", forgotForm],
+      ["reset-password-form", resetForm],
+      ["verify-email-client", verifyEmailClient],
+    ] as const) {
+      expect(formSrc, `${label} must wrap magnetic label inside auth-submit`).toContain('className="mag-label"');
     }
     const spatialBackdropSrc = readSrc("apps/web/src/components/auth/auth-spatial-backdrop.tsx");
     expect(spatialBackdropSrc).toContain('loading="lazy"');
     expect(spatialBackdropSrc).toContain("spatial-monolith-dark.webp");
     expect(spatialBackdropSrc).toContain("spatial-slab-light.webp");
+    expect(cssSrc).toContain(".auth-cursor-spotlight");
     expect(cssSrc).toContain(".auth-fluted-backdrop");
+    expect(cssSrc).toContain("auth-backdrop-float");
+    expect(cssSrc).toContain("var(--abx, 0px)");
+    expect(cssSrc).toContain("var(--atx, 0)");
     expect(cssSrc).toContain(".auth-spatial-img");
     expect(cssSrc).toContain(".site-header-inner-minimal");
   });

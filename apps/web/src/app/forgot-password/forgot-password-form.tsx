@@ -72,7 +72,7 @@ export function ForgotPasswordForm() {
           If an account exists for that email address, we have sent a password reset link. Links expire after 15 minutes.
         </p>
         <Link href="/sign-in" className="btn-ghost auth-submit">
-          Back to sign in
+          <span className="mag-label">Back to sign in</span>
         </Link>
       </div>
     );
@@ -112,7 +112,7 @@ export function ForgotPasswordForm() {
       </div>
 
       <button type="submit" disabled={submitting} className="btn-primary auth-submit">
-        {submitting ? "Sending link..." : "Send reset link"}
+        <span className="mag-label">{submitting ? "Sending link..." : "Send reset link"}</span>
       </button>
 
       <div className="auth-footer-links">
