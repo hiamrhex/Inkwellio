@@ -105,5 +105,19 @@ in `docs/RED_TEAM.md`. No external host was contacted.
 
 ## H. Pull request
 
-PR URL and `gh pr checks` result are filled in Milestone D after the push and
-PR creation. Unverified until then.
+PR: https://github.com/hiamrhex/Inkwellio/pull/36
+
+`gh pr checks 36` (exit 0):
+
+```
+Check                 pass  1m43s  .../actions/runs/45999604514/job/140507570934
+Check                 pass  2m6s   .../actions/runs/45999669065/job/140507792884
+Lighthouse CI         pass  6s     .../actions/runs/45999604514/job/140508389991
+Lighthouse CI         pass  5s     .../actions/runs/45999669065/job/140508794455
+Vercel                pass  0      Deployment has completed
+Vercel Preview Comments pass 0
+```
+
+`git diff --name-only origin/main..HEAD` listed 19 files: 8 under
+`apps/web/src/{kernel,modules,app/api}`, 8 under `apps/web/tests/**`, 3 under
+`docs/**`. Zero forbidden UI, dependency, `package.json` or lockfile changes.
