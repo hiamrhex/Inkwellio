@@ -15,6 +15,7 @@ import { POST as erasureRequestPost } from "../../src/app/api/account/erasure/re
 import { POST as erasureConfirmPost } from "../../src/app/api/account/erasure/confirm/route";
 import {
   loadDashboardData,
+  loadSettingsData,
   loadStudioPostData,
 } from "../../src/components/studio/server-data";
 
@@ -638,6 +639,37 @@ describe.skipIf(!DATABASE_URL)(
           draftPost.id,
         );
         expect(studioStrangerDraft).toEqual({ kind: "not_found" });
+
+        // Verify loadSettingsData isolation & accurate publication/post counts
+        const settingsA = await loadSettingsData({
+          userId: userA.userId,
+          email: `loader-a-${tag}@example.test`,
+          name: "Loader A",
+        });
+        expect(settingsA.kind).toBe("ready");
+        if (settingsA.kind === "ready") {
+          expect(settingsA.publication?.id).toBe(pubA.id);
+          expect(settingsA.postCounts).toEqual({
+            draft: 1,
+            published: 1,
+            deleted: 1,
+          });
+        }
+
+        const settingsB = await loadSettingsData({
+          userId: userB.userId,
+          email: `loader-b-${tag}@example.test`,
+          name: "Loader B",
+        });
+        expect(settingsB.kind).toBe("ready");
+        if (settingsB.kind === "ready") {
+          expect(settingsB.publication).toBeNull();
+          expect(settingsB.postCounts).toEqual({
+            draft: 0,
+            published: 0,
+            deleted: 0,
+          });
+        }
       },
     );
   },

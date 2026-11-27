@@ -13,6 +13,7 @@ import {
   slugifyHandlePreview,
 } from "../src/components/studio/api";
 import { DashboardClient } from "../src/components/studio/dashboard-client";
+import { SettingsPrivacyClient } from "../src/components/studio/settings-privacy-client";
 import {
   countMarkdownWords,
   formatConflictClipboardText,
@@ -227,5 +228,56 @@ describe("WP7 Wave B Milestone 1: Layer 64, Workspace Shell & Dashboard", () => 
     expect(studioEditorSrc).toContain("Copy my text");
     expect(studioEditorSrc).toContain("Reload latest draft");
     expect(studioEditorSrc).toContain("Retry save");
+  });
+
+  it("Milestone 3: /settings/privacy enforces auth redirect, policy, and real export/erasure controls", () => {
+    const policySrc = fs.readFileSync(
+      path.join(root, "apps/web/src/app/settings/privacy/policy.ts"),
+      "utf8",
+    );
+    const pageSrc = fs.readFileSync(
+      path.join(root, "apps/web/src/app/settings/privacy/page.tsx"),
+      "utf8",
+    );
+    const clientSrc = fs.readFileSync(
+      path.join(root, "apps/web/src/components/studio/settings-privacy-client.tsx"),
+      "utf8",
+    );
+
+    expect(policySrc).toContain('export const policy = "authenticated" as const;');
+    expect(pageSrc).toContain('redirect("/sign-in?next=%2Fsettings%2Fprivacy")');
+    expect(pageSrc).toContain('<SiteShell workspaceNav activePath="/settings/privacy">');
+    expect(clientSrc).toContain("/api/account/erasure/request");
+    expect(clientSrc).toContain("/api/account/erasure/confirm");
+    expect(clientSrc).toContain("/api/auth/sign-out");
+    expect(clientSrc).toContain("requestAccountExportDownload");
+    expect(clientSrc).not.toMatch(/\/api\/publications\/[^/]+\s*method:\s*["'](PATCH|PUT)/i);
+
+    const html = renderToStaticMarkup(
+      createElement(SettingsPrivacyClient, {
+        session: {
+          userId: "user-1",
+          email: "writer@example.test",
+          name: "Test Writer",
+        },
+        publication: {
+          id: "pub-1",
+          slug: "pitch-notes",
+          name: "Pitch Notes",
+        },
+        postCounts: { draft: 2, published: 3, deleted: 1 },
+      }),
+    );
+
+    expect(html).toContain('id="main-content"');
+    expect(html).toContain("workspace-main");
+    expect(html).toContain("writer@example.test");
+    expect(html).toContain("Pitch Notes");
+    expect(html).toContain("@pitch-notes");
+    expect(html).toContain("3 published · 2 drafts · 1 in trash");
+    expect(html).toContain("Export JSON");
+    expect(html).toContain("Send confirmation code");
+    expect(html).toContain('for="erasure-password"');
+    expect(html).not.toContain('href="/history"');
   });
 });

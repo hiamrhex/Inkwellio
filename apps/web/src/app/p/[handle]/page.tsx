@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import type { CSSProperties } from "react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { EditorialFontReady } from "@/components/editorial-font-ready";
 import { SiteShell } from "@/components/site-shell";
 import { getCachedPublicationFeed } from "@/modules/site";
 
@@ -27,7 +28,6 @@ function PublicationBreadcrumb({ handle }: { handle: string }) {
     >
       <Link
         href="/"
-        prefetch={false}
         className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center px-2 hover:text-[var(--text-primary)] hover:underline ${FOCUS_RING}`}
       >
         Home
@@ -35,7 +35,6 @@ function PublicationBreadcrumb({ handle }: { handle: string }) {
       <span aria-hidden="true">/</span>
       <Link
         href="/topics"
-        prefetch={false}
         className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center px-2 hover:text-[var(--text-primary)] hover:underline ${FOCUS_RING}`}
       >
         Topics
@@ -43,7 +42,6 @@ function PublicationBreadcrumb({ handle }: { handle: string }) {
       <span aria-hidden="true">/</span>
       <Link
         href="/search"
-        prefetch={false}
         className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center px-2 hover:text-[var(--text-primary)] hover:underline ${FOCUS_RING}`}
       >
         Search
@@ -74,12 +72,16 @@ async function PublicationFeedView({
   const { publication, feed } = result;
   return (
     <main id="main-content" className="mx-auto max-w-2xl px-6 py-12" style={PAGE_STYLE}>
+      <EditorialFontReady />
       <PublicationBreadcrumb handle={publication.slug} />
       <header
         className="mb-8 pb-4"
         style={{ borderBottom: "1px solid var(--border-hairline)" }}
       >
-        <h1 className="text-3xl font-semibold tracking-tight text-[var(--text-primary)]">
+        <h1
+          className="text-3xl font-semibold tracking-tight text-[var(--text-primary)] sm:text-4xl"
+          style={{ fontFamily: "var(--font-editorial)", lineHeight: 1.15 }}
+        >
           {publication.name}
         </h1>
         <p className="mt-1 font-mono text-sm text-[var(--text-faint)]">@{publication.slug}</p>
@@ -99,8 +101,8 @@ async function PublicationFeedView({
             >
               <Link
                 href={`/@${encodeURIComponent(publication.slug)}/${encodeURIComponent(item.slug)}`}
-                prefetch={false}
-                className={`inline-flex min-h-[44px] items-center text-xl font-medium text-[var(--text-primary)] hover:underline ${FOCUS_RING}`}
+                className={`inline-flex min-h-[44px] items-center font-serif text-xl font-medium text-[var(--text-primary)] hover:underline ${FOCUS_RING}`}
+                style={{ fontFamily: "var(--font-editorial)" }}
               >
                 {item.title}
               </Link>

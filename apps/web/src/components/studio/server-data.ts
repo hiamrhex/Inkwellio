@@ -59,6 +59,55 @@ export type StudioLoadResult =
   | { readonly kind: "not_found" }
   | { readonly kind: "unavailable" };
 
+export interface StudioSession {
+  readonly userId: string;
+  readonly email: string;
+  readonly name: string | null;
+}
+
+export type SettingsLoadResult =
+  | {
+      readonly kind: "ready";
+      readonly session: StudioSession;
+      readonly publication: PublicationSummary | null;
+      readonly postCounts: {
+        readonly draft: number;
+        readonly published: number;
+        readonly deleted: number;
+      };
+    }
+  | { readonly kind: "unavailable" };
+
+/**
+ * Resolves the active Better Auth session user (id, email, name) on the server,
+ * failing closed to `null` whenever credentials or auth storage are missing.
+ */
+export async function resolveStudioSession(
+  requestHeaders: Headers,
+): Promise<StudioSession | null> {
+  try {
+    const auth = getAuth();
+    const session = await auth.api.getSession({ headers: requestHeaders });
+    const sessionUser = session?.user;
+    if (
+      !sessionUser ||
+      typeof sessionUser.id !== "string" ||
+      sessionUser.id.length === 0 ||
+      typeof sessionUser.email !== "string" ||
+      sessionUser.email.length === 0
+    ) {
+      return null;
+    }
+    return {
+      userId: sessionUser.id,
+      email: sessionUser.email,
+      name: typeof sessionUser.name === "string" ? sessionUser.name : null,
+    };
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Resolves the active Better Auth actor on the server, failing closed to `null`
  * whenever credentials, headers, or auth storage are missing/unavailable.
@@ -195,6 +244,56 @@ export async function loadStudioPostData(
     if (isServiceError(caught) && (caught.code === "NOT_FOUND" || caught.code === "FORBIDDEN")) {
       return { kind: "not_found" };
     }
+    return { kind: "unavailable" };
+  }
+}
+
+/**
+ * Loads owner-scoped account and publication summary data for `/settings/privacy`.
+ */
+export async function loadSettingsData(
+  session: StudioSession,
+): Promise<SettingsLoadResult> {
+  if (!process.env.DATABASE_URL) {
+    return { kind: "unavailable" };
+  }
+
+  try {
+    const db = getDb();
+    const executor: Executor = { kind: "db", db };
+    const ownPubs = await listPublicationsForOwner(executor, { userId: session.userId });
+    const publication = ownPubs[0] ?? null;
+
+    if (publication === null) {
+      return {
+        kind: "ready",
+        session,
+        publication: null,
+        postCounts: { draft: 0, published: 0, deleted: 0 },
+      };
+    }
+
+    const postRows = await db
+      .select({ status: posts.status })
+      .from(posts)
+      .where(eq(posts.publicationId, publication.id));
+
+    let draft = 0;
+    let published = 0;
+    let deleted = 0;
+    for (const row of postRows) {
+      if (row.status === "published") published += 1;
+      else if (row.status === "deleted") deleted += 1;
+      else draft += 1;
+    }
+
+    return {
+      kind: "ready",
+      session,
+      publication,
+      postCounts: { draft, published, deleted },
+    };
+  } catch {
     return { kind: "unavailable" };
   }
 }
