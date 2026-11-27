@@ -32,7 +32,7 @@
         "-mobile.webp 680w, /images/hero-ribbon-" +
         resolved +
         ".webp 1280w";
-      link.imageSizes = "(max-width: 1023px) 100vw, 56vw";
+      link.imageSizes = "(max-width: 767px) 74vw, 62vw";
       head.appendChild(link);
     }
   } catch {}

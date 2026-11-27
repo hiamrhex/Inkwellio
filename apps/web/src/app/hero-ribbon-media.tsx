@@ -38,7 +38,7 @@ export function HeroRibbonMedia() {
       <img
         src={`/images/hero-ribbon-${theme}.webp`}
         srcSet={`/images/hero-ribbon-${theme}-mobile.webp 680w, /images/hero-ribbon-${theme}.webp 1280w`}
-        sizes="(max-width: 1023px) 100vw, 56vw"
+        sizes="(max-width: 767px) 74vw, 62vw"
         width={1280}
         height={714}
         alt=""

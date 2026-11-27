@@ -47,6 +47,7 @@ export default function Home() {
       <main id="main-content">
         {/* ── Hero ────────────────────────────────────────────────── */}
         <div className="hero-stage-outer">
+          <div className="hero-cursor-spotlight" aria-hidden="true" />
           <div className="hero-silk-backdrop" aria-hidden="true">
             <div className="hero-silk-fallback" />
             <HeroRibbonMedia />
@@ -64,9 +65,9 @@ export default function Home() {
                 <span>Independent football publishing</span>
               </p>
 
-              <h1 className="hero-headline hero-headline-reveal">
+              <h1 className="hero-headline">
                 <span className="hero-headline-line">Publish football.</span>{" "}
-                <span className="hero-headline-line hero-headline-sweep">Own it.</span>
+                <span className="hero-headline-line">Own it.</span>
               </h1>
 
               <p className="hero-sub">
@@ -84,15 +85,7 @@ export default function Home() {
             </div>
 
             {/* Right (5/12): thick edge-lit living editor framed by flowing ink ribbons */}
-            <div
-              className="hero-artifact-wrap"
-              style={{
-                position: "relative",
-                width: "100%",
-                display: "flex",
-                justifyContent: "center",
-              }}
-            >
+            <div className="hero-artifact-wrap">
               <div
                 style={{
                   position: "relative",
@@ -308,7 +301,7 @@ export default function Home() {
                 id="publishing-heading"
                 className="ink-reveal-heading publishing-display-heading"
               >
-                <span className="hero-headline-sweep">Write the game. Own the link.</span>
+                Write the game. Own the link.
               </h2>
               <p className="publishing-lead">
                 Your words, your address, nothing else.

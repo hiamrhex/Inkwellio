@@ -351,7 +351,18 @@ describe("Shared Shell & Public Reading Routes", () => {
    5. Signature Stage ("A post's life"), Honest Bento & Hero
    ════════════════════════════════════════════════════════════════ */
 describe("Signature stage, honest Bento & Hero artifact", () => {
-  it("mounts zero-client-JS PostLifeStage (300vh horizontal), TopicMarquee, capability strip & side-glide", () => {
+  it("enforces monochrome surfaces with zero green/teal washes or hover glow lines > 6px", () => {
+    expect(cssSrc).toContain("--status-live:      #10b981");
+    expect(cssSrc).not.toMatch(/\.hero-form-specular[\s\S]{0,400}16,\s*185,\s*129/);
+    expect(cssSrc).not.toMatch(/\.bento-specular-card::before[\s\S]{0,400}16,\s*185,\s*129/);
+    expect(cssSrc).not.toMatch(/\.auth-fluted-backdrop[\s\S]{0,400}16,\s*185,\s*129/);
+    expect(dotMatrixSrc).not.toContain("16, 185, 129");
+    expect(ribbonCanvasSrc).not.toContain("16, 185, 129");
+    expect(heroArtifactSrc).not.toContain("hero-wireframe-frame");
+    expect(cssSrc).not.toContain(".hero-wireframe-frame");
+  });
+
+  it("mounts zero-client-JS PostLifeStage (350vh dwell plateaus), TopicMarquee, capability strip & side-glide", () => {
     expect(pageSrc).toContain("<PostLifeStage");
     expect(pageSrc).toContain("<TopicMarquee");
     expect(pageSrc).toContain("capability-grid");
@@ -366,17 +377,23 @@ describe("Signature stage, honest Bento & Hero artifact", () => {
     expect(postLifeSrc).toContain("Publish");
     expect(postLifeSrc).toContain('className="sr-only"');
     expect(cssSrc).toContain("--post-life-tl");
-    expect(cssSrc).toContain("height: 300vh;");
+    expect(cssSrc).toContain("height: 350vh;");
     expect(cssSrc).toContain("post-life-horizontal-glide");
     expect(cssSrc).toContain("animation-timeline: view()");
     expect(cssSrc).toContain("rotateY(180deg)");
     expect(cssSrc).toContain("steps(");
     expect(cssSrc).toContain(".topic-marquee-track");
     expect(cssSrc).toContain(".spotlight-card::after");
+    expect(cssSrc).toContain(".hero-cursor-spotlight");
+    expect(cssSrc).toContain("520px circle");
+    expect(cssSrc).toContain("scale(0.97)");
+    expect(cssSrc).toContain("translateY(-5px)");
     expect(cssSrc).toContain(".side-glide-band");
     expect(cssSrc).toContain("overflow-x: clip");
     expect(cssSrc).toContain("side-glide-in-left");
     expect(cssSrc).toContain("side-glide-in-right");
+    expect(cssSrc).toContain("rotateY(6deg) scale(0.94)");
+    expect(cssSrc).toContain("rotateY(-6deg) scale(0.94)");
   });
 
   it("InteractiveBento replaces fake revisions with real curated football topics", () => {
@@ -466,9 +483,13 @@ describe("Performance budgets, motion & hero sculpture assets", () => {
     expect(scrollChoreoSrc).toContain("prefers-reduced-motion: reduce");
     expect(scrollChoreoSrc).toContain("inkwellio:motion-change");
     expect(scrollChoreoSrc).toContain("passive: true");
-    expect(cssSrc).toMatch(/@media\s*\(prefers-reduced-motion:\s*reduce\)[\s\S]*\.hero-headline-sweep/);
+    expect(scrollChoreoSrc).toContain("playbackRate");
+    expect(ribbonCanvasSrc).not.toContain('addEventListener("pointermove"');
+    expect(dotMatrixSrc).not.toContain('addEventListener("pointermove"');
+    expect(landingRuntimeSrc).toContain("pointerType");
+    expect(cssSrc).toMatch(/@media\s*\(prefers-reduced-motion:\s*reduce\)[\s\S]*\.hero-form-body/);
     expect(cssSrc).toMatch(/@media\s*\(prefers-reduced-motion:\s*reduce\)[\s\S]*\.post-life-flip-inner/);
-    expect(cssSrc).toMatch(/:root\[data-motion="paused"\][\s\S]*\.hero-headline-sweep/);
+    expect(cssSrc).toMatch(/:root\[data-motion="paused"\][\s\S]*\.hero-ribbon-media-box/);
   });
 
   it("loads single active-theme hero 3D WebP with fetchpriority=high, srcset, sizes & byte caps alongside InkwellioLogo + icon.svg", () => {

@@ -1,229 +1,146 @@
-/**
- * landing-runtime.js — Layer 3 interactivity across Inkwellio.
- * 1. Theme toggle delegation ([data-theme-toggle]).
- * 2. Single shared passive pointermove + rAF loop (fine hover pointers & motion allowed):
- *    - Exposes window.__inkwellioPointer for lazy background canvases (zero extra listeners)
- *    - Caches element rects in WeakMap, invalidated on ResizeObserver + passive scroll
- *    - Drives hero 3D tilt (--tx, --ty <= +-5deg), sculpture offset (--mx, --my),
- *      spotlight surfaces ([data-spotlight]), signature card light tilt ([data-tilt-stage]),
- *      and magnetic primary buttons ([data-magnetic], <= +-5px). Loop stops at rest.
- */
+/** landing-runtime.js — theme/motion toggle + single passive pointer controller */
 (function () {
   "use strict";
-
+  var d = document.documentElement;
+  function qAll(s) { return document.querySelectorAll(s); }
+  function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
+  function sv(el, k, v) { if (el) el.style.setProperty(k, v); }
   function applyTheme(t) {
-    try {
-      document.documentElement.setAttribute("data-theme", t);
-      localStorage.setItem("inkwellio-theme", t);
-    } catch {}
+    try { d.setAttribute("data-theme", t); localStorage.setItem("inkwellio-theme", t); } catch {}
   }
-
+  function syncMotion(paused) {
+    var ts = qAll("[data-motion-toggle]");
+    for (var i = 0; i < ts.length; i++) ts[i].setAttribute("aria-pressed", paused ? "true" : "false");
+  }
   function applyMotionPaused(paused) {
     try {
-      var d = document.documentElement;
       d.setAttribute("data-motion", paused ? "paused" : "active");
       localStorage.setItem("inkwellio-motion-paused", paused ? "1" : "0");
-      var toggles = document.querySelectorAll("[data-motion-toggle]");
-      for (var i = 0; i < toggles.length; i++) {
-        toggles[i].setAttribute("aria-pressed", paused ? "true" : "false");
-      }
+      syncMotion(paused);
       window.dispatchEvent(new Event("inkwellio:motion-change"));
     } catch {}
   }
-
-  function syncMotionButton() {
-    var paused = document.documentElement.getAttribute("data-motion") === "paused";
-    var toggles = document.querySelectorAll("[data-motion-toggle]");
-    for (var i = 0; i < toggles.length; i++) {
-      toggles[i].setAttribute("aria-pressed", paused ? "true" : "false");
-    }
-  }
-
   document.addEventListener("click", function (e) {
-    var themeBtn = e.target && e.target.closest ? e.target.closest("[data-theme-toggle]") : null;
-    if (themeBtn) {
-      var cur = document.documentElement.getAttribute("data-theme");
-      applyTheme(cur === "dark" ? "light" : "dark");
-      return;
-    }
-    var motionBtn = e.target && e.target.closest ? e.target.closest("[data-motion-toggle]") : null;
-    if (motionBtn) {
-      var isPaused = document.documentElement.getAttribute("data-motion") === "paused";
-      applyMotionPaused(!isPaused);
-    }
+    var t = e.target && e.target.closest;
+    var tb = t ? e.target.closest("[data-theme-toggle]") : null;
+    if (tb) { applyTheme(d.getAttribute("data-theme") === "dark" ? "light" : "dark"); return; }
+    var mb = t ? e.target.closest("[data-motion-toggle]") : null;
+    if (mb) applyMotionPaused(d.getAttribute("data-motion") !== "paused");
   });
 
-  function initSharedPointer() {
-    syncMotionButton();
+  function initPointer() {
+    syncMotion(d.getAttribute("data-motion") === "paused");
     var fine = window.matchMedia("(hover: hover) and (pointer: fine)");
     var reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
+    var heroOuter = document.querySelector(".hero-stage-outer");
     var stage = document.querySelector(".hero-stage");
+    var ribbonBox = document.querySelector(".hero-ribbon-media-box");
     var heroTilt = document.querySelector("[data-tilt-hero]");
-    var stageCards = Array.prototype.slice.call(document.querySelectorAll("[data-tilt-stage]"));
-    var spotlights = Array.prototype.slice.call(document.querySelectorAll("[data-spotlight]"));
-    var magnetics = Array.prototype.slice.call(document.querySelectorAll("[data-magnetic]"));
-    var pointerState = { x: -9999, y: -9999, active: false };
-    window.__inkwellioPointer = pointerState;
-
-    if (!stage && !heroTilt && !stageCards.length && !spotlights.length && !magnetics.length) return;
+    var stageCards = [].slice.call(qAll("[data-tilt-stage]"));
+    var spotlights = [].slice.call(qAll("[data-spotlight]"));
+    var magnetics = [].slice.call(qAll("[data-magnetic]"));
+    var vw = window.innerWidth || 1440, vh = window.innerHeight || 900;
+    var p = { x: vw * 0.65, y: vh * 0.42, curX: vw * 0.65, curY: vh * 0.42, rx: 0, ry: 0, tx: 0, ty: 0, lastMoveAt: 0, active: false };
+    window.__inkwellioPointer = p;
+    if (!stage && !heroTilt && !ribbonBox && !stageCards.length && !spotlights.length && !magnetics.length) return;
 
     var rects = new WeakMap();
-    var allMeasured = [].concat(heroTilt ? [heroTilt] : [], stageCards, spotlights, magnetics);
-    var invalidate = function () {
+    var allMeasured = [].concat(heroOuter || [], heroTilt || [], stageCards, spotlights, magnetics);
+    function invalidate() {
+      vw = window.innerWidth || 1440; vh = window.innerHeight || 900;
       for (var i = 0; i < allMeasured.length; i++) rects.delete(allMeasured[i]);
-    };
-
+    }
     if (typeof ResizeObserver !== "undefined" && allMeasured.length) {
       var ro = new ResizeObserver(invalidate);
       for (var i = 0; i < allMeasured.length; i++) ro.observe(allMeasured[i]);
     }
     window.addEventListener("scroll", invalidate, { passive: true });
     window.addEventListener("resize", invalidate, { passive: true });
+    function getRect(el) { var r = rects.get(el); if (!r) { r = el.getBoundingClientRect(); rects.set(el, r); } return r; }
+    function frozen() { return reduced.matches || d.getAttribute("data-motion") === "paused"; }
+    var rafId = 0, lastAt = 0;
 
-    function getRect(el) {
-      var r = rects.get(el);
-      if (!r) {
-        r = el.getBoundingClientRect();
-        rects.set(el, r);
+    function reset() {
+      p.rx = p.ry = p.tx = p.ty = 0;
+      if (heroOuter) {
+        sv(heroOuter, "--mx", "0"); sv(heroOuter, "--my", "0");
+        sv(heroOuter, "--rx", "0px"); sv(heroOuter, "--ry", "0px");
+        sv(heroOuter, "--cursor-x", "65%"); sv(heroOuter, "--cursor-y", "42%");
+        heroOuter.style.removeProperty("--spotlight-active");
       }
-      return r;
+      sv(stage, "--mx", "0"); sv(stage, "--my", "0");
+      sv(ribbonBox, "--rx", "0px"); sv(ribbonBox, "--ry", "0px");
+      sv(heroTilt, "--tx", "0"); sv(heroTilt, "--ty", "0");
+      for (var s = 0; s < stageCards.length; s++) { sv(stageCards[s], "--sx", "0"); sv(stageCards[s], "--sy", "0"); }
+      for (var m = 0; m < magnetics.length; m++) { sv(magnetics[m], "--mag-x", "0px"); sv(magnetics[m], "--mag-y", "0px"); }
     }
 
-    function clamp(v, min, max) {
-      return v < min ? min : v > max ? max : v;
-    }
-
-    var rafId = 0;
-
-    function resetTransforms() {
-      if (stage) {
-        stage.style.setProperty("--mx", "0");
-        stage.style.setProperty("--my", "0");
-      }
-      if (heroTilt) {
-        heroTilt.style.setProperty("--tx", "0");
-        heroTilt.style.setProperty("--ty", "0");
-      }
-      for (var s = 0; s < stageCards.length; s++) {
-        stageCards[s].style.setProperty("--sx", "0");
-        stageCards[s].style.setProperty("--sy", "0");
-      }
-      for (var m = 0; m < magnetics.length; m++) {
-        magnetics[m].style.setProperty("--mag-x", "0px");
-        magnetics[m].style.setProperty("--mag-y", "0px");
-      }
-    }
-
-    function isMotionFrozen() {
-      return reduced.matches || document.documentElement.getAttribute("data-motion") === "paused";
-    }
-
-    function applyFrame() {
+    function tick(now) {
       rafId = 0;
-      if (!fine.matches || isMotionFrozen()) {
-        pointerState.active = false;
-        resetTransforms();
-        return;
-      }
-
-      var x = pointerState.x;
-      var y = pointerState.y;
-
-      if (stage) {
-        var cx = window.innerWidth * 0.5 || 1;
-        var cy = window.innerHeight * 0.5 || 1;
-        stage.style.setProperty("--mx", ((x - cx) / cx).toFixed(4));
-        stage.style.setProperty("--my", ((y - cy) / cy).toFixed(4));
-      }
-
+      if (!fine.matches || frozen()) { p.active = false; reset(); return; }
+      var dt = lastAt ? clamp(now - lastAt, 8, 50) : 16.667;
+      lastAt = now;
+      var idle = p.lastMoveAt ? now - p.lastMoveAt : 0;
+      var baseLerp = idle > 280 ? Math.min(0.45, 0.11 + (idle - 280) * 0.0012) : 0.11;
+      var a = 1 - Math.pow(1 - baseLerp, dt / 16.667);
+      var x = p.x, y = p.y;
+      var nx = clamp((x / (vw || 1)) * 2 - 1, -1, 1), ny = clamp((y / (vh || 1)) * 2 - 1, -1, 1);
+      var tRx = nx * 18, tRy = ny * 12, tTx = 0, tTy = 0;
       if (heroTilt) {
         var hr = getRect(heroTilt);
-        if (hr.width > 0 && hr.height > 0) {
-          var insideHero = x >= hr.left && x <= hr.right && y >= hr.top && y <= hr.bottom;
-          if (insideHero) {
-            var hnx = ((x - hr.left) / hr.width - 0.5) * 2;
-            var hny = ((y - hr.top) / hr.height - 0.5) * 2;
-            heroTilt.style.setProperty("--tx", clamp(-hny * 4.5, -5, 5).toFixed(2));
-            heroTilt.style.setProperty("--ty", clamp(hnx * 4.5, -5, 5).toFixed(2));
-          } else {
-            heroTilt.style.setProperty("--tx", "0");
-            heroTilt.style.setProperty("--ty", "0");
-          }
-        }
+        var topB = heroOuter ? getRect(heroOuter).top : hr.top - 120;
+        var botB = heroOuter ? getRect(heroOuter).bottom : hr.bottom + 120;
+        if (y >= topB && y <= botB) { tTx = clamp(-ny * 2.2, -3.5, 3.5); tTy = clamp(nx * 5.8, -6, 6); }
       }
+      if (idle >= 780) { p.curX = x; p.curY = y; p.rx = tRx; p.ry = tRy; p.tx = tTx; p.ty = tTy; }
+      else { p.curX += (x - p.curX) * a; p.curY += (y - p.curY) * a; p.rx += (tRx - p.rx) * a; p.ry += (tRy - p.ry) * a; p.tx += (tTx - p.tx) * a; p.ty += (tTy - p.ty) * a; }
+
+      if (heroOuter) {
+        var or = getRect(heroOuter);
+        sv(heroOuter, "--mx", nx.toFixed(4)); sv(heroOuter, "--my", ny.toFixed(4));
+        sv(heroOuter, "--cursor-x", (p.curX - or.left).toFixed(1) + "px");
+        sv(heroOuter, "--cursor-y", (p.curY - or.top).toFixed(1) + "px");
+        sv(heroOuter, "--spotlight-active", "1");
+        sv(heroOuter, "--rx", p.rx.toFixed(2) + "px"); sv(heroOuter, "--ry", p.ry.toFixed(2) + "px");
+      }
+      sv(stage, "--mx", nx.toFixed(4)); sv(stage, "--my", ny.toFixed(4));
+      sv(ribbonBox, "--rx", p.rx.toFixed(2) + "px"); sv(ribbonBox, "--ry", p.ry.toFixed(2) + "px");
+      sv(heroTilt, "--tx", p.tx.toFixed(2)); sv(heroTilt, "--ty", p.ty.toFixed(2));
 
       for (var sc = 0; sc < stageCards.length; sc++) {
-        var cardEl = stageCards[sc];
-        var sr = getRect(cardEl);
-        var near =
-          x >= sr.left - 32 && x <= sr.right + 32 && y >= sr.top - 32 && y <= sr.bottom + 32;
-        if (near && sr.width > 0 && sr.height > 0) {
-          var snx = ((x - sr.left) / sr.width - 0.5) * 2;
-          var sny = ((y - sr.top) / sr.height - 0.5) * 2;
-          cardEl.style.setProperty("--sx", clamp(-sny * 2.5, -3, 3).toFixed(2));
-          cardEl.style.setProperty("--sy", clamp(snx * 2.5, -3, 3).toFixed(2));
-        } else {
-          cardEl.style.setProperty("--sx", "0");
-          cardEl.style.setProperty("--sy", "0");
-        }
+        var c = stageCards[sc], sr = getRect(c);
+        if (x >= sr.left - 32 && x <= sr.right + 32 && y >= sr.top - 32 && y <= sr.bottom + 32 && sr.width > 0) {
+          sv(c, "--sx", clamp(-((y - sr.top) / sr.height - 0.5) * 5, -3, 3).toFixed(2));
+          sv(c, "--sy", clamp(((x - sr.left) / sr.width - 0.5) * 5, -3, 3).toFixed(2));
+        } else { sv(c, "--sx", "0"); sv(c, "--sy", "0"); }
       }
-
       for (var i = 0; i < spotlights.length; i++) {
-        var card = spotlights[i];
-        var rect = getRect(card);
-        card.style.setProperty("--spotlight-x", (x - rect.left).toFixed(1) + "px");
-        card.style.setProperty("--spotlight-y", (y - rect.top).toFixed(1) + "px");
+        var sp = spotlights[i], spr = getRect(sp);
+        sv(sp, "--spotlight-x", (p.curX - spr.left).toFixed(1) + "px");
+        sv(sp, "--spotlight-y", (p.curY - spr.top).toFixed(1) + "px");
       }
-
       for (var j = 0; j < magnetics.length; j++) {
-        var btn = magnetics[j];
-        var mr = getRect(btn);
-        var hoverBtn =
-          x >= mr.left - 24 && x <= mr.right + 24 && y >= mr.top - 24 && y <= mr.bottom + 24;
-        if (hoverBtn && mr.width > 0 && mr.height > 0) {
-          var pullX = clamp((x - (mr.left + mr.width * 0.5)) * 0.16, -5, 5);
-          var pullY = clamp((y - (mr.top + mr.height * 0.5)) * 0.16, -5, 5);
-          btn.style.setProperty("--mag-x", pullX.toFixed(1) + "px");
-          btn.style.setProperty("--mag-y", pullY.toFixed(1) + "px");
-        } else {
-          btn.style.setProperty("--mag-x", "0px");
-          btn.style.setProperty("--mag-y", "0px");
-        }
+        var btn = magnetics[j], mr = getRect(btn);
+        if (x >= mr.left - 28 && x <= mr.right + 28 && y >= mr.top - 28 && y <= mr.bottom + 28 && mr.width > 0) {
+          sv(btn, "--mag-x", clamp((x - (mr.left + mr.width * 0.5)) * 0.18, -6, 6).toFixed(1) + "px");
+          sv(btn, "--mag-y", clamp((y - (mr.top + mr.height * 0.5)) * 0.18, -6, 6).toFixed(1) + "px");
+        } else { sv(btn, "--mag-x", "0px"); sv(btn, "--mag-y", "0px"); }
       }
+      var settled = Math.abs(x - p.curX) < 0.35 && Math.abs(y - p.curY) < 0.35 && Math.abs(tRx - p.rx) < 0.1 && Math.abs(tTy - p.ty) < 0.05;
+      if (!settled && idle < 780) rafId = requestAnimationFrame(tick);
+      else { lastAt = 0; p.active = false; }
     }
 
-    document.addEventListener(
-      "pointermove",
-      function (e) {
-        if (!fine.matches || isMotionFrozen()) return;
-        pointerState.x = e.clientX;
-        pointerState.y = e.clientY;
-        pointerState.active = true;
-        if (!rafId) rafId = requestAnimationFrame(applyFrame);
-      },
-      { passive: true }
-    );
-
-    window.addEventListener("inkwellio:motion-change", function () {
-      if (isMotionFrozen()) {
-        pointerState.active = false;
-        resetTransforms();
-      }
-    });
-
-    document.addEventListener(
-      "pointerleave",
-      function () {
-        pointerState.active = false;
-        resetTransforms();
-      },
-      { passive: true }
-    );
+    document.addEventListener("pointermove", function (e) {
+      if (e.pointerType === "touch" || !fine.matches || frozen()) return;
+      p.x = e.clientX; p.y = e.clientY; p.lastMoveAt = performance.now(); p.active = true;
+      if (!rafId) rafId = requestAnimationFrame(tick);
+      window.dispatchEvent(new Event("inkwellio:pointer-wake"));
+    }, { passive: true });
+    function stop() { p.active = false; if (rafId) { cancelAnimationFrame(rafId); rafId = 0; } reset(); }
+    window.addEventListener("inkwellio:motion-change", function () { if (frozen()) stop(); });
+    document.addEventListener("pointerleave", stop, { passive: true });
   }
-
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", initSharedPointer);
-  } else {
-    initSharedPointer();
-  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", initPointer);
+  else initPointer();
 })();

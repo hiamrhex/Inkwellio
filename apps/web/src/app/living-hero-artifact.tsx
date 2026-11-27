@@ -102,23 +102,6 @@ export function LivingHeroArtifact() {
         margin: "0 auto",
       }}
     >
-      {/* Wireframe layer (-12px Z depth) */}
-      <div
-        className="hero-wireframe-frame"
-        aria-hidden="true"
-        style={{
-          position: "absolute",
-          top: "2.625rem",
-          bottom: "3.875rem",
-          left: "0.5rem",
-          right: "-0.375rem",
-          borderRadius: "1.35rem",
-          border: "1px solid var(--wireframe-hairline)",
-          pointerEvents: "none",
-          zIndex: 0,
-        }}
-      />
-
       {/* Compact Top-Left Floating Status Pill (<= 44px height) */}
       <div
         className="hero-float-card hero-float-card-1"

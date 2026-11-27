@@ -21,12 +21,12 @@ export const tokens = {
     // Strict monochrome buttons
     btnPrimaryBg:   '#ffffff',
     btnPrimaryText: '#000000',
-    // Functional status marks (<= 6px dots, whisper accent & focus ring only)
+    // Functional status marks (<= 6px dots, nib breather dot & focus rings only)
     statusLive:     '#10b981',
     statusAmber:    '#ffd60a',
     accent:         '#0a84ff', // Focus rings & accessibility
     accentText:     '#000000',
-    accentPinch:    'rgba(16, 185, 129, 0.16)',
+    accentPinch:    'rgba(226, 232, 240, 0.095)',
   },
   light: {
     bgCanvas:       '#f1f3f5', // Cool archival slate paper canvas
@@ -40,12 +40,12 @@ export const tokens = {
     // Strict monochrome buttons
     btnPrimaryBg:   '#0a0a0b',
     btnPrimaryText: '#ffffff',
-    // Functional status marks (<= 6px dots, whisper accent & focus ring only)
+    // Functional status marks (<= 6px dots, nib breather dot & focus rings only)
     statusLive:     '#0f766e',
     statusAmber:    '#b45309',
     accent:         '#0066cc', // Focus rings & accessibility
     accentText:     '#ffffff',
-    accentPinch:    'rgba(15, 118, 110, 0.14)',
+    accentPinch:    'rgba(15, 23, 42, 0.06)',
   },
 } as const;
 

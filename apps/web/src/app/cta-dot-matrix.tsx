@@ -69,7 +69,7 @@ export function CtaDotMatrix() {
 
       const isLight = document.documentElement.getAttribute("data-theme") === "light";
       const rgb = isLight ? "15, 23, 42" : "255, 255, 255";
-      const emeraldRgb = isLight ? "15, 118, 110" : "16, 185, 129";
+      const silverRgb = isLight ? "51, 65, 85" : "203, 213, 225";
 
       const shared = (window as SharedPointerWindow).__inkwellioPointer;
       let pointerNear = false;
@@ -139,9 +139,9 @@ export function CtaDotMatrix() {
             (baseAlpha + ringBoost + haloBoost + scanBoost) * (0.35 + 0.65 * edgeFade),
           );
           const radius = 1.05 + haloBoost * 1.45 + ringBoost * 0.7 + scanBoost * 1.25;
-          const useEmerald = scanBoost + haloBoost > 0.16;
+          const useSilver = scanBoost + haloBoost > 0.16;
 
-          ctx.fillStyle = `rgba(${useEmerald ? emeraldRgb : rgb}, ${alpha.toFixed(3)})`;
+          ctx.fillStyle = `rgba(${useSilver ? silverRgb : rgb}, ${alpha.toFixed(3)})`;
           ctx.beginPath();
           ctx.arc(x, y, radius, 0, Math.PI * 2);
           ctx.fill();
@@ -156,17 +156,36 @@ export function CtaDotMatrix() {
       }
     };
 
+    let settledAt = performance.now();
+
     const tick = (now: number) => {
       if (!isVisible || !isTabVisible || isFrozen()) {
         rafId = null;
         return;
       }
 
+      const shared = (window as SharedPointerWindow & { __inkwellioPointer?: { lastMoveAt?: number } }).__inkwellioPointer;
+      const lastMoveAt = shared?.lastMoveAt ?? 0;
+      const pointerAlive = finePointerQuery.matches && lastMoveAt && now - lastMoveAt < 780;
+      const settling = now - settledAt < 650;
+
       if (now - lastDrawTime >= minFrameMs) {
         lastDrawTime = now;
         draw((now - startTime) * 0.001);
       }
-      rafId = requestAnimationFrame(tick);
+
+      if (pointerAlive || settling) {
+        rafId = requestAnimationFrame(tick);
+      } else {
+        rafId = null;
+      }
+    };
+
+    const wake = () => {
+      settledAt = performance.now();
+      if (isVisible && isTabVisible && !isFrozen() && rafId === null) {
+        rafId = requestAnimationFrame(tick);
+      }
     };
 
     const syncRunState = () => {
@@ -175,11 +194,12 @@ export function CtaDotMatrix() {
         draw(0);
         return;
       }
-      if (isVisible && isTabVisible && rafId === null) {
-        rafId = requestAnimationFrame(tick);
-      } else if ((!isVisible || !isTabVisible) && rafId !== null) {
+      if (!isVisible || !isTabVisible) {
         stopLoop();
+        return;
       }
+      draw(0);
+      wake();
     };
 
     const io =
@@ -221,6 +241,7 @@ export function CtaDotMatrix() {
 
     syncRect();
     window.addEventListener("scroll", syncRect, { passive: true });
+    window.addEventListener("inkwellio:pointer-wake", wake);
     document.addEventListener("visibilitychange", handleVisibility);
     reducedMotionQuery.addEventListener("change", syncRunState);
     window.addEventListener("inkwellio:motion-change", syncRunState);
@@ -233,6 +254,7 @@ export function CtaDotMatrix() {
       ro?.disconnect();
       themeObserver.disconnect();
       window.removeEventListener("scroll", syncRect);
+      window.removeEventListener("inkwellio:pointer-wake", wake);
       document.removeEventListener("visibilitychange", handleVisibility);
       reducedMotionQuery.removeEventListener("change", syncRunState);
       window.removeEventListener("inkwellio:motion-change", syncRunState);
