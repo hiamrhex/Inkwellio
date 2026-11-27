@@ -175,17 +175,44 @@ describe("Product name & honesty contract", () => {
     expect(findHonestyViolations("A fast elite template")).toContain("banned adjective");
   });
 
-  it("zero third-party tracker domains in page.tsx", () => {
+  it("ties 'No ads or trackers' claim & built feature claims to real no-external-origin & route guards", () => {
+    const nextConfigSrc = readSrc("apps/web/next.config.ts");
     const TRACKER_PATTERNS = [
       /googletagmanager/,
+      /google-analytics/,
       /analytics\.js/,
       /gtag\(/,
       /facebook\.net/,
       /hotjar/,
       /segment\.com/,
+      /plausible/,
+      /mixpanel/,
+      /posthog/,
     ];
-    for (const pattern of TRACKER_PATTERNS) {
-      expect(pageSrc).not.toMatch(pattern);
+    for (const [name, src] of [
+      ["page.tsx", pageSrc],
+      ["layout.tsx", layoutSrc],
+      ["site-shell.tsx", siteShellSrc],
+      ["bento-controls.tsx", bentoControlsSrc],
+      ["theme.js", themeJsSrc],
+      ["landing-runtime.js", landingRuntimeSrc],
+    ] as const) {
+      for (const pattern of TRACKER_PATTERNS) {
+        expect(src, `tracker match in ${name}`).not.toMatch(pattern);
+      }
+    }
+    expect(nextConfigSrc).toContain("script-src 'self'");
+    expect(nextConfigSrc).toContain("default-src 'self'");
+
+    for (const realRouteOrApi of [
+      "apps/web/src/app/dashboard/page.tsx",
+      "apps/web/src/app/studio/[postId]/page.tsx",
+      "apps/web/src/app/topics/page.tsx",
+      "apps/web/src/app/p/[handle]/[slug]/page.tsx",
+      "apps/web/src/app/api/account/export/route.ts",
+      "apps/web/src/app/api/posts/[id]/draft/route.ts",
+    ]) {
+      expect(fs.existsSync(path.join(root, realRouteOrApi)), `missing ${realRouteOrApi}`).toBe(true);
     }
   });
 });
@@ -405,21 +432,61 @@ describe("Signature stage, honest Bento & Hero artifact", () => {
     expect(bentoSrc).toContain("inkwellio.example/@");
   });
 
-  it("enforces plain everyday copy across landing sections (short <= 16-word sentences)", () => {
-    expect(pageSrc).toContain("Your drafts never overwrite each other");
-    expect(pageSrc).toContain("Clean reading with no distractions");
+  it("enforces Phase 1C plain-English copy (short <= 16-word sentences) with mutation proofs", () => {
+    expect(bentoSrc).toContain("Auto-saved safely");
+    expect(bentoSrc).toContain("Write without clutter");
+    expect(bentoSrc).toContain(
+      "Write in plain text and preview how your story looks before you publish. Even with two tabs open, your latest draft stays safe.",
+    );
+    expect(bentoControlsSrc).toContain("Preview");
+    expect(bentoControlsSrc).toContain("Plain text");
+    expect(bentoControlsSrc).toContain("Your link:");
+    expect(bentoSrc).toContain("Download a copy of all your stories any time.");
+    expect(bentoSrc).toContain("Switch font or text size to test how it reads.");
+
+    expect(pageSrc).toContain("Simple tools to write your story. A clean page for your readers.");
+    expect(pageSrc).toContain("Clean editor");
+    expect(pageSrc).toContain("Focus on the story");
+    expect(pageSrc).toContain(
+      "Write in a quiet space with a live word count. Pick your topics, set your link, and your drafts are saved as you go.",
+    );
+    expect(pageSrc).toContain("Safe auto-save");
+    expect(pageSrc).toContain("Download your work");
+    expect(pageSrc).toContain("Easy to read");
+    expect(pageSrc).toContain("Just the story, nothing else");
+    expect(pageSrc).toContain(
+      "Pick dark or light mode and read without distractions. No ads, no pop-ups, and no trackers watching your readers.",
+    );
+    expect(pageSrc).toContain("Dark or light mode");
+    expect(pageSrc).toContain("No ads or trackers");
     expect(postLifeSrc).toContain("Write cleanly with a live word count and autosave.");
-    for (const staleJargon of [
+
+    for (const staleCopy of [
       "Optimistic version checks",
       "Archival typography",
       "semantic server HTML",
       "optical patience",
       "ergonomics",
+      "Normalized link:",
+      "Safe draft saves",
+      "Distraction-free Markdown editor",
+      "Your drafts never overwrite each other",
+      "Clean reading with no distractions",
     ]) {
-      expect(pageSrc).not.toContain(staleJargon);
-      expect(bentoSrc).not.toContain(staleJargon);
-      expect(heroArtifactSrc).not.toContain(staleJargon);
+      expect(pageSrc).not.toContain(staleCopy);
+      expect(bentoSrc).not.toContain(staleCopy);
+      expect(bentoControlsSrc).not.toContain(staleCopy);
+      expect(heroArtifactSrc).not.toContain(staleCopy);
     }
+
+    const assertPlainCopy = (src: string) =>
+      src.includes("Your link:") &&
+      src.includes("Focus on the story") &&
+      src.includes("Just the story, nothing else") &&
+      !src.includes("Normalized link:");
+    expect(assertPlainCopy(`${bentoControlsSrc}\n${pageSrc}`)).toBe(true);
+    expect(assertPlainCopy("Normalized link: Your drafts never overwrite each other")).toBe(false);
+
     const checkShort = (s: string) =>
       s
         .split(/[.!?]+/)

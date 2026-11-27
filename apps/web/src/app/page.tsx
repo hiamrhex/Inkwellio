@@ -165,7 +165,7 @@ export default function Home() {
           <SectionHeader
             eyebrow="Writer and reader"
             heading={<span id="writer-reader-heading" className="ink-reveal-heading">Calm to write. Calm to read.</span>}
-            body="Every part protects your draft at the keyboard and keeps the page quiet."
+            body="Simple tools to write your story. A clean page for your readers."
           />
 
           <div className="side-glide-grid">
@@ -174,16 +174,16 @@ export default function Home() {
               data-spotlight="true"
             >
               <div className="side-glide-card-head">
-                <span className="chip">For the writer</span>
-                <span className="side-glide-mono">Markdown editor</span>
+                <span className="chip">Clean editor</span>
+                <span className="side-glide-mono">For writers</span>
               </div>
-              <h3 className="side-glide-title">Your drafts never overwrite each other</h3>
+              <h3 className="side-glide-title">Focus on the story</h3>
               <p className="side-glide-copy">
-                Write cleanly with a live word count. Pick three topics, set a web link, and save safely across open tabs.
+                Write in a quiet space with a live word count. Pick your topics, set your link, and your drafts are saved as you go.
               </p>
               <div className="side-glide-foot">
-                <span>Export JSON any time</span>
-                <span>No clutter</span>
+                <span>Safe auto-save</span>
+                <span>Download your work</span>
               </div>
             </article>
 
@@ -192,16 +192,16 @@ export default function Home() {
               data-spotlight="true"
             >
               <div className="side-glide-card-head">
-                <span className="chip">For the reader</span>
-                <span className="side-glide-mono">Clear reading width</span>
+                <span className="chip">Easy to read</span>
+                <span className="side-glide-mono">For readers</span>
               </div>
-              <h3 className="side-glide-title">Clean reading with no distractions</h3>
+              <h3 className="side-glide-title">Just the story, nothing else</h3>
               <p className="side-glide-copy">
-                Stories open fast in dark or light mode. No ads, no pop-ups, and no tracking scripts ever load.
+                Pick dark or light mode and read without distractions. No ads, no pop-ups, and no trackers watching your readers.
               </p>
               <div className="side-glide-foot">
-                <span>/@handle/slug and /topics</span>
-                <span>Zero trackers</span>
+                <span>Dark or light mode</span>
+                <span>No ads or trackers</span>
               </div>
             </article>
           </div>

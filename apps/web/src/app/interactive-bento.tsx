@@ -71,15 +71,15 @@ export function InteractiveBento() {
           <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
             <span className="status-dot status-dot-amber" aria-hidden="true" />
             <span style={{ fontSize: "0.75rem", fontFamily: "var(--font-geist-mono)", color: "var(--text-faint)" }}>
-              Safe draft saves
+              Auto-saved safely
             </span>
           </div>
         </div>
 
         <div>
-          <h3 className="essential-title" id="bento-editor-title">Distraction-free Markdown editor</h3>
+          <h3 className="essential-title" id="bento-editor-title">Write without clutter</h3>
           <p className="essential-body" style={{ marginTop: "0.5rem" }}>
-            Write in plain Markdown and check how it reads. Open browser tabs never overwrite each other.
+            Write in plain text and preview how your story looks before you publish. Even with two tabs open, your latest draft stays safe.
           </p>
         </div>
 
@@ -108,7 +108,7 @@ export function InteractiveBento() {
             <div>
               <h3 className="essential-title" id="bento-topics-title">Organise by football topics</h3>
               <p className="essential-body" style={{ marginTop: "0.5rem" }}>
-                Pick up to three football topics before you publish. Download your full archive as JSON any time.
+                Pick up to three football topics before you publish. Download a copy of all your stories any time.
               </p>
             </div>
           }
@@ -151,7 +151,7 @@ export function InteractiveBento() {
             <div>
               <h3 className="essential-title" id="bento-reading-title">Clean reading with no glare</h3>
               <p className="essential-body" style={{ marginTop: "0.5rem" }}>
-                Easy on the eyes for long pieces. Switch typeface or text size to test the page.
+                Easy on the eyes for long pieces. Switch font or text size to test how it reads.
               </p>
             </div>
           }

@@ -74,7 +74,7 @@ export function BentoLinkWidget({
         />
       </div>
       <div style={{ fontSize: "0.75rem", fontFamily: "var(--font-geist-mono)", color: "var(--text-faint)" }}>
-        Normalized link:{" "}
+        Your link:{" "}
         <span style={{ color: "var(--text-primary)" }}>
           {domainPrefix}{normalizedSlug || "yourname"}
         </span>
@@ -112,42 +112,42 @@ export function BentoEditorWidget() {
             border: "1px solid var(--border-hairline)",
           }}
         >
-          <button
-            type="button"
-            onClick={() => setEditorView("formatted")}
-            className="bento-pill-btn"
-            style={{
-              minHeight: "45px",
-              minWidth: "45px",
-              padding: "0 12px",
-              fontSize: "0.75rem",
-              borderRadius: "9999px",
-              border: "none",
-              cursor: "pointer",
-              background: editorView === "formatted" ? "var(--btn-primary-bg)" : "transparent",
-              color: editorView === "formatted" ? "var(--btn-primary-text)" : "var(--text-muted)",
-            }}
-          >
-            Rendered
-          </button>
-          <button
-            type="button"
-            onClick={() => setEditorView("markdown")}
-            className="bento-pill-btn"
-            style={{
-              minHeight: "45px",
-              minWidth: "45px",
-              padding: "0 12px",
-              fontSize: "0.75rem",
-              borderRadius: "9999px",
-              border: "none",
-              cursor: "pointer",
-              background: editorView === "markdown" ? "var(--btn-primary-bg)" : "transparent",
-              color: editorView === "markdown" ? "var(--btn-primary-text)" : "var(--text-muted)",
-            }}
-          >
-            Markdown
-          </button>
+            <button
+              type="button"
+              onClick={() => setEditorView("formatted")}
+              className="bento-pill-btn"
+              style={{
+                minHeight: "45px",
+                minWidth: "45px",
+                padding: "0 12px",
+                fontSize: "0.75rem",
+                borderRadius: "9999px",
+                border: "none",
+                cursor: "pointer",
+                background: editorView === "formatted" ? "var(--btn-primary-bg)" : "transparent",
+                color: editorView === "formatted" ? "var(--btn-primary-text)" : "var(--text-muted)",
+              }}
+            >
+              Preview
+            </button>
+            <button
+              type="button"
+              onClick={() => setEditorView("markdown")}
+              className="bento-pill-btn"
+              style={{
+                minHeight: "45px",
+                minWidth: "45px",
+                padding: "0 12px",
+                fontSize: "0.75rem",
+                borderRadius: "9999px",
+                border: "none",
+                cursor: "pointer",
+                background: editorView === "markdown" ? "var(--btn-primary-bg)" : "transparent",
+                color: editorView === "markdown" ? "var(--btn-primary-text)" : "var(--text-muted)",
+              }}
+            >
+              Plain text
+            </button>
         </div>
       </div>
 
