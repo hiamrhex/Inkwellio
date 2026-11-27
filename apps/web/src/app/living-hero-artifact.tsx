@@ -51,7 +51,7 @@ export function LivingHeroArtifact() {
           intervalId = null;
         }
       }, 42);
-    }, 520);
+    }, 1400);
 
     return () => {
       clearTimeout(startTimer);
@@ -314,7 +314,7 @@ export function LivingHeroArtifact() {
                 flex: 1,
                 cursor: isInteractive ? "text" : "pointer",
                 position: "relative",
-                minHeight: "136px",
+                minHeight: "160px",
                 minWidth: 0,
                 borderRadius: "0.5rem",
               }}
@@ -328,7 +328,7 @@ export function LivingHeroArtifact() {
                   style={{
                     width: "100%",
                     height: "100%",
-                    minHeight: "136px",
+                    minHeight: "160px",
                     background: "transparent",
                     border: "none",
                     outline: "none",
