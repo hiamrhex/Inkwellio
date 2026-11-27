@@ -13,6 +13,11 @@ import {
   slugifyHandlePreview,
 } from "../src/components/studio/api";
 import { DashboardClient } from "../src/components/studio/dashboard-client";
+import {
+  countMarkdownWords,
+  formatConflictClipboardText,
+  StudioEditor,
+} from "../src/components/studio/studio-editor";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
@@ -184,5 +189,43 @@ describe("WP7 Wave B Milestone 1: Layer 64, Workspace Shell & Dashboard", () => 
     );
     expect(dashSrc).toContain('redirect("/sign-in?next=%2Fdashboard")');
     expect(studioSrc).toContain("redirect(`/sign-in?next=${encodeURIComponent(`/studio/${postId}`)}`)");
+  });
+
+  it("Milestone 2: StudioEditor counts words, formats conflict clipboard text, renders Ctrl+S/beforeunload/409 recovery", () => {
+    expect(countMarkdownWords("   ")).toBe(0);
+    expect(countMarkdownWords("## Half-space\nOne two three.")).toBe(5);
+    expect(formatConflictClipboardText("My Title", "Body paragraph")).toBe(
+      "# My Title\n\nBody paragraph",
+    );
+
+    const html = renderToStaticMarkup(
+      createElement(StudioEditor, {
+        postId: "post-42",
+        publicationSlug: "pitch-notes",
+        publicationName: "Pitch Notes",
+        initialSlug: "match-plan",
+        initialStatus: "draft",
+        initialVersion: 3,
+        initialTitle: "Match Plan",
+        initialBodyMarkdown: "## Notes\n\nFirst line.",
+        initialTopics: [{ id: "t1", slug: "tactics", name: "Tactics" }],
+        curatedTopics: [{ id: "t1", slug: "tactics", name: "Tactics" }],
+      }),
+    );
+
+    expect(html).toContain("workspace-main");
+    expect(html).toContain('id="main-content"');
+    expect(html).toContain("Ctrl+S to save");
+    expect(html).toContain("Public address: /@pitch-notes/match-plan");
+    expect(html).not.toContain("prefetch={false}");
+
+    const studioEditorSrc = fs.readFileSync(
+      path.join(root, "apps/web/src/components/studio/studio-editor.tsx"),
+      "utf8",
+    );
+    expect(studioEditorSrc).toContain("beforeunload");
+    expect(studioEditorSrc).toContain("Copy my text");
+    expect(studioEditorSrc).toContain("Reload latest draft");
+    expect(studioEditorSrc).toContain("Retry save");
   });
 });
