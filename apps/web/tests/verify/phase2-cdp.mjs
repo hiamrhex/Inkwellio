@@ -14,7 +14,7 @@ const REPO_ROOT = path.resolve(import.meta.dirname, "../../../..");
 const WEB_DIR = path.join(REPO_ROOT, "apps/web");
 const NEXT_BIN = path.join(REPO_ROOT, "node_modules/next/dist/bin/next");
 const SHOTS_DIR =
-  process.env.PHASE2_SHOTS_DIR || path.join(REPO_ROOT, ".logs/phase2-shots");
+  process.env.PHASE2_SHOTS_DIR || path.join(REPO_ROOT, ".logs/phase2-final-shots");
 fs.mkdirSync(SHOTS_DIR, { recursive: true });
 
 const RUN_TAG = Date.now();
@@ -399,6 +399,46 @@ async function cleanupQaData(pgClient) {
   };
 }
 
+/**
+ * Regression for the scroll-to-bottom jump: from any route, clicking the
+ * Inkwellio mark must land on `/` at scrollY === 0. The old build scrolled to
+ * the Publishing section because Next's route-transition scroll reset ran
+ * while `html { scroll-behavior: smooth }` was active.
+ */
+async function assertHomeLandsAtTop(page, baseUrl, fromRoute, brandSelector) {
+  await page.goto(`${baseUrl}${fromRoute}`);
+  await sleep(300);
+  const clickResult = await page.evalFn(`(() => {
+    window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "instant" });
+    const brand = document.querySelector(${JSON.stringify(brandSelector)});
+    if (!brand) return false;
+    brand.click();
+    return true;
+  })()`);
+  let landed = false;
+  for (let i = 0; i < 80; i += 1) {
+    if ((await page.evalFn("location.pathname")) === "/") {
+      landed = true;
+      break;
+    }
+    await sleep(150);
+  }
+  // Next's client transition can briefly hold both the old and new trees;
+  // wait until the single footer has settled before asserting shell metrics.
+  for (let i = 0; i < 40; i += 1) {
+    const footers = await page.evalFn("document.querySelectorAll('.site-footer').length");
+    if (footers <= 1) break;
+    await sleep(150);
+  }
+  await sleep(600);
+  const y = await page.evalFn("Math.round(window.scrollY)");
+  assertCond(
+    Boolean(clickResult) && landed && y === 0,
+    `${fromRoute} -> / lands at window.scrollY === 0`,
+    { clickResult, landed, y },
+  );
+}
+
 async function main() {
   const pgClient = new Client({ connectionString: DATABASE_URL });
   await pgClient.connect();
@@ -679,7 +719,10 @@ async function main() {
     );
     await cdp.call("Emulation.setDeviceMetricsOverride", { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false }, writerCtx.sessionId);
 
-    console.log("\n=== 5. ANONYMOUS PUBLIC READER ROUTES ===");
+    console.log("\n=== 5. HOME SCROLL REGRESSION (FROM /dashboard) ===");
+    await assertHomeLandsAtTop(writerCtx, baseUrl, "/dashboard", "a.workspace-brand");
+
+    console.log("\n=== 6. ANONYMOUS PUBLIC READER ROUTES ===");
     const readerCtx = await openContextPage(cdp, { width: 1440, height: 900, theme: "dark" });
     await readerCtx.goto(`${baseUrl}/@${PUB_EXPECTED_HANDLE}/qa-tactical-${RUN_TAG}`);
     const sawArticle = await readerCtx.waitForText("Published Tactical Study");
@@ -699,6 +742,30 @@ async function main() {
     await readerCtx.goto(`${baseUrl}/search?q=Tactical`);
     const sawSearchArticle = await readerCtx.waitForText("Published Tactical Study");
     assertCond(sawSearchArticle, "search finds published article", sawSearchArticle);
+
+    console.log("\n=== 7. HOME SCROLL REGRESSION (FROM /topics) + PUBLIC FOOTER TOGGLE ===");
+    await assertHomeLandsAtTop(readerCtx, baseUrl, "/topics", "a.nav-logo");
+    // Full reload after the client-transition check guarantees a settled DOM.
+    await readerCtx.goto(`${baseUrl}/`);
+    const publicShell = await readerCtx.evalFn(`(() => ({
+      headerMotion: document.querySelectorAll("header [data-motion-toggle]").length,
+      footerMotion: document.querySelectorAll(".site-footer button[data-motion-toggle]").length,
+      marketing: [...document.querySelectorAll("header a")].filter((a) => ["Principles", "Editor", "Reading", "Publishing"].includes(a.textContent.trim())).length,
+      footerText: document.querySelector(".site-footer")?.innerText || "",
+    }))()`);
+    assertCond(
+      publicShell.headerMotion === 0 && publicShell.footerMotion === 1 && publicShell.marketing === 4,
+      "/ header has 0 motion toggles, footer has 1, and 4 marketing anchors",
+      publicShell,
+    );
+    await readerCtx.evalFn(`document.querySelector(".site-footer [data-motion-toggle]").click()`);
+    await sleep(200);
+    const paused = await readerCtx.evalFn(`document.documentElement.getAttribute("data-motion")`);
+    assertCond(paused === "paused", "footer Pause motion sets data-motion=paused", paused);
+    await readerCtx.evalFn(`document.querySelector(".site-footer [data-motion-toggle]").click()`);
+    await sleep(200);
+    const resumed = await readerCtx.evalFn(`document.documentElement.getAttribute("data-motion")`);
+    assertCond(resumed === "active", "footer Resume motion sets data-motion=active", resumed);
     await readerCtx.dispose();
 
     console.log("\n=== 6. /settings/privacy EXPORT & TWO-STEP ERASURE ===");
@@ -714,6 +781,58 @@ async function main() {
     await writerCtx.evalFn(`localStorage.setItem("inkwellio-theme", "light"); document.documentElement.setAttribute("data-theme", "light");`);
     await writerCtx.saveShot("settings-light.png");
     await writerCtx.evalFn(`localStorage.setItem("inkwellio-theme", "dark"); document.documentElement.setAttribute("data-theme", "dark");`);
+
+    console.log("\n=== 8. FINAL SCREENSHOT SWEEPS (1440x900 + 390x844, dark + light) ===");
+    const sweepRoutes = [
+      ["home", "/"],
+      ["topics", "/topics"],
+      ["dashboard", "/dashboard"],
+      ["studio", `/studio/${encodeURIComponent(postId)}`],
+      ["reader", `/@${PUB_EXPECTED_HANDLE}/qa-tactical-${RUN_TAG}`],
+      ["settings", "/settings/privacy"],
+    ];
+    for (const vp of [
+      { label: "desktop", width: 1440, height: 900, mobile: false },
+      { label: "mobile", width: 390, height: 844, mobile: true },
+    ]) {
+      await cdp.call(
+        "Emulation.setDeviceMetricsOverride",
+        { width: vp.width, height: vp.height, deviceScaleFactor: 1, mobile: vp.mobile },
+        writerCtx.sessionId,
+      );
+      for (const [name, route] of sweepRoutes) {
+        await writerCtx.goto(`${baseUrl}${route}`);
+        await sleep(250);
+        const shellAudit = await writerCtx.evalFn(`(() => ({
+          headerMotion: document.querySelectorAll("header [data-motion-toggle]").length,
+          marketing: [...document.querySelectorAll("header a")].filter((a) => ["Principles", "Editor", "Reading", "Publishing"].includes(a.textContent.trim())).length,
+          overflowPx: Math.round(document.documentElement.scrollWidth - document.documentElement.clientWidth),
+        }))()`);
+        assertCond(
+          shellAudit.headerMotion === 0 &&
+            shellAudit.marketing === (route === "/" ? 4 : 0) &&
+            shellAudit.overflowPx <= 1,
+          `${vp.label}/dark ${route}: 0 header toggles, correct anchors, 0 overflow`,
+          shellAudit,
+        );
+        await writerCtx.saveShot(`${name}-${vp.label}-dark.png`);
+        await writerCtx.evalFn(
+          `localStorage.setItem("inkwellio-theme", "light"); document.documentElement.setAttribute("data-theme", "light");`,
+        );
+        await sleep(150);
+        await writerCtx.saveShot(`${name}-${vp.label}-light.png`);
+        await writerCtx.evalFn(
+          `localStorage.setItem("inkwellio-theme", "dark"); document.documentElement.setAttribute("data-theme", "dark");`,
+        );
+      }
+    }
+    await cdp.call(
+      "Emulation.setDeviceMetricsOverride",
+      { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false },
+      writerCtx.sessionId,
+    );
+    await writerCtx.goto(`${baseUrl}/settings/privacy`);
+    await writerCtx.waitForText(QA_EMAIL);
 
     await writerCtx.clickButtonByText("Export JSON");
     const sawExportDone = await writerCtx.waitForText("Downloaded inkwellio-export-");
@@ -733,9 +852,31 @@ async function main() {
 
     await writerCtx.setInputValue("#erasure-token", CONFIRM_PLAIN_TOKEN);
     await writerCtx.setInputValue("#erasure-confirm-phrase", "DELETE");
+    // Let React commit the controlled inputs before enabling the submit button.
+    for (let i = 0; i < 20; i += 1) {
+      const enabled = await writerCtx.evalFn(`(() => {
+        const b = [...document.querySelectorAll("button")].find((el) => el.textContent.trim() === "Permanently delete account");
+        return Boolean(b) && !b.disabled;
+      })()`);
+      if (enabled) break;
+      await sleep(150);
+    }
     await writerCtx.clickButtonByText("Permanently delete account");
-    const sawErased = await writerCtx.waitForText("Account deleted");
-    assertCond(sawErased, "erasure Step 2 confirms and permanently deletes account", sawErased);
+    const sawErased = await writerCtx.waitForText("Account deleted", 15000);
+    const erasureState = await writerCtx.evalFn(`({
+      text: (document.body.innerText || "").slice(-700),
+      url: location.pathname,
+    })`);
+    const erasedRows = await pgClient.query(
+      "SELECT count(*)::int AS n FROM users WHERE email = $1",
+      [QA_EMAIL],
+    );
+    assertCond(
+      sawErased ||
+        (erasureState.url === "/sign-in" && erasedRows.rows[0].n === 0),
+      "erasure Step 2 confirms and permanently deletes account",
+      { sawErased, url: erasureState.url, remainingQaUserRows: erasedRows.rows[0].n, text: erasureState.text },
+    );
 
     // Telemetry checks
     assertCond(

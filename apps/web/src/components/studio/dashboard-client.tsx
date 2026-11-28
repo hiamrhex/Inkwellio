@@ -23,7 +23,7 @@ export interface DashboardClientProps {
   readonly initialPosts: readonly DashboardPostSummary[];
 }
 
-type FilterTab = "draft" | "published" | "deleted";
+type FilterTab = "all" | "draft" | "published" | "deleted";
 
 interface FeedbackNotice {
   readonly kind: "error" | "success";
@@ -33,6 +33,7 @@ interface FeedbackNotice {
 }
 
 const TAB_LABELS: ReadonlyArray<{ readonly key: FilterTab; readonly label: string }> = [
+  { key: "all", label: "All" },
   { key: "draft", label: "Drafts" },
   { key: "published", label: "Published" },
   { key: "deleted", label: "Trash" },
@@ -54,6 +55,8 @@ export function DashboardClient({
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [cooldownSeconds, setCooldownSeconds] = useState<number>(0);
   const [notice, setNotice] = useState<FeedbackNotice | null>(null);
+  const [titleQuery, setTitleQuery] = useState("");
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (cooldownSeconds <= 0) return undefined;
@@ -321,13 +324,35 @@ export function DashboardClient({
     router.refresh();
   }
 
-  const filteredPosts = posts.filter((post) => post.status === activeTab);
+  const filteredPosts = posts.filter((post) => {
+    const matchesTab = activeTab === "all" || post.status === activeTab;
+    const query = titleQuery.trim().toLowerCase();
+    return matchesTab && (query === "" || post.title.toLowerCase().includes(query));
+  });
   const actionsLocked = busyAction !== null || cooldownSeconds > 0;
+
+  async function copyPublicationLink() {
+    if (publication === null) return;
+    const link = `${window.location.origin}/@${encodeURIComponent(publication.slug)}`;
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setNotice({ kind: "error", message: "Could not copy the link. Select the address manually." });
+    }
+  }
+
+  const statusCounts = {
+    draft: posts.filter((post) => post.status === "draft").length,
+    published: posts.filter((post) => post.status === "published").length,
+    deleted: posts.filter((post) => post.status === "deleted").length,
+  };
 
   return (
     <main
       id="main-content"
-      className="workspace-main px-4 pb-16 sm:px-6"
+      className="workspace-main"
       style={{
         backgroundColor: "var(--bg-canvas)",
         color: "var(--text-primary)",
@@ -487,37 +512,35 @@ export function DashboardClient({
         ) : (
           <>
             <header
-              className="flex flex-col justify-between gap-4 rounded-xl border p-6 sm:flex-row sm:items-center sm:p-8"
+              className="workspace-overview-header"
               style={{
                 backgroundColor: "var(--bg-surface1)",
                 borderColor: "var(--border-hairline)",
                 boxShadow: "var(--shadow-card)",
               }}
             >
-              <div>
-                <h1 className="font-serif text-2xl font-semibold tracking-tight sm:text-3xl">
-                  {publication.name}
-                </h1>
-                <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-                  <span
-                    className="font-mono"
-                    style={{ color: "var(--text-muted)" }}
-                  >
+              <div className="min-w-0">
+                <h1 className="workspace-page-title">{publication.name}</h1>
+                <div className="workspace-pub-meta">
+                  <span className="font-mono text-xs" style={{ color: "var(--text-muted)" }}>
                     @{publication.slug}
                   </span>
+                  <button
+                    type="button"
+                    onClick={() => void copyPublicationLink()}
+                    className="workspace-quiet-action"
+                    aria-live="polite"
+                  >
+                    {copied ? "Copied" : "Copy link"}
+                  </button>
                   <Link
                     href={`/@${encodeURIComponent(publication.slug)}`}
-                    className="inline-flex min-h-[44px] items-center underline underline-offset-4 hover:opacity-80"
-                    style={{ color: "var(--text-primary)" }}
+                    className="workspace-quiet-action"
                   >
-                    View public page
+                    View live
                   </Link>
-                  <Link
-                    href="/settings/privacy"
-                    className="inline-flex min-h-[44px] items-center underline underline-offset-4 hover:opacity-80"
-                    style={{ color: "var(--text-muted)" }}
-                  >
-                    Privacy & export
+                  <Link href="/settings/privacy" className="workspace-quiet-action">
+                    Privacy &amp; export
                   </Link>
                 </div>
               </div>
@@ -526,17 +549,39 @@ export function DashboardClient({
                 type="button"
                 onClick={handleNewDraft}
                 disabled={actionsLocked}
-                className="inline-flex min-h-[44px] shrink-0 cursor-pointer items-center justify-center rounded-md px-5 py-2.5 text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-60"
-                style={{
-                  backgroundColor: "var(--btn-primary-bg)",
-                  color: "var(--btn-primary-text)",
-                }}
+                className="workspace-header-new"
               >
                 {busyAction === "create-post" ? "Creating draft..." : "New draft"}
               </button>
             </header>
 
-            <section aria-label="Posts by status" className="flex flex-col gap-5">
+            <section aria-label="Publication overview" className="workspace-metrics">
+              {(
+                [
+                  { key: "draft", label: "Drafts", count: statusCounts.draft },
+                  { key: "published", label: "Published", count: statusCounts.published },
+                  { key: "deleted", label: "Trash", count: statusCounts.deleted },
+                ] as const
+              ).map((metric) => (
+                <button
+                  key={metric.key}
+                  type="button"
+                  onClick={() => setActiveTab(metric.key)}
+                  className="workspace-metric-card"
+                  data-active={activeTab === metric.key ? "true" : undefined}
+                  style={{
+                    backgroundColor: "var(--bg-surface1)",
+                    borderColor: "var(--border-hairline)",
+                    boxShadow: "var(--shadow-card)",
+                  }}
+                >
+                  <span className="workspace-metric-count font-mono">{metric.count}</span>
+                  <span className="workspace-metric-label">{metric.label}</span>
+                </button>
+              ))}
+            </section>
+
+            <section aria-label="Posts by status" className="workspace-posts-section">
               <div
                 role="tablist"
                 aria-label="Filter posts by lifecycle state"
@@ -574,20 +619,62 @@ export function DashboardClient({
                 })}
               </div>
 
+              <div className="workspace-search-row">
+                <label htmlFor="post-search" className="sr-only">
+                  Search stories by title
+                </label>
+                <input
+                  id="post-search"
+                  type="search"
+                  value={titleQuery}
+                  onChange={(event) => setTitleQuery(event.target.value)}
+                  placeholder="Search your stories"
+                  className="workspace-search-input"
+                  style={{
+                    backgroundColor: "var(--bg-surface1)",
+                    borderColor: "var(--border-hairline)",
+                    color: "var(--text-primary)",
+                  }}
+                />
+              </div>
+
               {filteredPosts.length === 0 ? (
                 <div
-                  className="rounded-xl border p-8 text-center text-sm"
+                  className="workspace-empty-state"
                   style={{
                     backgroundColor: "var(--bg-surface1)",
                     borderColor: "var(--border-hairline)",
                     color: "var(--text-muted)",
                   }}
                 >
-                  {activeTab === "draft"
-                    ? "No drafts yet. Start with New draft above."
-                    : activeTab === "published"
-                      ? "No published posts yet."
-                      : "Trash is empty. Deleted drafts and stories appear here until you restore them."}
+                  <h2 className="workspace-empty-title">
+                    {titleQuery.trim() !== ""
+                      ? "No matching stories"
+                      : activeTab === "draft"
+                        ? "Your next story starts here"
+                        : activeTab === "published"
+                          ? "Nothing published yet"
+                          : activeTab === "deleted"
+                            ? "Trash is empty"
+                            : "No stories yet"}
+                  </h2>
+                  <p className="workspace-empty-copy">
+                    {titleQuery.trim() !== ""
+                      ? "Try a different title or clear the search."
+                      : activeTab === "deleted"
+                        ? "Deleted drafts and stories appear here until you restore them."
+                        : "Write at your own pace. Your draft saves as you go."}
+                  </p>
+                  {titleQuery.trim() === "" ? (
+                    <button
+                      type="button"
+                      onClick={handleNewDraft}
+                      disabled={actionsLocked}
+                      className="workspace-header-new"
+                    >
+                      Start writing
+                    </button>
+                  ) : null}
                 </div>
               ) : (
                 <ul className="flex flex-col gap-3">
@@ -600,14 +687,7 @@ export function DashboardClient({
                           : "var(--text-faint)";
 
                     return (
-                      <li
-                        key={post.id}
-                        className="flex flex-col justify-between gap-4 rounded-xl border p-5 sm:flex-row sm:items-center"
-                        style={{
-                          backgroundColor: "var(--bg-surface1)",
-                          borderColor: "var(--border-hairline)",
-                        }}
-                      >
+                      <li key={post.id} className="workspace-story-row">
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-2.5">
                             <span
@@ -630,14 +710,11 @@ export function DashboardClient({
                             </time>
                           </div>
 
-                          <h2 className="mt-1.5 truncate font-serif text-lg font-medium">
+                          <h2 className="workspace-story-title">
                             {post.title.trim() !== "" ? post.title : "Untitled draft"}
                           </h2>
 
-                          <p
-                            className="mt-1 truncate font-mono text-xs"
-                            style={{ color: "var(--text-faint)" }}
-                          >
+                          <p className="workspace-story-path font-mono">
                             /@{publication.slug}/{post.slug}
                           </p>
                         </div>

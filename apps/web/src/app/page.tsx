@@ -77,8 +77,11 @@ export default function Home() {
               </p>
 
               <div className="hero-cta-row">
-                <MagneticButton href="/sign-up" className="btn-primary">
+                <MagneticButton href="/sign-up" className="btn-primary cta-guest">
                   Sign up
+                </MagneticButton>
+                <MagneticButton href="/dashboard" className="btn-primary cta-signed-in">
+                  Open dashboard
                 </MagneticButton>
                 <a href="#post-life" className="btn-ghost">
                   See how it works
@@ -230,7 +233,7 @@ export default function Home() {
 
             <div style={{ display: "flex", alignItems: "center", gap: "0.625rem", marginBottom: "1.25rem" }}>
               <span className="status-dot status-dot-live" aria-hidden="true" />
-              <span style={{ fontSize: "0.75rem", fontFamily: "var(--font-geist-mono)", color: "var(--text-faint)" }}>
+              <span style={{ fontSize: "0.75rem", fontFamily: "var(--font-code)", color: "var(--text-faint)" }}>
                 Sample post — Match analysis, 6 min read
               </span>
             </div>
@@ -254,7 +257,7 @@ export default function Home() {
                 fontSize: "0.875rem",
                 color: "var(--text-muted)",
                 marginBottom: "2rem",
-                fontFamily: "var(--font-geist-mono)",
+                fontFamily: "var(--font-code)",
               }}
             >
               Sample preview — Comfortable reading width
@@ -280,11 +283,11 @@ export default function Home() {
                 flexWrap: "wrap",
                 gap: "1rem",
                 fontSize: "0.75rem",
-                fontFamily: "var(--font-geist-mono)",
+                fontFamily: "var(--font-code)",
                 color: "var(--text-faint)",
               }}
             >
-              <span>inkwellio.example/@sample/inverted-fullbacks</span>
+              <span>@sample/inverted-fullbacks</span>
               <span>Newsreader serif</span>
             </div>
           </div>
@@ -322,7 +325,7 @@ export default function Home() {
               {[
                 {
                   title: "Your link",
-                  body: "Your page lives at inkwellio.example/@yourname. Every article keeps a lasting /@handle/slug and /p/@handle/slug link.",
+                  body: "Your page lives at a lasting address of your own. Every story keeps a permanent /@handle/slug link.",
                 },
                 {
                   title: "Safe drafts and export",
@@ -391,12 +394,15 @@ export default function Home() {
                 margin: 0,
               }}
             >
-              Write in plain Markdown, pick your topics, and publish at your own link.
+              Write cleanly without clutter, pick your topics, and publish at your own link.
             </p>
 
             <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", justifyContent: "center" }}>
-              <MagneticButton href="/sign-up" className="btn-primary">
+              <MagneticButton href="/sign-up" className="btn-primary cta-guest">
                 Sign up
+              </MagneticButton>
+              <MagneticButton href="/dashboard" className="btn-primary cta-signed-in">
+                Open dashboard
               </MagneticButton>
               <Link href="/topics" className="btn-ghost">
                 Browse topics
@@ -410,7 +416,7 @@ export default function Home() {
                 margin: 0,
               }}
             >
-              Safe drafts, football topics, and full JSON export are ready today.
+              Safe drafts, football topics, and a full story backup are ready today.
             </p>
           </div>
         </section>

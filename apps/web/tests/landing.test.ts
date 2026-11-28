@@ -304,10 +304,23 @@ describe("Touch targets, CSP & runtime budgets", () => {
    4. Shared Shell, Auth Island, Navigation Anchors & Subpages
    ════════════════════════════════════════════════════════════════ */
 describe("Shared Shell & Public Reading Routes", () => {
-  it("header renders unified single top bar, Pause motion footer toggle, and zero prefetch={false}", () => {
+  it("header renders 3 zones with zero motion toggles; the only motion toggle lives in the footer", () => {
     for (const label of ["Principles", "Editor", "Reading", "Publishing"]) {
       expect(siteShellSrc).toContain(label);
     }
+    const headerBlock = siteShellSrc.slice(
+      siteShellSrc.indexOf("export function SiteHeader"),
+      siteShellSrc.indexOf("export function SiteFooter"),
+    );
+    const footerBlock = siteShellSrc.slice(siteShellSrc.indexOf("export function SiteFooter"));
+    expect(headerBlock.match(/data-motion-toggle/g) ?? []).toHaveLength(0);
+    expect(headerBlock).not.toContain("MotionToggle");
+    expect(footerBlock.match(/data-motion-toggle/g)).toHaveLength(1);
+    expect(footerBlock).toContain("Pause motion");
+    expect(footerBlock).toContain("Resume motion");
+    expect(footerBlock).toContain("Inkwellio — 2026 — Independent football publishing");
+    expect(siteShellSrc).not.toContain("inkwellio.example");
+
     expect(siteShellSrc).toContain("site-header-bar");
     expect(siteShellSrc).toContain("site-header-inner");
     expect(siteShellSrc).toContain("minimalHeader");
@@ -316,11 +329,8 @@ describe("Shared Shell & Public Reading Routes", () => {
     expect(siteShellSrc).toContain("nav-zone-left");
     expect(siteShellSrc).toContain("nav-zone-right");
     expect(siteShellSrc).toContain("<ThemeToggle");
-    expect(siteShellSrc).toContain("<MotionToggle");
     expect(siteShellSrc).toContain("<SessionNavActions");
     expect(siteShellSrc).toContain('data-motion-toggle="true"');
-    expect(siteShellSrc).toContain("Pause motion");
-    expect(siteShellSrc).toContain("Motion paused — Resume");
     expect(siteShellSrc).toContain('href="#main-content"');
     expect(siteShellSrc).toContain('href="/privacy"');
     expect(siteShellSrc).toContain('href="/terms"');
@@ -335,6 +345,33 @@ describe("Shared Shell & Public Reading Routes", () => {
 
     for (const src of [siteShellSrc, sessionNavSrc, bentoSrc, bentoControlsSrc, magneticSrc, pageSrc]) {
       expect(src).not.toContain("prefetch={false}");
+    }
+  });
+
+  it("marketing anchors only render on /; reader routes use Topics / Search", () => {
+    const homeHeader = siteShellSrc.slice(
+      siteShellSrc.indexOf("export function SiteHeader"),
+      siteShellSrc.indexOf("export function SiteFooter"),
+    );
+    expect(siteShellSrc).toContain("#essentials");
+    expect(siteShellSrc).toContain('href="/topics"');
+    expect(siteShellSrc).toContain('href="/search"');
+    expect(homeHeader).toContain('href={item.anchor}');
+    expect(homeHeader).toContain('href={item.href}');
+    // isHome gates the marketing nav; non-home routes can only render the reader nav.
+    expect(homeHeader).toMatch(/minimalHeader \? null : isHome \?/);
+
+    for (const [label, src] of [
+      ["/topics", topicsSrc],
+      ["/topics/[slug]", topicDetailSrc],
+      ["/search", searchSrc],
+      ["/p/[handle]", pubHandleSrc],
+      ["/p/[handle]/[slug]", pubPostSrc],
+      ["/privacy", readSrc("apps/web/src/app/privacy/page.tsx")],
+      ["/terms", readSrc("apps/web/src/app/terms/page.tsx")],
+    ] as const) {
+      expect(src, `${label} must not render marketing anchors`).not.toContain("#essentials");
+      expect(src, `${label} must not render marketing anchors`).not.toContain("#publishing");
     }
   });
 
@@ -367,7 +404,7 @@ describe("Shared Shell & Public Reading Routes", () => {
       expect(src, `${label} must render SiteShell`).toContain("<SiteShell");
       expect(src, `${label} must provide id="main-content"`).toContain('id="main-content"');
       expect(src, `${label} must not use broken dark:border-zinc-800`).not.toContain("dark:border-zinc-800");
-      expect(src, `${label} must use token colors`).toContain("var(--border-hairline)");
+      expect(cssSrc, `${label} must use token colors`).toContain("var(--border-hairline)");
     }
     expect(pubHandleSrc).toContain('href="/"');
     expect(pubHandleSrc).toContain('href="/topics"');
@@ -383,9 +420,9 @@ describe("Shared Shell & Public Reading Routes", () => {
 describe("Signature stage, honest Bento & Hero artifact", () => {
   it("enforces 60/35/5 palette with subtle bounded emerald glints and clean hero framing", () => {
     expect(cssSrc).toContain("--bg-canvas:   #000000");
-    expect(cssSrc).toContain("--bg-surface1: #08090c");
+    expect(cssSrc).toContain("--bg-surface1: #0a0b0e");
     expect(cssSrc).toContain("--status-live:      #10b981");
-    expect(cssSrc).toContain("--bg-canvas:   #fafafa");
+    expect(cssSrc).toContain("--bg-canvas:   #f1f3f5");
     expect(tokens.dark.washSpec.emeraldMaxAlpha).toBeLessThanOrEqual(0.08);
     expect(tokens.light.washSpec.emeraldMaxAlpha).toBeLessThanOrEqual(0.07);
     expect(heroArtifactSrc).not.toContain("hero-wireframe-frame");
@@ -401,7 +438,7 @@ describe("Signature stage, honest Bento & Hero artifact", () => {
     expect(postLifeSrc).toContain("A post&apos;s life");
     expect(postLifeSrc).toContain("<Chip>Illustration</Chip>");
     expect(postLifeSrc).toContain("/p/@handle/slug");
-    expect(postLifeSrc).toContain("inkwellio.example/@handle/city-away-leg");
+    expect(postLifeSrc).toContain("@handle/city-away-leg");
     expect(postLifeSrc).toContain("Write draft");
     expect(postLifeSrc).toContain("Choose topics &amp; slug");
     expect(postLifeSrc).toContain("Publish");
@@ -432,7 +469,7 @@ describe("Signature stage, honest Bento & Hero artifact", () => {
     expect(bentoSrc).toContain("03 / Topics");
     expect(bentoSrc).toContain("Organise by football topics");
     expect(bentoSrc).toContain('href="/topics"');
-    expect(bentoSrc).toContain("inkwellio.example/@");
+    expect(bentoSrc).toContain('domainPrefix="@"');
   });
 
   it("enforces Phase 1C plain-English copy (short <= 16-word sentences) with mutation proofs", () => {

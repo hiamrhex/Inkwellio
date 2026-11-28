@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { SiteShell } from "@/components/site-shell";
+import { WorkspaceShell } from "@/components/workspace-shell";
 import {
   loadStudioPostData,
   resolveStudioActor,
@@ -85,12 +85,12 @@ export default function StudioPostPage({
   params: Promise<{ postId: string }>;
 }) {
   return (
-    <SiteShell workspaceNav activePath="/studio">
+    <WorkspaceShell activePath="/studio">
       <Suspense
         fallback={
           <main
             id="main-content"
-            className="workspace-main px-4 py-12 sm:px-6"
+            className="workspace-main py-12"
             style={{
               backgroundColor: "var(--bg-canvas)",
               color: "var(--text-muted)",
@@ -102,6 +102,6 @@ export default function StudioPostPage({
       >
         <StudioLoader params={params} />
       </Suspense>
-    </SiteShell>
+    </WorkspaceShell>
   );
 }

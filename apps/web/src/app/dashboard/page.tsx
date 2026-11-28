@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { SiteShell } from "@/components/site-shell";
+import { WorkspaceShell } from "@/components/workspace-shell";
 import { DashboardClient } from "@/components/studio/dashboard-client";
 import {
   loadDashboardData,
@@ -61,12 +61,12 @@ async function DashboardLoader() {
 
 export default function DashboardPage() {
   return (
-    <SiteShell workspaceNav activePath="/dashboard">
+    <WorkspaceShell activePath="/dashboard">
       <Suspense
         fallback={
           <main
             id="main-content"
-            className="workspace-main px-4 py-12 sm:px-6"
+            className="workspace-main py-12"
             style={{
               backgroundColor: "var(--bg-canvas)",
               color: "var(--text-muted)",
@@ -78,6 +78,6 @@ export default function DashboardPage() {
       >
         <DashboardLoader />
       </Suspense>
-    </SiteShell>
+    </WorkspaceShell>
   );
 }

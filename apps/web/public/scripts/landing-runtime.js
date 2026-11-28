@@ -1,12 +1,10 @@
-/** landing-runtime.js */
 (function(){
-"use strict";
 var d=document.documentElement,W=window,D=document,ls=localStorage,qA=function(s){return D.querySelectorAll(s);};
 var clamp=function(v,a,b){return v<a?a:v>b?b:v;},sv=function(e,k,v){if(e)e.style.setProperty(k,v);};
 var xy=function(e,p,a,b,u){if(e){e.style.setProperty(p+"x",a+u);e.style.setProperty(p+"y",b+u);}};
 var pz=function(){return d.getAttribute("data-motion")==="paused";};
-function syncM(p){for(var t=qA("[data-motion-toggle]"),lb=p?"Motion paused — Resume":"Pause motion",i=0;i<t.length;i++){t[i].setAttribute("aria-pressed",p?"true":"false");t[i].setAttribute("aria-label",lb);t[i].title=lb;}}
-function setM(p){try{d.setAttribute("data-motion",p?"paused":"active");ls.setItem("inkwellio-motion",p?"paused":"active");ls.setItem("inkwellio-motion-paused",p?"1":"0");syncM(p);W.dispatchEvent(new Event("inkwellio:motion-change"));}catch{}}
+function syncM(p){for(var t=qA("[data-motion-toggle]"),lb=p?"Resume motion":"Pause motion",i=0;i<t.length;i++){t[i].setAttribute("aria-pressed",p?"true":"false");t[i].setAttribute("aria-label",lb);t[i].title=lb;}}
+function setM(p){try{d.setAttribute("data-motion",p?"paused":"active");ls.setItem("inkwellio-motion",p?"paused":"active");syncM(p);W.dispatchEvent(new Event("inkwellio:motion-change"));}catch{}}
 D.addEventListener("click",function(e){var g=e.target&&e.target.closest?e.target:null,tb=g&&g.closest("[data-theme-toggle]"),mb=g&&g.closest("[data-motion-toggle]");if(tb){var nx=d.getAttribute("data-theme")==="dark"?"light":"dark";try{d.setAttribute("data-theme",nx);ls.setItem("inkwellio-theme",nx);}catch{}}else if(mb)setM(!pz());});
 var IS='input,textarea,select,button,a,label,[role="tab"],.auth-field,.bento-pill-btn',FS='input,textarea,select,[contenteditable="true"]';
 function init(){

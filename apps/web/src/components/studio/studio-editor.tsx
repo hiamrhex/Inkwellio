@@ -93,6 +93,7 @@ export function StudioEditor({
   const [topicLimitNotice, setTopicLimitNotice] = useState(false);
 
   const [editorMode, setEditorMode] = useState<"write" | "preview">("write");
+  const [inspectorOpen, setInspectorOpen] = useState(true);
   const [saveIndicator, setSaveIndicator] = useState<SaveIndicator>("idle");
   const [bannerMessage, setBannerMessage] = useState<string | null>(null);
   const [bannerFailureStatus, setBannerFailureStatus] = useState<number | null>(null);
@@ -437,27 +438,20 @@ export function StudioEditor({
   return (
     <main
       id="main-content"
-      className="workspace-main px-4 pb-16 sm:px-6"
+      className="workspace-main"
       style={{
         backgroundColor: "var(--bg-canvas)",
         color: "var(--text-primary)",
       }}
     >
-      <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
         <header
-          className="flex flex-wrap items-center justify-between gap-3 border-b pb-4"
+          className="studio-top-strip"
           style={{ borderColor: "var(--border-hairline)" }}
         >
           <div className="flex flex-wrap items-center gap-3">
-            <Link
-              href="/dashboard"
-              className="inline-flex min-h-[44px] items-center rounded-md border px-3.5 py-2 text-sm font-medium transition-opacity hover:opacity-80"
-              style={{
-                borderColor: "var(--border-hairline)",
-                color: "var(--text-primary)",
-              }}
-            >
-              Dashboard
+            <Link href="/dashboard" className="studio-back-link">
+              ← Posts
             </Link>
             <Chip>{publicationName}</Chip>
             <span
@@ -481,14 +475,18 @@ export function StudioEditor({
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            <span
-              aria-live="polite"
-              className="font-mono text-xs"
-              style={{ color: "var(--text-muted)" }}
-            >
-              {saveLabel}
+            <span className="studio-save-label" aria-live="polite">
+              {wordCount.toLocaleString()} words · {saveLabel} · Ctrl+S to save
             </span>
-
+            <button
+              type="button"
+              className="studio-inspector-toggle"
+              aria-expanded={inspectorOpen}
+              aria-controls="studio-inspector"
+              onClick={() => setInspectorOpen((open) => !open)}
+            >
+              {inspectorOpen ? "Hide details" : "Show details"}
+            </button>
             {status === "published" ? (
               <Link
                 href={livePostPath}
@@ -644,9 +642,11 @@ export function StudioEditor({
           </section>
         ) : null}
 
+        <div className="studio-columns" data-open={inspectorOpen ? "true" : "false"}>
+          <div className="studio-prose-column">
         <section
           aria-label="Draft editor"
-          className="flex flex-col gap-5 rounded-xl border p-5 sm:p-8"
+          className="studio-prose-card"
           style={{
             backgroundColor: "var(--bg-surface1)",
             borderColor: "var(--border-hairline)",
@@ -689,7 +689,7 @@ export function StudioEditor({
           <div className="flex flex-col gap-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <label htmlFor="post-body" className="text-sm font-medium">
-                Body (Markdown)
+                Story
               </label>
 
               <div className="flex items-center gap-2">
@@ -745,8 +745,8 @@ export function StudioEditor({
                   setBodyMarkdown(e.target.value);
                   setSaveIndicator("dirty");
                 }}
-                placeholder="Write in Markdown..."
-                className="w-full rounded-md border p-4 font-mono text-sm leading-relaxed"
+                placeholder="Write your story..."
+                className="studio-textarea"
                 style={{
                   backgroundColor: "var(--bg-canvas)",
                   borderColor: "var(--border-hairline)",
@@ -767,20 +767,22 @@ export function StudioEditor({
               </div>
             )}
 
-            <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="studio-editor-footer">
               <div className="flex flex-wrap items-center gap-3">
-                <span
-                  className="font-mono text-xs"
-                  style={{ color: "var(--text-faint)" }}
-                >
-                  {wordCount.toLocaleString()} words · {bodyBytes.toLocaleString()} / {BODY_MAX_BYTES.toLocaleString()} bytes
+                <span className="font-mono text-xs" style={{ color: "var(--text-faint)" }}>
+                  {wordCount.toLocaleString()} words
                 </span>
-                <span
-                  className="text-xs"
-                  style={{ color: "var(--text-faint)" }}
-                >
+                <span className="studio-save-label" style={{ color: "var(--text-faint)" }}>
+                  {saveLabel}
+                </span>
+                <span className="text-xs" style={{ color: "var(--text-faint)" }}>
                   Ctrl+S to save
                 </span>
+                {bodyBytes > BODY_MAX_BYTES * 0.8 ? (
+                  <span className="text-xs" style={{ color: "var(--status-amber)" }} role="status">
+                    Story is nearing the {BODY_MAX_BYTES.toLocaleString()}-byte limit.
+                  </span>
+                ) : null}
               </div>
 
               <button
@@ -799,7 +801,13 @@ export function StudioEditor({
             </div>
           </div>
         </section>
+          </div>
 
+          <aside
+            id="studio-inspector"
+            className="studio-inspector"
+            aria-label="Story details"
+          >
         <section
           aria-labelledby="topics-heading"
           className="flex flex-col gap-4 rounded-xl border p-5 sm:p-6"
@@ -1029,6 +1037,8 @@ export function StudioEditor({
             ) : null}
           </div>
         </section>
+          </aside>
+        </div>
       </div>
     </main>
   );

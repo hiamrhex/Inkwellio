@@ -42,14 +42,6 @@ function PublicationBreadcrumb({ handle }: { handle: string }) {
         Topics
       </Link>
       <span aria-hidden="true">/</span>
-      <Link
-        href="/search"
-        prefetch={false}
-        className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center px-2 hover:text-[var(--text-primary)] hover:underline ${FOCUS_RING}`}
-      >
-        Search
-      </Link>
-      <span aria-hidden="true">/</span>
       <span aria-current="page" className="text-[var(--text-primary)]">
         @{handle}
       </span>

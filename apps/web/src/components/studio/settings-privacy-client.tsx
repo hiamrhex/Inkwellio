@@ -63,26 +63,6 @@ export function SettingsPrivacyClient({
     setNotice({ kind: "error", message: formatApiFailure(res) });
   }
 
-  async function handleSignOut() {
-    if (busyAction !== null) return;
-    setBusyAction("sign-out");
-    setNotice(null);
-    try {
-      await fetch("/api/auth/sign-out", {
-        method: "POST",
-        credentials: "same-origin",
-        headers: { "content-type": "application/json" },
-        body: "{}",
-      });
-    } catch {
-      // Navigate away even if session cleanup request hits a transient network error.
-    } finally {
-      setBusyAction(null);
-      router.push("/");
-      router.refresh();
-    }
-  }
-
   async function handleExportData() {
     if (busyAction !== null || cooldownSeconds > 0) return;
     setBusyAction("export");
@@ -209,7 +189,7 @@ export function SettingsPrivacyClient({
     return (
       <main
         id="main-content"
-        className="workspace-main px-4 pb-16 sm:px-6"
+        className="workspace-main"
         style={{
           backgroundColor: "var(--bg-canvas)",
           color: "var(--text-primary)",
@@ -252,7 +232,7 @@ export function SettingsPrivacyClient({
   return (
     <main
       id="main-content"
-      className="workspace-main px-4 pb-16 sm:px-6"
+      className="workspace-main"
       style={{
         backgroundColor: "var(--bg-canvas)",
         color: "var(--text-primary)",
@@ -323,19 +303,6 @@ export function SettingsPrivacyClient({
                 {session.name ? ` (${session.name})` : ""}
               </p>
             </div>
-
-            <button
-              type="button"
-              disabled={busyAction !== null}
-              onClick={() => void handleSignOut()}
-              className="inline-flex min-h-[44px] shrink-0 cursor-pointer items-center justify-center rounded-md border px-4 py-2 text-sm font-medium transition-opacity hover:opacity-80 disabled:opacity-60"
-              style={{
-                borderColor: "var(--border-hairline)",
-                color: "var(--text-primary)",
-              }}
-            >
-              {busyAction === "sign-out" ? "Signing out..." : "Sign out"}
-            </button>
           </div>
 
           <div

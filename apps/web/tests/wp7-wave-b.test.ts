@@ -5,6 +5,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { SiteShell } from "../src/components/site-shell";
+import { WorkspaceShell } from "../src/components/workspace-shell";
 import {
   formatApiFailure,
   parseRetryAfterSeconds,
@@ -124,26 +125,118 @@ describe("WP7 Wave B Milestone 1: Layer 64, Workspace Shell & Dashboard", () => 
     expect(slugifyHandlePreview("dashboard")).toBe("dashboard-pub");
   });
 
-  it("renders SiteShell workspaceNav with Dashboard / Topics / Settings active state and clean footer copy", () => {
+  it("renders the workspace app shell with sidebar sections and a single Sign out", () => {
     const html = renderToStaticMarkup(
       createElement(
-        SiteShell,
-        {
-          workspaceNav: true,
-          activePath: "/dashboard",
-        },
+        WorkspaceShell,
+        { activePath: "/dashboard" },
         createElement("main", { id: "main-content" }, "body"),
       ),
     );
 
+    expect(html).toContain("workspace-shell");
+    expect(html).toContain("workspace-sidebar");
     expect(html).toContain('href="/dashboard"');
     expect(html).toContain('href="/topics"');
+    expect(html).toContain('href="/search"');
     expect(html).toContain('href="/settings/privacy"');
+    expect(html).toContain("Browse topics");
+    expect(html).toContain("New story");
+    expect(html).not.toContain("data-motion-toggle");
     expect(html).not.toContain('href="/history"');
     expect(html).not.toContain("inkwellio.example");
-    expect(html).toContain("Independent football publishing");
-    expect(html).toContain('data-active="true"');
-    expect(html).toContain("workspace-mobile-nav");
+
+    const shellSrc = fs.readFileSync(
+      path.join(root, "apps/web/src/components/workspace-shell.tsx"),
+      "utf8",
+    );
+    const headerBlock = shellSrc.slice(0, shellSrc.indexOf("<aside"));
+    expect(headerBlock).not.toContain("data-motion-toggle");
+    expect(shellSrc).toContain("aria-label=\"Workspace navigation\"");
+    expect(shellSrc).toContain('href={`/@${encodeURIComponent(publication.slug)}`}');
+    expect(shellSrc).toContain("setDrawerOpen(false)");
+    expect(shellSrc).toContain('event.key === "Escape"');
+  });
+
+  it("renders the reader shell with Topics / Search active state and no marketing anchors", () => {
+    const readerHtml = renderToStaticMarkup(
+      createElement(
+        SiteShell,
+        { activePath: "/topics" },
+        createElement("main", { id: "main-content" }, "body"),
+      ),
+    );
+    expect(readerHtml).toContain("site-header-bar");
+    expect(readerHtml).toContain('href="/topics"');
+    expect(readerHtml).toContain('href="/search"');
+    expect(readerHtml).toContain('aria-current="page"');
+    expect(readerHtml).not.toContain("Principles");
+    expect(readerHtml).not.toContain("Publishing");
+    expect(readerHtml).toContain("Inkwellio — 2026 — Independent football publishing");
+
+    const homeHtml = renderToStaticMarkup(
+      createElement(
+        SiteShell,
+        { isHome: true },
+        createElement("main", { id: "main-content" }, "body"),
+      ),
+    );
+    for (const label of ["Principles", "Editor", "Reading", "Publishing"]) {
+      expect(homeHtml).toContain(label);
+    }
+  });
+
+  it("root html declares smooth-scroll intent so Next disables it during route transitions", () => {
+    const layoutSrc = fs.readFileSync(
+      path.join(root, "apps/web/src/app/layout.tsx"),
+      "utf8",
+    );
+    const cssSrc = fs.readFileSync(
+      path.join(root, "apps/web/src/app/globals.css"),
+      "utf8",
+    );
+    expect(layoutSrc).toContain('data-scroll-behavior="smooth"');
+    expect(cssSrc).toMatch(/html\s*\{[^}]*scroll-behavior:\s*smooth/);
+  });
+
+  it("signed-in landing CTAs and plain writer copy replace developer jargon", () => {
+    const pageSrc = fs.readFileSync(
+      path.join(root, "apps/web/src/app/page.tsx"),
+      "utf8",
+    );
+    expect(pageSrc).toContain("Open dashboard");
+    expect(pageSrc).toContain('href="/dashboard"');
+    expect(pageSrc).toContain('href="/sign-up"');
+    expect(pageSrc).not.toContain("Write in plain Markdown");
+    expect(pageSrc).not.toContain("full JSON export");
+    expect(pageSrc).not.toContain("inkwellio.example");
+
+    const cssSrc = fs.readFileSync(
+      path.join(root, "apps/web/src/app/globals.css"),
+      "utf8",
+    );
+    expect(cssSrc).toContain(".site-header-bar:has(.nav-auth-slot button) ~ main .cta-signed-in");
+  });
+
+  it("topics directory renders a two-column card grid and no bogus breadcrumb", () => {
+    const topicsSrc = fs.readFileSync(
+      path.join(root, "apps/web/src/app/topics/page.tsx"),
+      "utf8",
+    );
+    expect(topicsSrc).toContain('className="topics-grid"');
+    expect(topicsSrc).toContain('className="topic-card"');
+    expect(topicsSrc).not.toContain("Breadcrumb");
+    expect(topicsSrc).not.toContain('href="/search"');
+    expect(topicsSrc).toContain('activePath="/topics"');
+
+    const cssSrc = fs.readFileSync(
+      path.join(root, "apps/web/src/app/globals.css"),
+      "utf8",
+    );
+    const gridBlock = cssSrc.slice(cssSrc.indexOf(".topics-grid"), cssSrc.indexOf(".topic-card-name"));
+    expect(gridBlock).toContain("grid-template-columns: repeat(2, minmax(0, 1fr))");
+    expect(gridBlock).toContain("gap: 24px");
+    expect(gridBlock).toMatch(/\.topic-card:hover\s*\{[^}]*translateY\(-4px\)/);
   });
 
   it("DashboardClient renders live URL preview on setup and Publish/Unpublish + Trash/Restore + Settings links when ready", () => {
@@ -246,7 +339,7 @@ describe("WP7 Wave B Milestone 1: Layer 64, Workspace Shell & Dashboard", () => 
 
     expect(policySrc).toContain('export const policy = "authenticated" as const;');
     expect(pageSrc).toContain('redirect("/sign-in?next=%2Fsettings%2Fprivacy")');
-    expect(pageSrc).toContain('<SiteShell workspaceNav activePath="/settings/privacy">');
+    expect(pageSrc).toContain('<WorkspaceShell activePath="/settings/privacy">');
     expect(clientSrc).toContain("/api/account/erasure/request");
     expect(clientSrc).toContain("/api/account/erasure/confirm");
     expect(clientSrc).toContain("/api/auth/sign-out");
