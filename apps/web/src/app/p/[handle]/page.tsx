@@ -28,6 +28,7 @@ function PublicationBreadcrumb({ handle }: { handle: string }) {
     >
       <Link
         href="/"
+        prefetch={false}
         className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center px-2 hover:text-[var(--text-primary)] hover:underline ${FOCUS_RING}`}
       >
         Home
@@ -35,6 +36,7 @@ function PublicationBreadcrumb({ handle }: { handle: string }) {
       <span aria-hidden="true">/</span>
       <Link
         href="/topics"
+        prefetch={false}
         className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center px-2 hover:text-[var(--text-primary)] hover:underline ${FOCUS_RING}`}
       >
         Topics
@@ -42,6 +44,7 @@ function PublicationBreadcrumb({ handle }: { handle: string }) {
       <span aria-hidden="true">/</span>
       <Link
         href="/search"
+        prefetch={false}
         className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center px-2 hover:text-[var(--text-primary)] hover:underline ${FOCUS_RING}`}
       >
         Search
@@ -101,6 +104,7 @@ async function PublicationFeedView({
             >
               <Link
                 href={`/@${encodeURIComponent(publication.slug)}/${encodeURIComponent(item.slug)}`}
+                prefetch={false}
                 className={`inline-flex min-h-[44px] items-center font-serif text-xl font-medium text-[var(--text-primary)] hover:underline ${FOCUS_RING}`}
                 style={{ fontFamily: "var(--font-editorial)" }}
               >

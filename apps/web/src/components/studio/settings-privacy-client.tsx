@@ -451,14 +451,21 @@ export function SettingsPrivacyClient({
           className="flex flex-col gap-5 rounded-xl border p-6"
           style={{
             backgroundColor: "var(--bg-surface1)",
-            borderColor: "var(--status-amber)",
+            borderColor: "var(--border-hairline)",
             boxShadow: "var(--shadow-card)",
           }}
         >
           <div>
-            <h2 id="delete-account-heading" className="text-base font-semibold">
-              Delete account
-            </h2>
+            <div className="flex items-center gap-2">
+              <span
+                aria-hidden="true"
+                className="inline-block h-1.5 w-1.5 rounded-full"
+                style={{ backgroundColor: "var(--status-amber)" }}
+              />
+              <h2 id="delete-account-heading" className="text-base font-semibold">
+                Delete account
+              </h2>
+            </div>
             <p className="mt-1 text-sm leading-relaxed" style={{ color: "var(--text-muted)" }}>
               Account deletion is permanent and removes your profile, sessions, publication, drafts, published posts, and revisions. For verification, a single-use 15-minute confirmation code is emailed to{" "}
               <span className="font-mono" style={{ color: "var(--text-primary)" }}>

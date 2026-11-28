@@ -551,6 +551,7 @@ export function DashboardClient({
                       key={tab.key}
                       type="button"
                       role="tab"
+                      data-tab={tab.key}
                       aria-selected={selected}
                       onClick={() => setActiveTab(tab.key)}
                       className="inline-flex min-h-[44px] cursor-pointer items-center gap-2 rounded-md border px-4 py-2 text-sm font-medium transition-opacity hover:opacity-90"
@@ -564,7 +565,7 @@ export function DashboardClient({
                         borderColor: "var(--border-hairline)",
                       }}
                     >
-                      <span>{tab.label}</span>
+                      <span>{tab.label}</span>{" "}
                       <span className="font-mono text-xs opacity-80">
                         {count}
                       </span>

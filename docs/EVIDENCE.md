@@ -153,3 +153,14 @@ branch, so that contract remains `Unverified`.
 | E-052 | disable the `after(...)` registration in that helper, rerun, restore | `Tests 2 failed | 1 passed (3)` (`expected [] to have a length of 1 but got +0`) |
 | E-053 | `pnpm check` after the fix | lint, typecheck, build, `Test Files 62 passed (62)`, `Tests 614 passed (614)`, boundaries green |
 | E-054 | post-gate cleanup | `rateLimitCountersDeleted:94`, all `remaining` values `0`, `pass:true` |
+
+## K. WP7 Wave B frontend completion (branch `wp7-wave-b`)
+
+**Unverified.** Local `next start` on `127.0.0.1`, local PostgreSQL 18 on `55433`, and `EMAIL_TRANSPORT=capture` only. No deployed production host or live Gmail SMTP transport was contacted, and `/history` stays unimplemented per `docs/handoffs/phase2-api-ready.md` (no revisions/trash backend endpoint).
+
+| ID | Command / source | Trimmed result |
+| --- | --- | --- |
+| E-060 | `REQUIRE_DB=1 DATABASE_URL=postgresql://postgres@localhost:55433/inkwellio BETTER_AUTH_SECRET=... BETTER_AUTH_URL=http://127.0.0.1:3102 pnpm check` | `lint`, `typecheck`, `build` (30 routes incl. `/dashboard`, `/studio/[postId]`, `/settings/privacy`), `Test Files 63 passed (63)`, `Tests 622 passed (622)`, boundaries clean (`✔ no dependency violations found (180 modules, 348 dependencies cruised)`) |
+| E-061 | `node apps/web/tests/verify/phase2-cdp.mjs` (production `next start` + headless Chrome + local Postgres 18) | `SUMMARY: 0 FAILURES`: anonymous redirects (`/dashboard`, `/studio/[postId]`, `/settings/privacy`), sign-up -> verify -> `/dashboard`, live `@handle` URL preview, `/studio/[postId]` draft save/XSS-escape Preview/topics/slug, real `409 Conflict` (`Copy my text` + `Reload latest draft`), `429 Retry-After` cooldown & `503` non-JSON recovery (`Retry save`), Trash/Restore/Publish inside `/dashboard`, anonymous reader (`/@handle/slug`, `/topics/tactics`, `/search`), `/settings/privacy` JSON export & 2-step erasure, 1440px/390px `overflowPx: 0`, `CLS: 0`, `0` page errors, `0` third-party requests, `remainingQaUsers: 0` |
+| E-062 | `apps/web/tests/wp7-wave-b.test.ts` + `apps/web/tests/db/wp8-concurrency-and-loaders.test.ts` | Layer 64 `Retry-After`/`413`/`503` formatting, `SiteShell` `workspaceNav` + non-placeholder footer, `/dashboard` live preview + `Publish`/`Unpublish`/Trash, `StudioEditor` shortcuts/`beforeunload`/`409` copy, `/settings/privacy` policy + `loadSettingsData` user isolation |
+| E-063 | `git diff --name-only origin/main..HEAD` | frontend, test, and docs files only; zero modifications under `apps/web/src/{modules,kernel,app/api}/**`, `package.json`, or `pnpm-lock.yaml` |

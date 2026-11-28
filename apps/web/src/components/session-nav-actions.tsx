@@ -120,9 +120,11 @@ export function SessionNavActions({
     <div className="nav-auth-slot">
       {authState === "signed-in" ? (
         <>
-          <Link href="/dashboard" className="nav-auth-link">
-            Dashboard
-          </Link>
+          {inWorkspace ? null : (
+            <Link href="/dashboard" className="nav-auth-link">
+              Dashboard
+            </Link>
+          )}
           <button
             type="button"
             onClick={handleSignOut}
