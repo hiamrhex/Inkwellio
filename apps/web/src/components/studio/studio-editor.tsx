@@ -9,9 +9,12 @@ import {
   MAX_TOPIC_SELECTIONS,
   TITLE_MAX_CHARS,
   codePointLength,
+  formatApiFailure,
+  normalizeHandleInput,
   requestJson,
   toggleTopicSelection,
   utf8ByteLength,
+  type ApiFailure,
 } from "./api";
 import { SafeMarkdownPreview } from "./safe-preview";
 
@@ -41,6 +44,23 @@ type SaveIndicator =
   | "saved"
   | "conflict"
   | "failed";
+
+/**
+ * Counts whitespace-separated words in Markdown text without stripping code tokens unpredictably.
+ */
+export function countMarkdownWords(markdown: string): number {
+  const trimmed = markdown.trim();
+  if (!trimmed) return 0;
+  return trimmed.split(/\s+/).length;
+}
+
+/**
+ * Builds the plain-text Markdown backup copied to clipboard during conflict/auth recovery.
+ */
+export function formatConflictClipboardText(title: string, bodyMarkdown: string): string {
+  const cleanTitle = title.trim();
+  return cleanTitle ? `# ${cleanTitle}\n\n${bodyMarkdown}` : bodyMarkdown;
+}
 
 export function StudioEditor({
   postId,
@@ -73,9 +93,12 @@ export function StudioEditor({
   const [topicLimitNotice, setTopicLimitNotice] = useState(false);
 
   const [editorMode, setEditorMode] = useState<"write" | "preview">("write");
+  const [inspectorOpen, setInspectorOpen] = useState(true);
   const [saveIndicator, setSaveIndicator] = useState<SaveIndicator>("idle");
   const [bannerMessage, setBannerMessage] = useState<string | null>(null);
+  const [bannerFailureStatus, setBannerFailureStatus] = useState<number | null>(null);
   const [statusNotice, setStatusNotice] = useState<string | null>(null);
+  const [cooldownSeconds, setCooldownSeconds] = useState<number>(0);
   const [conflictSnapshot, setConflictSnapshot] = useState<{
     currentVersion: number;
     currentTitle: string;
@@ -85,12 +108,12 @@ export function StudioEditor({
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
-  // Single in-flight save lock prevents concurrent debounced saves racing CAS version.
   const saveInFlightRef = useRef(false);
-  const lastSavedRef = useRef({
+  const [lastSaved, setLastSaved] = useState({
     title: initialTitle,
     bodyMarkdown: initialBodyMarkdown,
   });
+  const saveShortcutRef = useRef<() => void>(() => {});
 
   useEffect(() => {
     if (initialCuratedTopics.length > 0) return;
@@ -105,8 +128,20 @@ export function StudioEditor({
     };
   }, [initialCuratedTopics.length]);
 
+  useEffect(() => {
+    if (cooldownSeconds <= 0) return undefined;
+    const timer = setInterval(() => {
+      setCooldownSeconds((prev) => (prev <= 1 ? 0 : prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [cooldownSeconds]);
+
   const titleChars = codePointLength(title);
   const bodyBytes = utf8ByteLength(bodyMarkdown);
+  const wordCount = countMarkdownWords(bodyMarkdown);
+  const isDirty =
+    status !== "deleted" &&
+    (title !== lastSaved.title || bodyMarkdown !== lastSaved.bodyMarkdown);
   const validDraftInputs =
     status !== "deleted" &&
     titleChars >= 1 &&
@@ -116,22 +151,48 @@ export function StudioEditor({
     bodyBytes >= 1 &&
     bodyBytes <= BODY_MAX_BYTES;
 
-  async function saveDraftNow(mode: "manual" | "auto"): Promise<boolean> {
-    if (status === "deleted") return false;
-    if (saveInFlightRef.current) return false;
+  function applyFailure(res: ApiFailure) {
+    setBannerFailureStatus(res.status);
+    if (res.status === 429) {
+      setCooldownSeconds(res.retryAfterSeconds ?? 10);
+    }
+    if (
+      res.status === 409 &&
+      res.details &&
+      typeof res.details.currentVersion === "number"
+    ) {
+      setSaveIndicator("conflict");
+      setConflictSnapshot({
+        currentVersion: res.details.currentVersion,
+        currentTitle: res.details.currentTitle ?? title,
+        currentBodyMarkdown: res.details.currentBodyMarkdown ?? bodyMarkdown,
+      });
+      setBannerMessage(
+        `Draft conflict: server has version ${res.details.currentVersion}. Copy your local text or reload the latest saved draft.`,
+      );
+      return;
+    }
+    setBannerMessage(formatApiFailure(res));
+  }
+
+  async function saveDraftNow(mode: "manual" | "auto"): Promise<number | null> {
+    if (status === "deleted" || cooldownSeconds > 0) return null;
+    if (saveInFlightRef.current) return null;
     if (!validDraftInputs) {
       if (mode === "manual") {
+        setBannerFailureStatus(400);
         setBannerMessage(
           `Title must be 1-${TITLE_MAX_CHARS} characters (single line) and body must be 1-${BODY_MAX_BYTES.toLocaleString()} UTF-8 bytes.`,
         );
       }
-      return false;
+      return null;
     }
 
     saveInFlightRef.current = true;
     setSaveIndicator("saving");
     if (mode === "manual") {
       setBannerMessage(null);
+      setBannerFailureStatus(null);
     }
 
     const res = await requestJson<{ version: number; updatedAt: string }>(
@@ -149,67 +210,100 @@ export function StudioEditor({
     saveInFlightRef.current = false;
 
     if (!res.ok) {
-      if (res.status === 409) {
-        setSaveIndicator("conflict");
-        setBannerMessage(res.message);
-        if (
-          res.details &&
-          typeof res.details.currentVersion === "number"
-        ) {
-          setConflictSnapshot({
-            currentVersion: res.details.currentVersion,
-            currentTitle: res.details.currentTitle ?? title,
-            currentBodyMarkdown: res.details.currentBodyMarkdown ?? bodyMarkdown,
-          });
-        }
-        return false;
-      }
-
-      setSaveIndicator("failed");
-      setBannerMessage(res.message);
-      return false;
+      setSaveIndicator(res.status === 409 ? "conflict" : "failed");
+      applyFailure(res);
+      return null;
     }
 
-    lastSavedRef.current = { title, bodyMarkdown };
+    setLastSaved({ title, bodyMarkdown });
     setVersion(res.data.version);
     setConflictSnapshot(null);
+    setBannerMessage(null);
+    setBannerFailureStatus(null);
     setSaveIndicator("saved");
-    return true;
+    return res.data.version;
   }
 
   useEffect(() => {
-    if (status === "deleted") return;
-    const isDirty =
-      title !== lastSavedRef.current.title ||
-      bodyMarkdown !== lastSavedRef.current.bodyMarkdown;
-    if (!isDirty || !validDraftInputs) return;
+    saveShortcutRef.current = () => {
+      void saveDraftNow("manual");
+    };
+  });
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (
+        (event.ctrlKey || event.metaKey) &&
+        !event.shiftKey &&
+        !event.altKey &&
+        event.key.toLowerCase() === "s"
+      ) {
+        event.preventDefault();
+        saveShortcutRef.current();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
+  useEffect(() => {
+    if (!isDirty) return undefined;
+    const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [isDirty]);
+
+  useEffect(() => {
+    if (status === "deleted" || cooldownSeconds > 0 || conflictSnapshot !== null) {
+      return undefined;
+    }
+    if (!isDirty || !validDraftInputs) return undefined;
 
     const timer = setTimeout(() => {
       void saveDraftNow("auto");
     }, 1_500);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [title, bodyMarkdown, version, status, validDraftInputs]);
+  }, [title, bodyMarkdown, version, status, isDirty, validDraftInputs, cooldownSeconds, conflictSnapshot]);
+
+  async function handleCopyMyText() {
+    const text = formatConflictClipboardText(title, bodyMarkdown);
+    try {
+      if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        setStatusNotice("Copied your local draft text to the clipboard.");
+        return;
+      }
+      setStatusNotice("Clipboard unavailable here — select and copy text directly from the editor.");
+    } catch {
+      setStatusNotice("Clipboard access was blocked — select and copy text directly from the editor.");
+    }
+  }
 
   function handleApplyConflictReload() {
     if (!conflictSnapshot) return;
     setVersion(conflictSnapshot.currentVersion);
     setTitle(conflictSnapshot.currentTitle);
     setBodyMarkdown(conflictSnapshot.currentBodyMarkdown);
-    lastSavedRef.current = {
+    setLastSaved({
       title: conflictSnapshot.currentTitle,
       bodyMarkdown: conflictSnapshot.currentBodyMarkdown,
-    };
+    });
     setConflictSnapshot(null);
     setBannerMessage(null);
+    setBannerFailureStatus(null);
     setSaveIndicator("saved");
     setStatusNotice("Loaded the latest saved draft version.");
   }
 
   async function handleSaveTopics() {
-    if (busyAction !== null || status === "deleted") return;
+    if (busyAction !== null || status === "deleted" || cooldownSeconds > 0) return;
     setBusyAction("topics");
     setBannerMessage(null);
+    setBannerFailureStatus(null);
     setStatusNotice(null);
 
     const res = await requestJson<{ topics: StudioTopicOption[] }>(
@@ -222,7 +316,7 @@ export function StudioEditor({
 
     setBusyAction(null);
     if (!res.ok) {
-      setBannerMessage(res.message);
+      applyFailure(res);
       return;
     }
 
@@ -232,15 +326,17 @@ export function StudioEditor({
   }
 
   async function handleRenameSlug() {
-    if (busyAction !== null) return;
+    if (busyAction !== null || cooldownSeconds > 0) return;
     const trimmed = slugInput.trim().toLowerCase();
     if (!trimmed) {
+      setBannerFailureStatus(400);
       setBannerMessage("Enter a valid URL slug.");
       return;
     }
 
     setBusyAction("slug");
     setBannerMessage(null);
+    setBannerFailureStatus(null);
     setStatusNotice(null);
 
     const res = await requestJson<{ id: string; slug: string; changed: boolean }>(
@@ -253,7 +349,7 @@ export function StudioEditor({
 
     setBusyAction(null);
     if (!res.ok) {
-      setBannerMessage(res.message);
+      applyFailure(res);
       return;
     }
 
@@ -270,33 +366,20 @@ export function StudioEditor({
   async function handleLifecycle(
     action: "publish" | "unpublish" | "delete" | "restore",
   ) {
-    if (busyAction !== null) return;
+    if (busyAction !== null || cooldownSeconds > 0) return;
     setBannerMessage(null);
+    setBannerFailureStatus(null);
     setStatusNotice(null);
 
     let effectiveVersion = version;
 
-    // Ensure pending local text edits are persisted cleanly before publishing.
     if (
       action === "publish" &&
-      (title !== lastSavedRef.current.title ||
-        bodyMarkdown !== lastSavedRef.current.bodyMarkdown ||
-        version === 0)
+      (isDirty || version === 0)
     ) {
-      const saved = await saveDraftNow("manual");
-      if (!saved) return;
-      // Read updated version directly via draft endpoint or wait a tick for state;
-      // `saveDraftNow` fails if stale so re-fetch only when version was updated?
-      // Wait: state `version` isn't flushed synchronously in closure, so fetch current version cleanly if needed:
-      const draftRes = await requestJson<{ version: number }>(
-        `/api/posts/${encodeURIComponent(postId)}/draft`,
-      );
-      if (!draftRes.ok) {
-        setBannerMessage(draftRes.message);
-        return;
-      }
-      effectiveVersion = draftRes.data.version;
-      setVersion(effectiveVersion);
+      const savedVersion = await saveDraftNow("manual");
+      if (savedVersion === null) return;
+      effectiveVersion = savedVersion;
     }
 
     setBusyAction(action);
@@ -313,15 +396,7 @@ export function StudioEditor({
     setConfirmDelete(false);
 
     if (!res.ok) {
-      if (res.status === 409 && res.details && typeof res.details.currentVersion === "number") {
-        setSaveIndicator("conflict");
-        setConflictSnapshot({
-          currentVersion: res.details.currentVersion,
-          currentTitle: res.details.currentTitle ?? title,
-          currentBodyMarkdown: res.details.currentBodyMarkdown ?? bodyMarkdown,
-        });
-      }
-      setBannerMessage(res.message);
+      applyFailure(res);
       return;
     }
 
@@ -340,6 +415,7 @@ export function StudioEditor({
   }
 
   const livePostPath = `/@${encodeURIComponent(publicationSlug)}/${encodeURIComponent(currentSlug)}`;
+  const slugPreview = normalizeHandleInput(slugInput) || currentSlug;
 
   const saveLabel =
     saveIndicator === "saving"
@@ -356,30 +432,26 @@ export function StudioEditor({
                 ? "New draft"
                 : `Saved · v${version}`;
 
+  const actionsLocked = busyAction !== null || cooldownSeconds > 0;
+  const signInHref = `/sign-in?next=${encodeURIComponent(`/studio/${postId}`)}`;
+
   return (
     <main
-      className="min-h-screen px-4 py-8 sm:px-6 sm:py-10"
+      id="main-content"
+      className="workspace-main"
       style={{
         backgroundColor: "var(--bg-canvas)",
         color: "var(--text-primary)",
       }}
     >
-      <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
         <header
-          className="flex flex-wrap items-center justify-between gap-3 border-b pb-4"
+          className="studio-top-strip"
           style={{ borderColor: "var(--border-hairline)" }}
         >
           <div className="flex flex-wrap items-center gap-3">
-            <Link
-              href="/dashboard"
-              prefetch={false}
-              className="inline-flex min-h-[44px] items-center rounded-md border px-3.5 py-2 text-sm font-medium transition-opacity hover:opacity-80"
-              style={{
-                borderColor: "var(--border-hairline)",
-                color: "var(--text-primary)",
-              }}
-            >
-              Dashboard
+            <Link href="/dashboard" className="studio-back-link">
+              ← Posts
             </Link>
             <Chip>{publicationName}</Chip>
             <span
@@ -403,18 +475,21 @@ export function StudioEditor({
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            <span
-              aria-live="polite"
-              className="font-mono text-xs"
-              style={{ color: "var(--text-muted)" }}
-            >
-              {saveLabel}
+            <span className="studio-save-label" aria-live="polite">
+              {wordCount.toLocaleString()} words · {saveLabel} · Ctrl+S to save
             </span>
-
+            <button
+              type="button"
+              className="studio-inspector-toggle"
+              aria-expanded={inspectorOpen}
+              aria-controls="studio-inspector"
+              onClick={() => setInspectorOpen((open) => !open)}
+            >
+              {inspectorOpen ? "Hide details" : "Show details"}
+            </button>
             {status === "published" ? (
               <Link
                 href={livePostPath}
-                prefetch={false}
                 className="inline-flex min-h-[44px] items-center rounded-md border px-3.5 py-2 text-sm font-medium underline underline-offset-4 hover:opacity-80"
                 style={{
                   borderColor: "var(--border-hairline)",
@@ -427,30 +502,93 @@ export function StudioEditor({
           </div>
         </header>
 
+        {cooldownSeconds > 0 ? (
+          <div
+            role="status"
+            aria-live="polite"
+            className="rounded-lg border px-4 py-3 text-sm"
+            style={{
+              backgroundColor: "var(--bg-surface2)",
+              borderColor: "var(--status-amber)",
+              color: "var(--text-primary)",
+            }}
+          >
+            Write actions paused for {cooldownSeconds}s to respect rate limits. Your text stays safe in the editor.
+          </div>
+        ) : null}
+
         {bannerMessage ? (
           <div
             role="alert"
-            className="flex flex-wrap items-center justify-between gap-3 rounded-lg border px-4 py-3 text-sm"
+            aria-live="polite"
+            className="flex flex-col gap-3 rounded-lg border px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between"
             style={{
               backgroundColor: "var(--bg-surface2)",
-              borderColor: "var(--border-hairline)",
+              borderColor: "var(--status-amber)",
               color: "var(--text-primary)",
             }}
           >
             <span>{bannerMessage}</span>
-            {conflictSnapshot ? (
-              <button
-                type="button"
-                onClick={handleApplyConflictReload}
-                className="inline-flex min-h-[44px] cursor-pointer items-center rounded-md px-3.5 py-2 text-xs font-medium"
-                style={{
-                  backgroundColor: "var(--btn-primary-bg)",
-                  color: "var(--btn-primary-text)",
-                }}
-              >
-                Reload latest draft
-              </button>
-            ) : null}
+            <div className="flex flex-wrap items-center gap-2">
+              {conflictSnapshot || bannerFailureStatus === 401 ? (
+                <button
+                  type="button"
+                  onClick={() => void handleCopyMyText()}
+                  className="inline-flex min-h-[44px] cursor-pointer items-center rounded-md border px-3.5 py-2 text-xs font-medium"
+                  style={{
+                    borderColor: "var(--border-hairline)",
+                    backgroundColor: "var(--bg-canvas)",
+                    color: "var(--text-primary)",
+                  }}
+                >
+                  Copy my text
+                </button>
+              ) : null}
+
+              {conflictSnapshot ? (
+                <button
+                  type="button"
+                  onClick={handleApplyConflictReload}
+                  className="inline-flex min-h-[44px] cursor-pointer items-center rounded-md px-3.5 py-2 text-xs font-medium"
+                  style={{
+                    backgroundColor: "var(--btn-primary-bg)",
+                    color: "var(--btn-primary-text)",
+                  }}
+                >
+                  Reload latest draft
+                </button>
+              ) : null}
+
+              {bannerFailureStatus === 401 ? (
+                <Link
+                  href={signInHref}
+                  className="inline-flex min-h-[44px] items-center rounded-md px-3.5 py-2 text-xs font-medium"
+                  style={{
+                    backgroundColor: "var(--btn-primary-bg)",
+                    color: "var(--btn-primary-text)",
+                  }}
+                >
+                  Sign in again
+                </Link>
+              ) : null}
+
+              {saveIndicator === "failed" &&
+              (bannerFailureStatus === 0 || (bannerFailureStatus ?? 0) >= 500) &&
+              cooldownSeconds === 0 ? (
+                <button
+                  type="button"
+                  onClick={() => void saveDraftNow("manual")}
+                  className="inline-flex min-h-[44px] cursor-pointer items-center rounded-md border px-3.5 py-2 text-xs font-medium"
+                  style={{
+                    borderColor: "var(--border-hairline)",
+                    backgroundColor: "var(--bg-canvas)",
+                    color: "var(--text-primary)",
+                  }}
+                >
+                  Retry save
+                </button>
+              ) : null}
+            </div>
           </div>
         ) : null}
 
@@ -461,8 +599,8 @@ export function StudioEditor({
             className="rounded-lg border px-4 py-3 text-sm"
             style={{
               backgroundColor: "var(--bg-surface1)",
-              borderColor: "var(--border-hairline)",
-              color: "var(--text-muted)",
+              borderColor: "var(--status-live)",
+              color: "var(--text-primary)",
             }}
           >
             {statusNotice}
@@ -490,8 +628,8 @@ export function StudioEditor({
             <div className="mt-4">
               <button
                 type="button"
-                disabled={busyAction !== null}
-                onClick={() => handleLifecycle("restore")}
+                disabled={actionsLocked}
+                onClick={() => void handleLifecycle("restore")}
                 className="inline-flex min-h-[44px] cursor-pointer items-center justify-center rounded-md px-5 py-2.5 text-sm font-medium"
                 style={{
                   backgroundColor: "var(--btn-primary-bg)",
@@ -504,9 +642,11 @@ export function StudioEditor({
           </section>
         ) : null}
 
+        <div className="studio-columns" data-open={inspectorOpen ? "true" : "false"}>
+          <div className="studio-prose-column">
         <section
           aria-label="Draft editor"
-          className="flex flex-col gap-5 rounded-xl border p-5 sm:p-8"
+          className="studio-prose-card"
           style={{
             backgroundColor: "var(--bg-surface1)",
             borderColor: "var(--border-hairline)",
@@ -549,7 +689,7 @@ export function StudioEditor({
           <div className="flex flex-col gap-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <label htmlFor="post-body" className="text-sm font-medium">
-                Body (Markdown)
+                Story
               </label>
 
               <div className="flex items-center gap-2">
@@ -605,8 +745,8 @@ export function StudioEditor({
                   setBodyMarkdown(e.target.value);
                   setSaveIndicator("dirty");
                 }}
-                placeholder="Write in Markdown..."
-                className="w-full rounded-md border p-4 font-mono text-sm leading-relaxed"
+                placeholder="Write your story..."
+                className="studio-textarea"
                 style={{
                   backgroundColor: "var(--bg-canvas)",
                   borderColor: "var(--border-hairline)",
@@ -615,27 +755,39 @@ export function StudioEditor({
               />
             ) : (
               <div
-                className="min-h-[320px] rounded-md border p-5"
+                className="min-h-[320px] rounded-md border p-5 sm:p-8"
                 style={{
                   backgroundColor: "var(--bg-canvas)",
                   borderColor: "var(--border-hairline)",
                 }}
               >
-                <SafeMarkdownPreview content={bodyMarkdown} />
+                <div className="editorial-reading mx-auto max-w-[68ch]">
+                  <SafeMarkdownPreview content={bodyMarkdown} />
+                </div>
               </div>
             )}
 
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <span
-                className="font-mono text-xs"
-                style={{ color: "var(--text-faint)" }}
-              >
-                {bodyBytes.toLocaleString()} / {BODY_MAX_BYTES.toLocaleString()} bytes
-              </span>
+            <div className="studio-editor-footer">
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="font-mono text-xs" style={{ color: "var(--text-faint)" }}>
+                  {wordCount.toLocaleString()} words
+                </span>
+                <span className="studio-save-label" style={{ color: "var(--text-faint)" }}>
+                  {saveLabel}
+                </span>
+                <span className="text-xs" style={{ color: "var(--text-faint)" }}>
+                  Ctrl+S to save
+                </span>
+                {bodyBytes > BODY_MAX_BYTES * 0.8 ? (
+                  <span className="text-xs" style={{ color: "var(--status-amber)" }} role="status">
+                    Story is nearing the {BODY_MAX_BYTES.toLocaleString()}-byte limit.
+                  </span>
+                ) : null}
+              </div>
 
               <button
                 type="button"
-                disabled={status === "deleted" || saveIndicator === "saving"}
+                disabled={status === "deleted" || saveIndicator === "saving" || cooldownSeconds > 0}
                 onClick={() => void saveDraftNow("manual")}
                 className="inline-flex min-h-[44px] cursor-pointer items-center justify-center rounded-md border px-5 py-2.5 text-sm font-medium transition-opacity hover:opacity-85 disabled:opacity-60"
                 style={{
@@ -649,7 +801,13 @@ export function StudioEditor({
             </div>
           </div>
         </section>
+          </div>
 
+          <aside
+            id="studio-inspector"
+            className="studio-inspector"
+            aria-label="Story details"
+          >
         <section
           aria-labelledby="topics-heading"
           className="flex flex-col gap-4 rounded-xl border p-5 sm:p-6"
@@ -715,8 +873,8 @@ export function StudioEditor({
           <div>
             <button
               type="button"
-              disabled={status === "deleted" || busyAction !== null}
-              onClick={handleSaveTopics}
+              disabled={status === "deleted" || actionsLocked}
+              onClick={() => void handleSaveTopics()}
               className="inline-flex min-h-[44px] cursor-pointer items-center justify-center rounded-md border px-4 py-2 text-sm font-medium transition-opacity hover:opacity-85 disabled:opacity-60"
               style={{
                 borderColor: "var(--border-hairline)",
@@ -753,6 +911,7 @@ export function StudioEditor({
                 disabled={status === "deleted"}
                 value={slugInput}
                 onChange={(e) => setSlugInput(e.target.value)}
+                aria-describedby="post-slug-preview"
                 className="min-h-[44px] rounded-md border px-3.5 py-2 font-mono text-sm"
                 style={{
                   backgroundColor: "var(--bg-canvas)",
@@ -763,8 +922,8 @@ export function StudioEditor({
             </div>
             <button
               type="button"
-              disabled={status === "deleted" || busyAction !== null}
-              onClick={handleRenameSlug}
+              disabled={status === "deleted" || actionsLocked}
+              onClick={() => void handleRenameSlug()}
               className="inline-flex min-h-[44px] cursor-pointer items-center justify-center rounded-md border px-4 py-2 text-sm font-medium disabled:opacity-60"
               style={{
                 borderColor: "var(--border-hairline)",
@@ -776,12 +935,23 @@ export function StudioEditor({
             </button>
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4" style={{ borderColor: "var(--border-hairline)" }}>
+          <p
+            id="post-slug-preview"
+            className="font-mono text-xs"
+            style={{ color: "var(--text-faint)" }}
+          >
+            Public address: /@{publicationSlug}/{slugPreview}
+          </p>
+
+          <div
+            className="flex flex-wrap items-center justify-between gap-3 border-t pt-4"
+            style={{ borderColor: "var(--border-hairline)" }}
+          >
             <div className="flex flex-wrap items-center gap-3">
               {status === "draft" ? (
                 <button
                   type="button"
-                  disabled={busyAction !== null || !validDraftInputs}
+                  disabled={actionsLocked || !validDraftInputs}
                   onClick={() => void handleLifecycle("publish")}
                   className="inline-flex min-h-[44px] cursor-pointer items-center justify-center rounded-md px-5 py-2.5 text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-50"
                   style={{
@@ -797,7 +967,7 @@ export function StudioEditor({
                 <>
                   <button
                     type="button"
-                    disabled={busyAction !== null || !validDraftInputs}
+                    disabled={actionsLocked || !validDraftInputs}
                     onClick={() => void handleLifecycle("publish")}
                     className="inline-flex min-h-[44px] cursor-pointer items-center justify-center rounded-md px-5 py-2.5 text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-50"
                     style={{
@@ -809,7 +979,7 @@ export function StudioEditor({
                   </button>
                   <button
                     type="button"
-                    disabled={busyAction !== null}
+                    disabled={actionsLocked}
                     onClick={() => void handleLifecycle("unpublish")}
                     className="inline-flex min-h-[44px] cursor-pointer items-center justify-center rounded-md border px-4 py-2 text-sm font-medium"
                     style={{
@@ -828,7 +998,7 @@ export function StudioEditor({
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    disabled={busyAction !== null}
+                    disabled={actionsLocked}
                     onClick={() => void handleLifecycle("delete")}
                     className="inline-flex min-h-[44px] cursor-pointer items-center justify-center rounded-md px-4 py-2 text-sm font-medium"
                     style={{
@@ -853,6 +1023,7 @@ export function StudioEditor({
               ) : (
                 <button
                   type="button"
+                  disabled={actionsLocked}
                   onClick={() => setConfirmDelete(true)}
                   className="inline-flex min-h-[44px] cursor-pointer items-center justify-center rounded-md border px-4 py-2 text-sm font-medium"
                   style={{
@@ -866,6 +1037,8 @@ export function StudioEditor({
             ) : null}
           </div>
         </section>
+          </aside>
+        </div>
       </div>
     </main>
   );

@@ -37,7 +37,7 @@ export function InteractiveBento() {
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
             <span className="status-dot status-dot-live" aria-hidden="true" />
-            <span style={{ fontSize: "0.75rem", fontFamily: "var(--font-geist-mono)", color: "var(--text-faint)" }}>
+            <span style={{ fontSize: "0.75rem", fontFamily: "var(--font-code)", color: "var(--text-faint)" }}>
               Direct bookmark
             </span>
           </div>
@@ -50,7 +50,7 @@ export function InteractiveBento() {
           </p>
         </div>
 
-        <BentoLinkWidget domainPrefix="inkwellio.example/@" />
+        <BentoLinkWidget domainPrefix="@" />
       </article>
 
       {/* ── Cell 2: Distraction-Free Editor (Span 5) ───────────────── */}
@@ -70,7 +70,7 @@ export function InteractiveBento() {
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
             <span className="status-dot status-dot-amber" aria-hidden="true" />
-            <span style={{ fontSize: "0.75rem", fontFamily: "var(--font-geist-mono)", color: "var(--text-faint)" }}>
+            <span style={{ fontSize: "0.75rem", fontFamily: "var(--font-code)", color: "var(--text-faint)" }}>
               Auto-saved safely
             </span>
           </div>

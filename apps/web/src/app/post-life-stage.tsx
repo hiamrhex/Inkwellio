@@ -34,7 +34,7 @@ export function PostLifeStage() {
           </header>
 
           <p className="sr-only">
-            Four horizontal steps of a post: Step 1 writes a Markdown draft with a live word count and autosave; Step 2 picks up to three topics and sets your link; Step 3 publishes in Newsreader serif view at inkwellio.example/@handle/city-away-leg; Step 4 places the story on your reader page.
+            Four horizontal steps of a post: Step 1 writes a Markdown draft with a live word count and autosave; Step 2 picks up to three topics and sets your link; Step 3 publishes in Newsreader serif view at @handle/city-away-leg; Step 4 places the story on your reader page.
           </p>
 
           <ol className="post-life-steps" aria-label="Post lifecycle stages">
@@ -162,7 +162,7 @@ export function PostLifeStage() {
                         In the 64th minute, City tucked their right-back inside, forcing the winger inward...
                       </p>
                       <p className="post-life-address-bar" aria-hidden="true">
-                        <span className="post-life-address-type">inkwellio.example/@handle/city-away-leg</span>
+                        <span className="post-life-address-type">@handle/city-away-leg</span>
                       </p>
                     </div>
                   </div>

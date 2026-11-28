@@ -132,7 +132,7 @@ export function LivingHeroArtifact() {
       >
         <span className="status-dot status-dot-amber" />
         <span style={{ color: "var(--text-faint)", fontWeight: 500 }}>Draft saved</span>
-        <span style={{ color: "var(--text-primary)", fontWeight: 500, fontFamily: "var(--font-geist-mono)" }}>
+        <span style={{ color: "var(--text-primary)", fontWeight: 500, fontFamily: "var(--font-code)" }}>
           v3 safe
         </span>
       </div>
@@ -213,7 +213,7 @@ export function LivingHeroArtifact() {
             <span
               style={{
                 fontSize: "0.75rem",
-                fontFamily: "var(--font-geist-mono)",
+                fontFamily: "var(--font-code)",
                 color: "var(--text-muted)",
                 marginLeft: "0.2rem",
                 whiteSpace: "nowrap",
@@ -333,7 +333,7 @@ export function LivingHeroArtifact() {
                     border: "none",
                     outline: "none",
                     resize: "none",
-                    fontFamily: "var(--font-geist-sans)",
+                    fontFamily: "var(--font-ui)",
                     fontSize: "0.9375rem",
                     lineHeight: 1.65,
                     color: "var(--text-primary)",
@@ -377,7 +377,7 @@ export function LivingHeroArtifact() {
                 paddingTop: "0.75rem",
                 borderTop: "1px solid var(--border-hairline)",
                 fontSize: "0.75rem",
-                fontFamily: "var(--font-geist-mono)",
+                fontFamily: "var(--font-code)",
                 color: "var(--text-faint)",
                 minWidth: 0,
               }}
@@ -432,7 +432,7 @@ export function LivingHeroArtifact() {
             <div
               style={{
                 fontSize: "0.75rem",
-                fontFamily: "var(--font-geist-mono)",
+                fontFamily: "var(--font-code)",
                 color: "var(--text-faint)",
               }}
             >
@@ -471,7 +471,7 @@ export function LivingHeroArtifact() {
                 paddingTop: "0.75rem",
                 borderTop: "1px solid var(--border-hairline)",
                 fontSize: "0.75rem",
-                fontFamily: "var(--font-geist-mono)",
+                fontFamily: "var(--font-code)",
                 color: "var(--text-faint)",
                 display: "flex",
                 justifyContent: "space-between",
@@ -520,12 +520,12 @@ export function LivingHeroArtifact() {
           style={{
             color: "var(--text-primary)",
             fontWeight: 500,
-            fontFamily: "var(--font-geist-mono)",
+            fontFamily: "var(--font-code)",
             overflow: "hidden",
             textOverflow: "ellipsis",
           }}
         >
-          inkwellio.example/@sample
+          @sample
         </span>
       </div>
     </div>

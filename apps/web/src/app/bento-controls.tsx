@@ -6,7 +6,7 @@ const SAMPLE_TOPICS = ["Tactics", "Match Reports", "Club History", "Culture"] as
 const MAX_TOPICS = 3;
 
 export function BentoLinkWidget({
-  domainPrefix = "inkwellio.example/@",
+  domainPrefix = "@",
 }: {
   readonly domainPrefix?: string;
 } = {}) {
@@ -35,7 +35,7 @@ export function BentoLinkWidget({
         htmlFor="bento-slug-input"
         style={{
           fontSize: "0.75rem",
-          fontFamily: "var(--font-geist-mono)",
+          fontFamily: "var(--font-code)",
           color: "var(--text-faint)",
         }}
       >
@@ -45,7 +45,7 @@ export function BentoLinkWidget({
         <span
           style={{
             fontSize: "0.875rem",
-            fontFamily: "var(--font-geist-mono)",
+            fontFamily: "var(--font-code)",
             color: "var(--text-muted)",
           }}
         >
@@ -67,13 +67,13 @@ export function BentoLinkWidget({
             borderRadius: "0.5rem",
             padding: "0.5rem 0.75rem",
             fontSize: "0.875rem",
-            fontFamily: "var(--font-geist-mono)",
+            fontFamily: "var(--font-code)",
             color: "var(--text-primary)",
             outline: "none",
           }}
         />
       </div>
-      <div style={{ fontSize: "0.75rem", fontFamily: "var(--font-geist-mono)", color: "var(--text-faint)" }}>
+      <div style={{ fontSize: "0.75rem", fontFamily: "var(--font-code)", color: "var(--text-faint)" }}>
         Your link:{" "}
         <span style={{ color: "var(--text-primary)" }}>
           {domainPrefix}{normalizedSlug || "yourname"}
@@ -100,7 +100,7 @@ export function BentoEditorWidget() {
       }}
     >
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem" }}>
-        <span style={{ fontSize: "0.75rem", fontFamily: "var(--font-geist-mono)", color: "var(--text-faint)" }}>
+        <span style={{ fontSize: "0.75rem", fontFamily: "var(--font-code)", color: "var(--text-faint)" }}>
           Formatting view
         </span>
         <div
@@ -159,7 +159,7 @@ export function BentoEditorWidget() {
           border: "1px solid var(--border-hairline)",
           fontSize: "0.875rem",
           lineHeight: 1.5,
-          fontFamily: editorView === "markdown" ? "var(--font-geist-mono)" : "var(--font-geist-sans)",
+          fontFamily: editorView === "markdown" ? "var(--font-code)" : "var(--font-ui)",
           color: "var(--text-primary)",
         }}
       >
@@ -200,7 +200,7 @@ export function BentoTopicsWidget({
     <>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem" }}>
         {headerLeft}
-        <span style={{ fontSize: "0.75rem", fontFamily: "var(--font-geist-mono)", color: "var(--text-faint)" }}>
+        <span style={{ fontSize: "0.75rem", fontFamily: "var(--font-code)", color: "var(--text-faint)" }}>
           {selectedTopics.length} / {MAX_TOPICS} selected
         </span>
       </div>
@@ -234,7 +234,7 @@ export function BentoTopicsWidget({
                   minWidth: "45px",
                   padding: "0 12px",
                   fontSize: "0.75rem",
-                  fontFamily: "var(--font-geist-mono)",
+                  fontFamily: "var(--font-code)",
                   borderRadius: "9999px",
                   border: "1px solid var(--border-hairline)",
                   cursor: "pointer",
@@ -254,7 +254,7 @@ export function BentoTopicsWidget({
             justifyContent: "space-between",
             gap: "0.5rem",
             fontSize: "0.75rem",
-            fontFamily: "var(--font-geist-mono)",
+            fontFamily: "var(--font-code)",
             color: "var(--text-faint)",
           }}
         >
@@ -355,7 +355,7 @@ export function BentoReadingWidget({
                   minWidth: "45px",
                   padding: "0 10px",
                   fontSize: "0.75rem",
-                  fontFamily: "var(--font-geist-mono)",
+                  fontFamily: "var(--font-code)",
                   borderRadius: "9999px",
                   border: "none",
                   cursor: "pointer",
@@ -384,7 +384,7 @@ export function BentoReadingWidget({
         <p
           style={{
             margin: 0,
-            fontFamily: fontFamily === "serif" ? "var(--font-editorial)" : "var(--font-geist-sans)",
+            fontFamily: fontFamily === "serif" ? "var(--font-editorial)" : "var(--font-ui)",
             fontSize: fontSize,
             lineHeight: 1.7,
             color: "var(--text-primary)",

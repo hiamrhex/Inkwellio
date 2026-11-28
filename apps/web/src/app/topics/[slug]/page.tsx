@@ -42,14 +42,6 @@ function Breadcrumb({ topicName }: { topicName?: string }) {
       >
         Topics
       </Link>
-      <span aria-hidden="true">/</span>
-      <Link
-        href="/search"
-        prefetch={false}
-        className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center px-2 hover:text-[var(--text-primary)] hover:underline ${FOCUS_RING}`}
-      >
-        Search
-      </Link>
       {topicName ? (
         <>
           <span aria-hidden="true">/</span>
@@ -170,7 +162,7 @@ export default function TopicDetailPage({
   searchParams: Promise<{ after?: string; afterId?: string }>;
 }) {
   return (
-    <SiteShell>
+    <SiteShell activePath="/topics">
       <Suspense
         fallback={
           <main id="main-content" className="mx-auto max-w-2xl px-6 py-12" style={PAGE_STYLE}>

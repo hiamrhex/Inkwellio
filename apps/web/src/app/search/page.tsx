@@ -197,7 +197,7 @@ export default function SearchPage({
   }>;
 }) {
   return (
-    <SiteShell>
+    <SiteShell activePath="/search">
       <Suspense
         fallback={
           <main id="main-content" className="mx-auto max-w-2xl px-6 py-12" style={PAGE_STYLE}>

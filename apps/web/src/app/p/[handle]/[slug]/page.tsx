@@ -53,19 +53,11 @@ async function PostArticleView({
         </Link>
         <span aria-hidden="true">/</span>
         <Link
-          href="/topics"
-          prefetch={false}
-          className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center px-2 hover:text-[var(--text-primary)] hover:underline ${FOCUS_RING}`}
-        >
-          Topics
-        </Link>
-        <span aria-hidden="true">/</span>
-        <Link
           href={`/@${encodeURIComponent(publication.slug)}`}
           prefetch={false}
-          className={`inline-flex min-h-[44px] items-center text-[var(--text-primary)] hover:underline ${FOCUS_RING}`}
+          className={`inline-flex min-h-[44px] items-center px-2 text-[var(--text-primary)] hover:underline ${FOCUS_RING}`}
         >
-          @{publication.slug} — {publication.name}
+          @{publication.slug}
         </Link>
       </nav>
 

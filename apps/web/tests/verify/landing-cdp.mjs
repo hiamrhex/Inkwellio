@@ -134,6 +134,8 @@ async function startChrome(cdpPort, profileDir) {
     [
       "--headless=new",
       "--enable-webgl",
+      "--disable-frame-rate-limit",
+      "--disable-gpu-vsync",
       `--remote-debugging-port=${cdpPort}`,
       `--user-data-dir=${profileDir}`,
       "about:blank",
@@ -612,9 +614,14 @@ async function runRoutesAudit(cdp, port) {
         const h1 = document.querySelector("h1");
         const h1Style = h1 ? getComputedStyle(h1) : null;
         const themeBtn = document.querySelector("[data-theme-toggle]");
-        const motionBtn = document.querySelector("[data-motion-toggle]");
+        const motionBtn = document.querySelector(".site-footer [data-motion-toggle]");
         const tRect = themeBtn ? themeBtn.getBoundingClientRect() : null;
         const mRect = motionBtn ? motionBtn.getBoundingClientRect() : null;
+        const headerMotionCount = document.querySelectorAll("header [data-motion-toggle]").length;
+        const footerMotionCount = document.querySelectorAll(".site-footer [data-motion-toggle]").length;
+        const marketingAnchors = [...document.querySelectorAll("header a")].filter((a) =>
+          ["Principles", "Editor", "Reading", "Publishing"].includes(a.textContent.trim()),
+        ).length;
         const img = document.querySelector(".hero-ribbon-img");
         return {
           overflowX: doc.scrollWidth - window.innerWidth,
@@ -624,6 +631,9 @@ async function runRoutesAudit(cdp, port) {
           h1FontPx: h1Style ? parseFloat(h1Style.fontSize) : 0,
           themeBtnBox: tRect ? [Math.round(tRect.width), Math.round(tRect.height)] : null,
           motionBtnBox: mRect ? [Math.round(mRect.width), Math.round(mRect.height)] : null,
+          headerMotionCount,
+          footerMotionCount,
+          marketingAnchors,
           heroImgSrc: img ? img.currentSrc || img.getAttribute("src") : null,
         };
       })()`);
@@ -645,14 +655,29 @@ async function runRoutesAudit(cdp, port) {
         `${vp.name} ${route} header height <= 64px`,
         `${metrics.headerH}px`,
       );
-      if (metrics.themeBtnBox && metrics.motionBtnBox) {
+      assertCond(
+        metrics.headerMotionCount === 0,
+        `${vp.name} ${route} zero motion toggles in header`,
+        `${metrics.headerMotionCount}`,
+      );
+      assertCond(
+        metrics.footerMotionCount === 1 &&
+          metrics.motionBtnBox &&
+          metrics.motionBtnBox[0] >= 44 &&
+          metrics.motionBtnBox[1] >= 44,
+        `${vp.name} ${route} single footer motion toggle >= 44x44`,
+        metrics.motionBtnBox,
+      );
+      assertCond(
+        route === "/" ? metrics.marketingAnchors === 4 : metrics.marketingAnchors === 0,
+        `${vp.name} ${route} marketing anchors only on /`,
+        `${metrics.marketingAnchors}`,
+      );
+      if (metrics.themeBtnBox) {
         assertCond(
-          metrics.themeBtnBox[0] >= 44 &&
-            metrics.themeBtnBox[1] >= 44 &&
-            metrics.motionBtnBox[0] >= 44 &&
-            metrics.motionBtnBox[1] >= 44,
-          `${vp.name} ${route} header toggles >= 44x44`,
-          { theme: metrics.themeBtnBox, motion: metrics.motionBtnBox },
+          metrics.themeBtnBox[0] >= 44 && metrics.themeBtnBox[1] >= 44,
+          `${vp.name} ${route} theme toggle >= 44x44`,
+          { theme: metrics.themeBtnBox },
         );
       }
       if (vp.mobile && route === "/") {
@@ -1265,8 +1290,8 @@ async function runReducedMotionAndScreenshots(cdp, port) {
   })()`);
   assertCond(rmPaused.motion === "paused" && Math.abs(rmPaused.copyTy) <= 0.5 && rmPaused.trackH < 1400, "prefers-reduced-motion freezes scroll & track", rmPaused);
 
-  // Focus header motion button + activate with Enter key -> overrides reduced motion to "active"!
-  await page.evalFn(`window.scrollTo({ top: 0, behavior: "instant" }); document.querySelector(".site-header-bar [data-motion-toggle]")?.focus();`);
+  // Focus the single footer motion button + activate with Enter key -> overrides reduced motion to "active"!
+  await page.evalFn(`window.scrollTo({ top: 0, behavior: "instant" }); document.querySelector(".site-footer [data-motion-toggle]")?.focus();`);
   await cdp.call("Input.dispatchKeyEvent", { type: "rawKeyDown", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13, nativeVirtualKeyCode: 13, text: "\r", unmodifiedText: "\r" }, page.sessionId);
   await cdp.call("Input.dispatchKeyEvent", { type: "char", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13, text: "\r", unmodifiedText: "\r" }, page.sessionId);
   await cdp.call("Input.dispatchKeyEvent", { type: "keyUp", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13, nativeVirtualKeyCode: 13 }, page.sessionId);
@@ -1279,7 +1304,7 @@ async function runReducedMotionAndScreenshots(cdp, port) {
       trackH: Math.round(trackH),
     };
   })()`);
-  assertCond(resumed.motion === "active" && resumed.trackH >= 2800, "Keyboard header MotionToggle Resume overrides reduced motion", resumed);
+  assertCond(resumed.motion === "active" && resumed.trackH >= 2800, "Keyboard footer MotionToggle Resume overrides reduced motion", resumed);
   await page.close();
 
   // Save dark & light desktop screenshots of / and /sign-up into .logs/
